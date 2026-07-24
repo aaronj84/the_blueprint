@@ -1,6 +1,6 @@
-# Brighton Soccer IQ Lab
+# The Blueprint — Brighton Fresh/Soph Blue Team
 
-Interactive 4-3-3 tactical learning site for Brighton’s high school girls team (freshman/sophomore, high premier / ECNL Regional level).
+Interactive 4-3-3 tactical learning site for Brighton’s Fresh/Soph Blue team (high premier / ECNL Regional level).
 
 Vanilla HTML, CSS, and JavaScript. No build step. Opens from `index.html` and deploys to GitHub Pages.
 
@@ -43,7 +43,7 @@ Coach mode shows scenario IDs, correct answers, target areas, cues, prev/next co
 |------|--------|
 | `#home` | Home |
 | `#attack` | Attack module |
-| `#wide` | Wide / gap-pass module |
+| `#wide` | Wide attack (half-space run & rotation) |
 | `#defense` | Defense module |
 | `#corner` | Corner lab |
 | `#challenge` | Mixed challenge |
@@ -118,10 +118,13 @@ localStorage.removeItem("brighton-soccer-iq-progress");
 
 ## Modules
 
+Each of Attack, Wide, Defense, and Corners opens with an **optional overview** of the principles (hide/skip anytime). Then:
+
 1. **Attack the Moment** — transition + 2-3-5 occupation (8 scenarios)
-2. **Wide Attack & Gap Passes** — triangles, overlap/underlap, gap passes (8)
-3. **Defensive Responsibilities** — man-oriented matchups, plus-one, transition (10)
-4. **Corner Decision Lab** — 0/1/2 read + short/direct finishes (10)
+2. **Wide Attack** — half-space run after the switch, then rotation when tracked (8)  
+   *(Patterns 3–4 — inverted rotation / third man — not yet in the first version.)*
+3. **Defensive Responsibilities** — Part 1 matchups / plus-one / press-recover; Part 2 out-of-possession **4-4-2** (8 next to 6; 7 & 11 cover deep wide)
+4. **Corner Decision Lab** — Part 1 short 1–2 play (0/1 defenders); Part 2 long-corner roles (2 defenders / serve)
 5. **Mixed Challenge** — 10 randomized unlabeled questions; results by concept
 
 ## Notes for coaches

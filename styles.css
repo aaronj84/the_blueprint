@@ -1,4 +1,4 @@
-/* Brighton Soccer IQ Lab — coaching-board aesthetic */
+/* The Blueprint — Brighton Fresh/Soph Blue Team — coaching-board aesthetic */
 :root {
   --bg: #0e1620;
   --bg-elevated: #162232;
@@ -140,10 +140,11 @@ a {
 }
 
 .brand-sub {
-  font-size: 0.72rem;
+  font-size: 0.68rem;
   color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.02em;
+  line-height: 1.25;
+  max-width: 14rem;
 }
 
 .nav-desktop {
@@ -568,6 +569,108 @@ a {
   color: var(--text-dim);
 }
 
+/* Module overview */
+.module-overview {
+  margin-bottom: 1.5rem;
+  padding: 1.25rem 1.15rem;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.module-overview-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.35rem;
+}
+
+.overview-kicker {
+  margin: 0 0 0.25rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--brand);
+}
+
+.module-overview h2 {
+  margin: 0;
+  font-size: clamp(1.2rem, 3.5vw, 1.55rem);
+  letter-spacing: -0.02em;
+}
+
+.overview-intro {
+  margin: 0.75rem 0 1rem;
+  color: var(--text-muted);
+  max-width: 46rem;
+  font-size: 1.02rem;
+}
+
+.principle-grid {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.principle-card {
+  padding: 0.9rem 1rem;
+  background: rgba(0, 0, 0, 0.22);
+  border-radius: var(--radius-sm);
+  border-left: 3px solid var(--brand);
+}
+
+.principle-card h3 {
+  margin: 0 0 0.35rem;
+  font-size: 0.98rem;
+  color: var(--text);
+}
+
+.principle-card p {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.92rem;
+}
+
+.cue-strip {
+  margin-top: 1rem;
+  padding: 0.85rem 1rem;
+  background: rgba(240, 193, 75, 0.08);
+  border: 1px solid rgba(240, 193, 75, 0.28);
+  border-radius: var(--radius-sm);
+}
+
+.cue-strip .label {
+  display: block;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--accent);
+  margin-bottom: 0.4rem;
+}
+
+.cue-strip ul {
+  margin: 0;
+  padding-left: 1.1rem;
+  color: var(--text);
+}
+
+.cue-strip li {
+  margin-bottom: 0.25rem;
+}
+
+.cue-strip li:last-child {
+  margin-bottom: 0;
+}
+
+@media (min-width: 720px) {
+  .principle-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
 /* Scenario workspace */
 .scenario-shell {
   display: grid;
@@ -739,6 +842,14 @@ body.coach-mode .coach-banner {
   stroke-width: 0.4;
   stroke-dasharray: 1.2 0.8;
   cursor: pointer;
+}
+
+.teaching-zone {
+  fill: rgba(240, 193, 75, 0.14);
+  stroke: rgba(240, 193, 75, 0.45);
+  stroke-width: 0.4;
+  stroke-dasharray: 1.2 0.8;
+  pointer-events: none;
 }
 
 .hotspot-zone:hover,
@@ -1124,6 +1235,21 @@ body.coach-mode .coach-controls {
 
 .muted {
   color: var(--text-muted);
+}
+
+.step-label {
+  margin: 0 0 0.35rem;
+  font-size: 0.8rem;
+  color: var(--accent);
+  letter-spacing: 0.02em;
+}
+
+.rationale-question {
+  margin: 0 0 0.75rem;
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--text);
 }
 
 .step-indicator {

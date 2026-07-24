@@ -1,4 +1,4 @@
-/* Brighton Soccer IQ Lab — application engine */
+/* The Blueprint — Brighton Fresh/Soph Blue Team — application engine */
 (function () {
   "use strict";
 
@@ -23,6 +23,7 @@
       scenarios: {},
       challengeAttempts: [],
       lastModule: null,
+      overviewDismissed: {},
     };
   }
 
@@ -33,6 +34,7 @@
       const parsed = JSON.parse(raw);
       return Object.assign(defaultProgress(), parsed, {
         scenarios: parsed.scenarios || {},
+        overviewDismissed: parsed.overviewDismissed || {},
       });
     } catch {
       return defaultProgress();
@@ -213,7 +215,12 @@
 
     const zones = (scenario.zones || [])
       .map((z) => {
-        return `<rect class="hotspot-zone" data-zone-id="${escapeHtml(z.id)}" x="${z.x}" y="${z.y}" width="${z.w}" height="${z.h}" rx="1.2" tabindex="0" role="button" aria-label="${escapeHtml(z.label || z.id)}" />`;
+        const interactive = scenario.interactionType === "pitch-hotspot";
+        const cls = interactive ? "hotspot-zone" : "teaching-zone";
+        const attrs = interactive
+          ? `tabindex="0" role="button" aria-label="${escapeHtml(z.label || z.id)}"`
+          : `pointer-events="none" aria-hidden="true"`;
+        return `<rect class="${cls}" data-zone-id="${escapeHtml(z.id)}" x="${z.x}" y="${z.y}" width="${z.w}" height="${z.h}" rx="1.2" ${attrs} />`;
       })
       .join("");
 
@@ -293,6 +300,12 @@
       "Right winger": "RW",
       "Left winger": "LW",
       "Center forward": "9",
+      "Wide point": "Wide",
+      "Half-space point": "½-sp",
+      "Deep support": "Deep",
+      "Box threat": "Box",
+      "Wide defender": "WD",
+      "Far-side wide": "Far",
     };
     return map[role] || role.split(" ").map((w) => w[0]).join("").slice(0, 3).toUpperCase();
   }
@@ -408,8 +421,8 @@
 
     root.innerHTML = `
       <section class="hero">
-        <h1>See it. Choose it. Explain it.</h1>
-        <p>Train Brighton’s 4-3-3 game model: transitions, five-lane occupation, wide combinations, man-oriented defending, and corner decisions.</p>
+        <h1>The Blueprint</h1>
+        <p>Brighton Fresh/Soph Blue Team — see it, choose it, explain it. Train the 4-3-3 game model: transitions, five-lane occupation, wide combinations, man-oriented defending, and corner decisions.</p>
         <div class="hero-meta">
           <span class="pill">Progress <strong>${overall.done}/${overall.total}</strong></span>
           <span class="pill">Saved on this device</span>
@@ -449,6 +462,9 @@
     }
     const stats = moduleStats(moduleId);
     const list = moduleScenarios(moduleId);
+    const overviewOpen = !(state.progress.overviewDismissed || {})[moduleId];
+    const ov = mod.overview;
+
     const rows = list
       .map((s, i) => {
         const p = getScenarioProgress(s.id);
@@ -463,18 +479,68 @@
         } else if (p.attempts > 0) {
           status = "In progress";
         }
+        const chapterLabel = ({
+          "attack-the-moment": "Attack the moment",
+          "create-2-3-5": "Create the 2-3-5",
+          "wide-attack": "Wide attack",
+          "defensive-responsibilities": "Part 1 · Matchups",
+          "defend-4-4-2": "Part 2 · 4-4-2",
+          "short-corners": "Part 1 · Short",
+          "long-corners": "Part 2 · Long",
+        })[s.chapter] || s.chapter || "";
         return `
           <a class="scenario-row ${cls}" href="#${escapeHtml(s.id)}">
             <span class="scenario-index">${i + 1}</span>
             <span class="scenario-info">
               <strong>${escapeHtml(s.title)}</strong>
-              <span>${escapeHtml(s.phase || s.chapter || "")} · ${escapeHtml(s.interactionType)}</span>
+              <span>${escapeHtml(chapterLabel)} · ${escapeHtml(s.interactionType)}</span>
             </span>
             <span class="scenario-status">${status}</span>
           </a>
         `;
       })
       .join("");
+
+    const overviewHtml = ov
+      ? `
+      <section class="module-overview ${overviewOpen ? "is-open" : "is-collapsed"}" id="module-overview">
+        <div class="module-overview-header">
+          <div>
+            <p class="overview-kicker">Before you start</p>
+            <h2>${escapeHtml(ov.headline)}</h2>
+          </div>
+          <button type="button" class="btn btn-ghost" id="toggle-overview">
+            ${overviewOpen ? "Hide overview" : "Show overview"}
+          </button>
+        </div>
+        <div class="module-overview-body" ${overviewOpen ? "" : "hidden"}>
+          <p class="overview-intro">${escapeHtml(ov.intro)}</p>
+          <div class="principle-grid">
+            ${(ov.principles || [])
+              .map(
+                (pr) => `
+              <article class="principle-card">
+                <h3>${escapeHtml(pr.title)}</h3>
+                <p>${escapeHtml(pr.body)}</p>
+              </article>`
+              )
+              .join("")}
+          </div>
+          ${
+            ov.cues && ov.cues.length
+              ? `<div class="cue-strip">
+                  <span class="label">Cues you will see</span>
+                  <ul>${ov.cues.map((c) => `<li>${escapeHtml(c)}</li>`).join("")}</ul>
+                </div>`
+              : ""
+          }
+          <div class="module-card-actions" style="margin-top:1rem">
+            <a class="btn btn-primary" href="#${escapeHtml(list[0] ? list[0].id : "home")}" id="begin-scenarios">Begin scenarios</a>
+            <button type="button" class="btn btn-secondary" id="skip-to-list">Skip to scenario list</button>
+          </div>
+        </div>
+      </section>`
+      : "";
 
     root.innerHTML = `
       <div class="section-header">
@@ -484,10 +550,16 @@
         </div>
         <div style="display:flex;gap:0.5rem;flex-wrap:wrap">
           <a class="btn btn-ghost" href="#home">Home</a>
-          <a class="btn btn-primary" href="#${escapeHtml(list[0] ? list[0].id : "home")}">Start</a>
+          ${
+            ov
+              ? `<button type="button" class="btn btn-secondary" id="header-show-overview">${overviewOpen ? "Overview" : "Read overview"}</button>`
+              : ""
+          }
+          <a class="btn btn-primary" href="#${escapeHtml(list[0] ? list[0].id : "home")}">Start scenarios</a>
         </div>
       </div>
-      <div class="progress-row" style="margin-bottom:1rem">
+      ${overviewHtml}
+      <div class="progress-row" style="margin-bottom:1rem" id="scenario-list-anchor">
         <div class="progress-meta">
           <span>${stats.completed}/${stats.total} complete · ${stats.masteryLabel}</span>
           <span>${stats.masteryPct}%</span>
@@ -496,6 +568,40 @@
       </div>
       <div class="scenario-list">${rows}</div>
     `;
+
+    const persistOverview = (dismissed) => {
+      if (!state.progress.overviewDismissed) state.progress.overviewDismissed = {};
+      state.progress.overviewDismissed[moduleId] = dismissed;
+      saveProgress();
+    };
+
+    const setOverviewOpen = (open) => {
+      const section = $("#module-overview");
+      const body = $(".module-overview-body", section);
+      const toggle = $("#toggle-overview");
+      if (!section) return;
+      section.classList.toggle("is-open", open);
+      section.classList.toggle("is-collapsed", !open);
+      if (body) body.hidden = !open;
+      if (toggle) toggle.textContent = open ? "Hide overview" : "Show overview";
+      persistOverview(!open);
+    };
+
+    $("#toggle-overview")?.addEventListener("click", () => {
+      const open = !$("#module-overview")?.classList.contains("is-open");
+      setOverviewOpen(open);
+    });
+    $("#header-show-overview")?.addEventListener("click", () => {
+      setOverviewOpen(true);
+      $("#module-overview")?.scrollIntoView({ behavior: REDUCED_MOTION ? "auto" : "smooth", block: "start" });
+    });
+    $("#skip-to-list")?.addEventListener("click", () => {
+      setOverviewOpen(false);
+      $("#scenario-list-anchor")?.scrollIntoView({ behavior: REDUCED_MOTION ? "auto" : "smooth", block: "start" });
+    });
+    $("#begin-scenarios")?.addEventListener("click", () => {
+      persistOverview(true);
+    });
   }
 
   function renderScenario(id) {
@@ -519,6 +625,7 @@
     const showZones =
       s.interactionType === "pitch-hotspot" ||
       s.interactionType === "drag-player" ||
+      s.showTeachingZones ||
       (state.coach && s.zones);
 
     const scenarioForPitch = {
@@ -701,14 +808,38 @@
   }
 
   /* ---------- Interactions ---------- */
+  function syncPromptHeader() {
+    const session = state.session;
+    if (!session) return;
+    const s = session.scenario;
+    const promptEl = $(".prompt-block h2");
+    const phaseEl = $(".prompt-block .phase");
+    if (!promptEl) return;
+
+    if (session.stage === "rationale") {
+      promptEl.textContent = s.rationalePrompt || "Why does that decision work?";
+      if (phaseEl) phaseEl.textContent = "Explain it";
+    } else if (session.stage === "complete") {
+      promptEl.textContent = s.prompt;
+      if (phaseEl) phaseEl.textContent = s.phase || "";
+    } else {
+      promptEl.textContent = s.prompt;
+      if (phaseEl) phaseEl.textContent = s.phase || "";
+    }
+  }
+
   function renderInteraction() {
     const panel = $("#interaction-panel");
     if (!panel) return;
     const session = state.session;
     const s = session.scenario;
+    syncPromptHeader();
 
     if (session.stage === "rationale") {
+      const whyQ = s.rationalePrompt || "Why does that decision work?";
       panel.innerHTML = `
+        <p class="step-label"><strong>Step 2 — Explain it</strong></p>
+        <p class="rationale-question">${escapeHtml(whyQ)}</p>
         <div class="options-grid">
           ${session.rationaleOptions
             .map(
@@ -731,10 +862,16 @@
       return;
     }
 
+    const step1 =
+      s.rationaleOptions && s.rationaleOptions.length
+        ? `<p class="step-label"><strong>Step 1 — Choose it</strong></p>`
+        : "";
+
     switch (s.interactionType) {
       case "multiple-choice":
       case "formation-diagnosis":
         panel.innerHTML = `
+          ${step1}
           <div class="options-grid">
             ${session.options
               .map(
@@ -751,11 +888,12 @@
         break;
 
       case "pitch-hotspot":
-        panel.innerHTML = `<p class="muted">Tap the best zone on the pitch.${state.coach ? " (Coach: correct zone outlined.)" : ""}</p>`;
+        panel.innerHTML = `${step1}<p class="muted">Tap the best zone on the pitch.${state.coach ? " (Coach: correct zone outlined.)" : ""}</p>`;
         break;
 
       case "drag-player":
         panel.innerHTML = `
+          ${step1}
           <p class="muted">Drag #${escapeHtml(String((s.players.find((p) => p.id === s.dragPlayerId) || {}).number || ""))} to the best area — or use the buttons.</p>
           <div class="alt-actions">
             ${(s.altOptions || s.options || [])
@@ -995,9 +1133,10 @@
     if (ok && s.rationaleOptions && s.rationaleOptions.length) {
       session.stage = "rationale";
       session.locked = false;
+      // Clear decision selection styling; show only the why step now
       showFeedback(
         "correct",
-        session.challengeMode ? "Decision locked. Now explain why." : s.explanation
+        "Decision locked. Now explain why that choice works."
       );
       renderInteraction();
       renderScenarioActions();
@@ -1357,10 +1496,15 @@
       "attacking-shape": "Attacking shape",
       "wide-combinations": "Wide combinations",
       "gap-pass": "Gap passes",
+      "half-space-run": "Half-space runs",
+      "wide-rotation": "Wide rotations",
       defense: "Defensive responsibilities",
+      "defending-shape": "4-4-2 defensive shape",
       corners: "Corners",
+      "corners-short": "Short corners",
+      "corners-long": "Long corners",
       attack: "Attacking shape",
-      wide: "Wide combinations",
+      wide: "Wide attack",
       corner: "Corners",
     };
 
@@ -1387,9 +1531,14 @@
       attack: "attack",
       "wide-combinations": "wide",
       "gap-pass": "wide",
+      "half-space-run": "wide",
+      "wide-rotation": "wide",
       wide: "wide",
       defense: "defense",
+      "defending-shape": "defense",
       corners: "corner",
+      "corners-short": "corner",
+      "corners-long": "corner",
       corner: "corner",
     };
     const reviewId = modMap[weakest] || "attack";
