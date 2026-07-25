@@ -242,27 +242,32 @@
       .map((p) => tokenMarkup(p, hideLabels))
       .join("");
 
-    const ball = scenario.ball
-      ? `<circle class="ball" id="pitch-ball" cx="${scenario.ball.x}" cy="${scenario.ball.y}" r="1.15" />`
-      : "";
+    const ball = scenario.ball ? ballMarkup(scenario.ball.x, scenario.ball.y) : "";
+
+    const line = "var(--pitch-line)";
+    const goalW = 7.32;
+    const goalX = (PW - goalW) / 2;
 
     return `
       <svg class="pitch-svg" viewBox="0 0 ${PW} ${PL}" role="img" aria-label="Tactical pitch diagram">
         <defs>
           <marker id="arrowhead" markerWidth="4" markerHeight="4" refX="3" refY="2" orient="auto">
-            <path d="M0,0 L4,2 L0,4 Z" fill="#7eb6d9" />
+            <path d="M0,0 L4,2 L0,4 Z" fill="var(--brand)" />
           </marker>
         </defs>
         ${stripes.join("")}
-        <rect x="1" y="1" width="${PW - 2}" height="${PL - 2}" fill="none" stroke="rgba(232,238,244,0.85)" stroke-width="0.45" />
-        <line x1="1" y1="${PL / 2}" x2="${PW - 1}" y2="${PL / 2}" stroke="rgba(232,238,244,0.85)" stroke-width="0.35" />
-        <circle cx="${PW / 2}" cy="${PL / 2}" r="9.15" fill="none" stroke="rgba(232,238,244,0.85)" stroke-width="0.35" />
-        <circle cx="${PW / 2}" cy="${PL / 2}" r="0.6" fill="rgba(232,238,244,0.85)" />
+        <rect x="1" y="1" width="${PW - 2}" height="${PL - 2}" fill="none" stroke="${line}" stroke-width="0.45" />
+        <line x1="1" y1="${PL / 2}" x2="${PW - 1}" y2="${PL / 2}" stroke="${line}" stroke-width="0.35" />
+        <circle cx="${PW / 2}" cy="${PL / 2}" r="9.15" fill="none" stroke="${line}" stroke-width="0.35" />
+        <circle cx="${PW / 2}" cy="${PL / 2}" r="0.5" fill="${line}" />
+        <!-- goals -->
+        <rect x="${goalX}" y="0.15" width="${goalW}" height="0.85" fill="none" stroke="${line}" stroke-width="0.4" />
+        <rect x="${goalX}" y="${PL - 1}" width="${goalW}" height="0.85" fill="none" stroke="${line}" stroke-width="0.4" />
         <!-- penalty areas -->
-        <rect x="${(PW - 40.32) / 2}" y="1" width="40.32" height="16.5" fill="none" stroke="rgba(232,238,244,0.85)" stroke-width="0.35" />
-        <rect x="${(PW - 18.32) / 2}" y="1" width="18.32" height="5.5" fill="none" stroke="rgba(232,238,244,0.85)" stroke-width="0.35" />
-        <rect x="${(PW - 40.32) / 2}" y="${PL - 17.5}" width="40.32" height="16.5" fill="none" stroke="rgba(232,238,244,0.85)" stroke-width="0.35" />
-        <rect x="${(PW - 18.32) / 2}" y="${PL - 6.5}" width="18.32" height="5.5" fill="none" stroke="rgba(232,238,244,0.85)" stroke-width="0.35" />
+        <rect x="${(PW - 40.32) / 2}" y="1" width="40.32" height="16.5" fill="none" stroke="${line}" stroke-width="0.35" />
+        <rect x="${(PW - 18.32) / 2}" y="1" width="18.32" height="5.5" fill="none" stroke="${line}" stroke-width="0.35" />
+        <rect x="${(PW - 40.32) / 2}" y="${PL - 17.5}" width="40.32" height="16.5" fill="none" stroke="${line}" stroke-width="0.35" />
+        <rect x="${(PW - 18.32) / 2}" y="${PL - 6.5}" width="18.32" height="5.5" fill="none" stroke="${line}" stroke-width="0.35" />
         <g id="pitch-zones">${zones}</g>
         <g id="pitch-coach">${coachTargets}</g>
         <g id="pitch-anim"></g>
@@ -272,19 +277,64 @@
     `;
   }
 
+  function ballMarkup(x, y) {
+    // Classic small soccer ball (not a plain dot)
+    return `
+      <g class="ball" id="pitch-ball" data-x="${x}" data-y="${y}" transform="translate(${x},${y})">
+        <circle class="ball-body" r="0.95" />
+        <circle class="ball-pent" r="0.28" />
+        <path class="ball-seam" d="M0,-0.95 Q0.55,-0.35 0.82,0.45 M0,-0.95 Q-0.55,-0.35 -0.82,0.45 M0.82,0.45 Q0,0.75 -0.82,0.45" />
+      </g>
+    `;
+  }
+
+  function setBallPos(el, x, y) {
+    if (!el) return;
+    el.setAttribute("transform", `translate(${x},${y})`);
+    el.dataset.x = x;
+    el.dataset.y = y;
+  }
+
+  function getBallPos(el) {
+    return {
+      x: parseFloat(el?.dataset.x || 0),
+      y: parseFloat(el?.dataset.y || 0),
+    };
+  }
+
+  /** US Soccer–style triangles: attack ▲, defense ▼ — drawn in local coords, moved via transform */
   function tokenMarkup(p, hideLabels) {
-    const cls = p.team === "opp" ? "player-token opp" : "player-token";
+    const isOpp = p.team === "opp";
+    const cls = isOpp ? "player-token opp" : "player-token";
     const role = hideLabels ? "" : (p.label || shortRole(p.role) || "");
     const roleText = role
-      ? `<text class="token-role" x="${p.x}" y="${p.y + 4.6}">${escapeHtml(role)}</text>`
+      ? `<text class="token-role" x="0" y="3.1">${escapeHtml(role)}</text>`
       : "";
+    // Smaller triangles so pitch scale reads clearly
+    const shape = isOpp
+      ? `<polygon class="token-disk" points="0,1.55 -1.45,-1.15 1.45,-1.15" />` // ▼
+      : `<polygon class="token-disk" points="0,-1.55 -1.45,1.15 1.45,1.15" />`; // ▲
+    const numY = isOpp ? "-0.15" : "0.45";
     return `
-      <g class="${cls}" data-player-id="${escapeHtml(p.id)}" data-role="${escapeHtml(p.role || "")}" data-number="${escapeHtml(String(p.number))}" transform="translate(0,0)">
-        <circle class="token-disk" cx="${p.x}" cy="${p.y}" r="2.6" />
-        <text class="token-num" x="${p.x}" y="${p.y}">${escapeHtml(String(p.number))}</text>
+      <g class="${cls}" data-player-id="${escapeHtml(p.id)}" data-role="${escapeHtml(p.role || "")}" data-number="${escapeHtml(String(p.number))}" data-x="${p.x}" data-y="${p.y}" transform="translate(${p.x},${p.y})">
+        ${shape}
+        <text class="token-num" x="0" y="${numY}">${escapeHtml(String(p.number))}</text>
         ${roleText}
       </g>
     `;
+  }
+
+  function setTokenPos(g, x, y) {
+    g.setAttribute("transform", `translate(${x},${y})`);
+    g.dataset.x = x;
+    g.dataset.y = y;
+  }
+
+  function getTokenPos(g) {
+    return {
+      x: parseFloat(g.dataset.x || 0),
+      y: parseFloat(g.dataset.y || 0),
+    };
   }
 
   function shortRole(role) {
@@ -306,6 +356,12 @@
       "Box threat": "Box",
       "Wide defender": "WD",
       "Far-side wide": "Far",
+      Skittles: "Skit",
+      Primary: "Pri",
+      Secondary: "Sec",
+      Spot: "Spt",
+      Drop: "Drp",
+      Block: "Blk",
     };
     return map[role] || role.split(" ").map((w) => w[0]).join("").slice(0, 3).toUpperCase();
   }
@@ -744,21 +800,7 @@
       return pt.matrixTransform(ctm);
     };
 
-    const moveToken = (x, y) => {
-      const disk = $(".token-disk", g);
-      const num = $(".token-num", g);
-      const role = $(".token-role", g);
-      disk.setAttribute("cx", x);
-      disk.setAttribute("cy", y);
-      num.setAttribute("x", x);
-      num.setAttribute("y", y);
-      if (role) {
-        role.setAttribute("x", x);
-        role.setAttribute("y", y + 4.6);
-      }
-      g.dataset.x = x;
-      g.dataset.y = y;
-    };
+    const moveToken = (x, y) => setTokenPos(g, x, y);
 
     const onDown = (evt) => {
       if (state.session.locked || state.session.stage !== "decision") return;
@@ -1295,16 +1337,30 @@
     if (!animLayer) return;
     animLayer.innerHTML = "";
 
+    const flatten = (list) => {
+      list.forEach((step) => {
+        if (step.type === "parallel") (step.steps || []).forEach((s) => applyAnimStep(s, true));
+        else applyAnimStep(step, true);
+      });
+    };
+
     if (REDUCED_MOTION) {
-      steps.forEach((step) => applyAnimStep(step, true));
+      flatten(steps);
       return;
     }
 
     let i = 0;
     const run = () => {
       if (i >= steps.length) return;
-      applyAnimStep(steps[i], false);
-      const dur = steps[i].duration || 500;
+      const step = steps[i];
+      if (step.type === "parallel") {
+        (step.steps || []).forEach((s) => applyAnimStep(s, false));
+        i += 1;
+        setTimeout(run, step.duration || 500);
+        return;
+      }
+      applyAnimStep(step, false);
+      const dur = step.duration || 500;
       i += 1;
       setTimeout(run, dur);
     };
@@ -1313,51 +1369,39 @@
 
   function applyAnimStep(step, instant) {
     const animLayer = $("#pitch-anim");
+    if (step.type === "parallel") {
+      (step.steps || []).forEach((s) => applyAnimStep(s, instant));
+      return;
+    }
     if (step.type === "move") {
       const g = $(`[data-player-id="${step.playerId}"]`);
       if (!g) return;
-      const disk = $(".token-disk", g);
-      const fromX = parseFloat(disk.getAttribute("cx"));
-      const fromY = parseFloat(disk.getAttribute("cy"));
+      const from = getTokenPos(g);
       const toX = step.to.x;
       const toY = step.to.y;
       const path = document.createElementNS("http://www.w3.org/2000/svg", "line");
       path.setAttribute("class", "anim-path");
-      path.setAttribute("x1", fromX);
-      path.setAttribute("y1", fromY);
+      path.setAttribute("x1", from.x);
+      path.setAttribute("y1", from.y);
       path.setAttribute("x2", toX);
       path.setAttribute("y2", toY);
       animLayer.appendChild(path);
 
-      const setPos = (x, y) => {
-        disk.setAttribute("cx", x);
-        disk.setAttribute("cy", y);
-        $(".token-num", g).setAttribute("x", x);
-        $(".token-num", g).setAttribute("y", y);
-        const role = $(".token-role", g);
-        if (role) {
-          role.setAttribute("x", x);
-          role.setAttribute("y", y + 4.6);
-        }
-      };
-
       if (instant || REDUCED_MOTION) {
-        setPos(toX, toY);
+        setTokenPos(g, toX, toY);
         return;
       }
       const start = performance.now();
       const dur = step.duration || 500;
       const tick = (now) => {
         const t = Math.min(1, (now - start) / dur);
-        setPos(fromX + (toX - fromX) * t, fromY + (toY - fromY) * t);
+        setTokenPos(g, from.x + (toX - from.x) * t, from.y + (toY - from.y) * t);
         if (t < 1) requestAnimationFrame(tick);
       };
       requestAnimationFrame(tick);
     } else if (step.type === "pass" || step.type === "ball") {
-      const from = step.from || {
-        x: parseFloat($("#pitch-ball")?.getAttribute("cx") || 0),
-        y: parseFloat($("#pitch-ball")?.getAttribute("cy") || 0),
-      };
+      const ball = $("#pitch-ball");
+      const from = step.from || getBallPos(ball);
       const to = step.to;
       const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
       line.setAttribute("class", "anim-pass");
@@ -1366,11 +1410,9 @@
       line.setAttribute("x2", to.x);
       line.setAttribute("y2", to.y);
       animLayer.appendChild(line);
-      const ball = $("#pitch-ball");
       if (ball) {
         if (instant || REDUCED_MOTION) {
-          ball.setAttribute("cx", to.x);
-          ball.setAttribute("cy", to.y);
+          setBallPos(ball, to.x, to.y);
         } else {
           const start = performance.now();
           const dur = step.duration || 450;
@@ -1378,8 +1420,7 @@
           const y0 = from.y;
           const tick = (now) => {
             const t = Math.min(1, (now - start) / dur);
-            ball.setAttribute("cx", x0 + (to.x - x0) * t);
-            ball.setAttribute("cy", y0 + (to.y - y0) * t);
+            setBallPos(ball, x0 + (to.x - x0) * t, y0 + (to.y - y0) * t);
             if (t < 1) requestAnimationFrame(tick);
           };
           requestAnimationFrame(tick);

@@ -1,34 +1,34 @@
-/* The Blueprint — Brighton Fresh/Soph Blue Team — coaching-board aesthetic */
+/* The Blueprint — Brighton Fresh/Soph Blue Team — light coaching aesthetic */
 :root {
-  --bg: #0e1620;
-  --bg-elevated: #162232;
-  --bg-panel: #1a2b3d;
-  --bg-soft: #213447;
-  --border: #2c445c;
-  --border-strong: #3d5a75;
-  --text: #e8eef4;
-  --text-muted: #9fb4c7;
-  --text-dim: #6f8599;
-  --brand: #7eb6d9;
-  --brand-strong: #5a9ec4;
-  --accent: #f0c14b;
-  --accent-dim: #c9a227;
+  --bg: #f4f7fb;
+  --bg-elevated: #ffffff;
+  --bg-panel: #ffffff;
+  --bg-soft: #e8eef5;
+  --border: #c5d0dc;
+  --border-strong: #8fa3b8;
+  --text: #0b1f33;
+  --text-muted: #3d5570;
+  --text-dim: #6a7f94;
+  --brand: #1a4d7c;
+  --brand-strong: #0f3558;
+  --accent: #b8860b;
+  --accent-dim: #8a6508;
   --ours: #1a4d7c;
   --ours-stroke: #0b2a47;
-  --opp: #8b3a3a;
-  --opp-stroke: #4a1a1a;
-  --correct: #3d8b6e;
-  --correct-bg: rgba(61, 139, 110, 0.18);
-  --incorrect: #c45c5c;
-  --incorrect-bg: rgba(196, 92, 92, 0.16);
-  --hint: #d4a017;
-  --pitch-grass: #1e5c3a;
-  --pitch-line: rgba(232, 238, 244, 0.85);
-  --pitch-shade: #174a2e;
-  --focus: #f0c14b;
+  --opp: #a33a3a;
+  --opp-stroke: #6b1f1f;
+  --correct: #2f7a5a;
+  --correct-bg: rgba(47, 122, 90, 0.12);
+  --incorrect: #b54545;
+  --incorrect-bg: rgba(181, 69, 69, 0.1);
+  --hint: #b8860b;
+  --pitch-grass: #2d7a4a;
+  --pitch-line: rgba(255, 255, 255, 0.92);
+  --pitch-shade: #24633c;
+  --focus: #1a4d7c;
   --radius: 12px;
   --radius-sm: 8px;
-  --shadow: 0 8px 28px rgba(0, 0, 0, 0.35);
+  --shadow: 0 6px 22px rgba(11, 31, 51, 0.08);
   --font-display: "Avenir Next", "Segoe UI", "Helvetica Neue", sans-serif;
   --font-body: "Avenir Next", "Segoe UI", "Helvetica Neue", sans-serif;
   --header-h: 64px;
@@ -51,7 +51,7 @@ body {
   min-height: 100dvh;
   font-family: var(--font-body);
   background:
-    radial-gradient(ellipse 80% 50% at 50% -10%, rgba(126, 182, 217, 0.12), transparent 50%),
+    radial-gradient(ellipse 70% 40% at 50% -8%, rgba(26, 77, 124, 0.08), transparent 55%),
     var(--bg);
   color: var(--text);
   line-height: 1.45;
@@ -107,7 +107,7 @@ a {
   gap: 0.75rem;
   min-height: var(--header-h);
   padding: 0.5rem 1rem;
-  background: rgba(14, 22, 32, 0.92);
+  background: rgba(255, 255, 255, 0.94);
   backdrop-filter: blur(10px);
   border-bottom: 1px solid var(--border);
 }
@@ -171,7 +171,10 @@ a {
 }
 
 .nav-link[aria-current="page"] {
-  color: var(--accent);
+  color: var(--brand);
+  box-shadow: inset 0 -2px 0 var(--brand);
+  border-radius: 0;
+  background: transparent;
 }
 
 .header-actions {
@@ -281,9 +284,10 @@ a {
   padding: 1.5rem 1.25rem 1.75rem;
   border-radius: var(--radius);
   background:
-    linear-gradient(135deg, rgba(26, 77, 124, 0.45), rgba(14, 22, 32, 0.2)),
+    linear-gradient(135deg, rgba(26, 77, 124, 0.1), rgba(244, 247, 251, 0.4)),
     var(--bg-panel);
   border: 1px solid var(--border);
+  box-shadow: var(--shadow);
 }
 
 .hero h1 {
@@ -315,7 +319,7 @@ a {
   gap: 0.35rem;
   padding: 0.35rem 0.7rem;
   border-radius: 999px;
-  background: rgba(0, 0, 0, 0.25);
+  background: var(--bg-soft);
   border: 1px solid var(--border);
   color: var(--text-muted);
   font-size: 0.8rem;
@@ -439,12 +443,12 @@ a {
 }
 
 .btn-primary {
-  background: var(--accent);
-  color: #1a1405;
+  background: var(--brand);
+  color: #ffffff;
 }
 
 .btn-primary:hover {
-  background: #f5cf66;
+  background: var(--brand-strong);
 }
 
 .btn-secondary {
@@ -616,7 +620,7 @@ a {
 
 .principle-card {
   padding: 0.9rem 1rem;
-  background: rgba(0, 0, 0, 0.22);
+  background: var(--bg-soft);
   border-radius: var(--radius-sm);
   border-left: 3px solid var(--brand);
 }
@@ -787,7 +791,7 @@ body.coach-mode .coach-banner {
 .player-token .token-disk {
   fill: var(--ours);
   stroke: var(--ours-stroke);
-  stroke-width: 1.2;
+  stroke-width: 0.55;
 }
 
 .player-token.opp .token-disk {
@@ -799,37 +803,41 @@ body.coach-mode .coach-banner {
   fill: #fff;
   font-family: var(--font-display);
   font-weight: 750;
-  font-size: 3.2px;
+  font-size: 1.55px;
   text-anchor: middle;
   dominant-baseline: central;
   pointer-events: none;
 }
 
 .player-token .token-role {
-  fill: rgba(232, 238, 244, 0.9);
-  font-size: 2.2px;
+  fill: rgba(255, 255, 255, 0.95);
+  font-size: 1.45px;
+  font-weight: 650;
   text-anchor: middle;
   pointer-events: none;
+  paint-order: stroke;
+  stroke: rgba(11, 31, 51, 0.45);
+  stroke-width: 0.35px;
 }
 
 .player-token.is-highlight .token-disk {
   stroke: var(--accent);
-  stroke-width: 1.8;
+  stroke-width: 0.9;
 }
 
 .player-token.is-selected .token-disk {
-  stroke: var(--brand);
-  stroke-width: 2;
+  stroke: #f0c14b;
+  stroke-width: 1;
 }
 
 .player-token.is-correct .token-disk {
   stroke: var(--correct);
-  stroke-width: 2;
+  stroke-width: 1;
 }
 
 .player-token.is-incorrect .token-disk {
   stroke: var(--incorrect);
-  stroke-width: 2;
+  stroke-width: 1;
 }
 
 .player-token.is-dragging {
@@ -885,9 +893,24 @@ body:not(.coach-mode) .coach-only {
 }
 
 .ball {
-  fill: var(--text);
-  stroke: #333;
-  stroke-width: 0.35;
+  pointer-events: none;
+}
+
+.ball .ball-body {
+  fill: #f5f0e6;
+  stroke: #1a1a1a;
+  stroke-width: 0.22;
+}
+
+.ball .ball-pent {
+  fill: #1a1a1a;
+}
+
+.ball .ball-seam {
+  fill: none;
+  stroke: #1a1a1a;
+  stroke-width: 0.14;
+  stroke-linecap: round;
 }
 
 .anim-path {
@@ -901,7 +924,7 @@ body:not(.coach-mode) .coach-only {
 
 .anim-pass {
   fill: none;
-  stroke: #7eb6d9;
+  stroke: var(--brand);
   stroke-width: 0.85;
   marker-end: url(#arrowhead);
   pointer-events: none;
@@ -1054,7 +1077,7 @@ body:not(.coach-mode) .coach-only {
   margin-top: 0.75rem;
   padding: 0.75rem 0.9rem;
   border-radius: var(--radius-sm);
-  background: rgba(0, 0, 0, 0.28);
+  background: var(--bg-soft);
   border-left: 3px solid var(--accent);
 }
 

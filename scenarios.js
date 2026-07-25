@@ -121,15 +121,15 @@
     },
     {
       term: "Short corner",
-      definition: "Zero or one defender on the corner pair. Player 1 touches then bends to the near-post corner of the 18; Player 2 dribbles the line and passes to/ahead of 1 when the defender commits. Others start at the back post to clear space."
+      definition: "Zero or one defender on the corner pair. Player 1 touches then bends to the near-post corner of the 18; Player 2 keeps the ball at the corner and dribbles parallel to the goal line — holding everyone onside for a cutback to 1 or others. Others start at the back post to clear space."
     },
     {
       term: "Direct delivery",
-      definition: "Long corner serve used when two defenders are on the corner pair. Runner clears the six first; Primary serves across the face for Front and Back Targets."
+      definition: "Long corner serve used when two defenders are on the corner pair. Skittles clears the six first; Primary serves across the face for Front and Back Targets."
     },
     {
-      term: "Corner Runner",
-      definition: "Long-corner starter: sprint across the face of goal and out of the six to drag defenders and create confusion, then stay alive for a rebound."
+      term: "Skittles",
+      definition: "Long-corner starter (formerly “The Run”): begins at the back post, curls across the middle of the box to drag a defender, then circles back to the D for a rebound. After the serve, Spot hits the penalty spot, Drop holds the D, and Targets come in from past the back post."
     },
     {
       term: "Corner Block",
@@ -140,16 +140,17 @@
   const CORNER_ROLES = {
     // Short-corner pair (any players can fill)
     player1: "Player 1 — touches, then bending run to near-post corner of the 18",
-    player2: "Player 2 — receives short and dribbles the line; pass or keep based on the defender",
+    player2: "Player 2 — keeps the ball at the corner and dribbles parallel to the goal line; cutback to 1 (or others) while holding them onside",
     // Long-corner roles (from team Long Corners sheet)
-    primary: "Primary — serves across the face of goal after the Runner clears space",
-    secondary: "Secondary — short option / after serve, drop for rebounds and counters",
-    runner: "Runner (The Start) — sprint across goal and out of the six, drag defenders, then circle for rebound",
-    frontTarget: "Front Target — attack the front post for a head/foot finish",
-    backTarget: "Back Target — attack the back post for a head/foot finish",
+    primary: "Primary — serves across the face of goal after Skittles clears space",
+    secondary: "Secondary — stays at the corner with Primary until the long serve; then drop for rebounds and counters",
+    skittles: "Skittles — starts at the back post; curls across the middle of the box (drag a defender), then circles back to the D for a rebound",
+    runner: "Skittles — starts at the back post; curls across the middle of the box (drag a defender), then circles back to the D for a rebound",
+    frontTarget: "Front Target — starts further past the back post (nearer the goal line than Back), then comes into the back post on the serve",
+    backTarget: "Back Target — starts further past the back post (deeper than Front), then comes into the back post on the serve",
     block: "The Block — nuisance in front of the keeper; screen, then clean rebounds",
-    spot: "The Spot — curving run to the penalty spot; clean rebounds, balanced to shoot",
-    drop: "The Drop — drop to the top of the D; cut counters or shoot long rebounds",
+    spot: "The Spot — to the penalty spot while the ball is in the air; clean rebounds, balanced to shoot",
+    drop: "The Drop — to the D (not deep) while the ball is in the air; cut counters or shoot long rebounds",
     cornerDefense: "Corner Defense — delay counters, win long balls, +1 numbers in back"
   };
 
@@ -287,22 +288,23 @@
           },
           {
             title: "The short play (1 and 2)",
-            body: "Player 1 touches the ball, then makes a high bending run toward the near-post corner of the 18. Player 2 dribbles up the line. If the defender overcommits to 2, pass to or just ahead of 1. If nobody is near (zero), 2 drives the line until the defense overcommits, then finds 1."
+            body: "Player 1 touches the ball, then makes a high bending run toward the near-post corner of the 18. Player 2 must keep the ball at the corner and dribble next to — parallel to — the goal line. That run holds everyone onside so 2 can cut back to 1 or any other runner. If the defender overcommits to 2, cut back; if nobody is near (zero), 2 keeps driving the goal line until the defense overcommits, then finds 1."
           },
           {
             title: "Part 2 — Long corner sequence",
-            body: "Runner starts the sequence across the face of goal and out of the six. Primary then serves across the face — far enough to force the keeper to decide. Front and Back Targets attack the posts. Block screens the keeper. Spot cleans the penalty spot. Drop holds the top of the D. Corner Defense keeps +1 behind."
+            body: "If two defenders are on Pri and Sec at the corner, do not play short. Skittles, Spot, and Drop start crowded at the back post. Skittles runs past the front post first (hoping to drag a defender). Then Primary serves. While the ball is in the air, Spot and Drop make their moves and Front/Back Targets attack the ball. Block screens the keeper. Corner Defense keeps +1 behind."
           },
           {
             title: "Roles are jobs, not fixed numbers",
-            body: "Primary, Secondary, Runner, Front/Back Target, Block, Spot, Drop, and Corner Defense can be filled by different players each week — know the job."
+            body: "Primary, Secondary, Skittles, Front/Back Target, Block, Spot, Drop, and Corner Defense can be filled by different players each week — know the job."
           }
         ],
         cues: [
           "Zero or one: short. Two: serve.",
-          "1 touches and bends; 2 drives the line.",
+          "1 touches and bends; 2 dribbles the goal line.",
+          "Goal-line dribble = onside cutback.",
           "Back post clears space for the short.",
-          "Runner first — then Primary serves."
+          "Skittles first — then Primary serves."
         ]
       }
     },
@@ -3613,8 +3615,8 @@
       seeIt: "Player 1 and Player 2 are free at the flag. No opponent is close enough to stop the short. Our other attackers are stacked at the back post to clear space.",
       interactionType: "multiple-choice",
       players: [
-        { id: "p1", team: "ours", number: "1", role: "Player 1", x: 66, y: 5, label: "P1" },
-        { id: "p2", team: "ours", number: "2", role: "Player 2", x: 60, y: 10, label: "P2" },
+        { id: "p1", team: "ours", number: "1", role: "Player 1", x: 66, y: 3.5, label: "P1" },
+        { id: "p2", team: "ours", number: "2", role: "Player 2", x: 63, y: 1.3, label: "P2" },
         { id: "bp1", team: "ours", number: "·", role: "Back-post group", x: 24, y: 10, label: "BP" },
         { id: "bp2", team: "ours", number: "·", role: "Back-post group", x: 28, y: 12, label: "BP" },
         { id: "bp3", team: "ours", number: "·", role: "Back-post group", x: 22, y: 14, label: "BP" },
@@ -3627,7 +3629,7 @@
         { id: "opp-b", team: "opp", number: 5, role: "Center back", x: 26, y: 14 },
         { id: "opp-c", team: "opp", number: 6, role: "Midfielder", x: 36, y: 22 }
       ],
-      ball: { x: 66, y: 5 },
+      ball: { x: 66, y: 1.3 },
       options: [
         { id: "short", label: "Play short — run the 1–2 play into free space" },
         { id: "serve", label: "Serve long into the crowded box anyway" },
@@ -3639,7 +3641,7 @@
       explanation: "Zero near the pair → short. Clear the box by keeping others at the back post so 1 and 2 can run the play. We almost always get a shot from this.",
       coachingCue: "Zero or one: short. Two: serve.",
       animationSteps: [
-        { type: "pass", from: { x: 66, y: 5 }, to: { x: 60, y: 10 }, duration: 400 },
+        { type: "pass", from: { x: 66, y: 1.3 }, to: { x: 63, y: 1.3 }, duration: 400 },
         { type: "highlight", playerIds: ["p1", "p2"] }
       ],
       challengeEligible: true
@@ -3653,22 +3655,22 @@
       phase: "corner-kick",
       concept: "corners-short",
       prompt: "One defender has stepped to our corner pair. What is the first decision?",
-      seeIt: "One opponent is near Player 1 and Player 2. The rest of our attackers stay at the back post. We can create a 2v1 on the short.",
+      seeIt: "One opponent is near Player 1 and Player 2 on the goal line. The rest of our attackers stay at the back post. We can create a 2v1 on the short.",
       interactionType: "multiple-choice",
       players: [
-        { id: "p1", team: "ours", number: "1", role: "Player 1", x: 66, y: 5, label: "P1" },
-        { id: "p2", team: "ours", number: "2", role: "Player 2", x: 60, y: 10, label: "P2" },
+        { id: "p1", team: "ours", number: "1", role: "Player 1", x: 66, y: 3.5, label: "P1" },
+        { id: "p2", team: "ours", number: "2", role: "Player 2", x: 63, y: 1.3, label: "P2" },
         { id: "bp1", team: "ours", number: "·", role: "Back-post group", x: 24, y: 10, label: "BP" },
         { id: "bp2", team: "ours", number: "·", role: "Back-post group", x: 28, y: 12, label: "BP" },
         { id: "bp3", team: "ours", number: "·", role: "Back-post group", x: 22, y: 14, label: "BP" },
         { id: "cd1", team: "ours", number: "·", role: "Corner defense", x: 32, y: 48, label: "CD" }
       ],
       opponents: [
-        { id: "opp-short", team: "opp", number: 3, role: "Corner defender", x: 54, y: 14 },
+        { id: "opp-short", team: "opp", number: 3, role: "Corner defender", x: 58, y: 3 },
         { id: "opp-a", team: "opp", number: 4, role: "Center back", x: 30, y: 12 },
         { id: "opp-b", team: "opp", number: 5, role: "Center back", x: 24, y: 14 }
       ],
-      ball: { x: 66, y: 5 },
+      ball: { x: 66, y: 1.3 },
       options: [
         { id: "short", label: "Play short and attack the 2v1 with our 1–2 play" },
         { id: "serve", label: "Serve long because one defender ends the short" },
@@ -3680,8 +3682,8 @@
       explanation: "One near the pair → short. Run the 1–2 play and force that single defender to choose.",
       coachingCue: "Zero or one: short. Two: serve.",
       animationSteps: [
-        { type: "pass", from: { x: 66, y: 5 }, to: { x: 60, y: 10 }, duration: 400 },
-        { type: "move", playerId: "p1", to: { x: 52, y: 14 }, duration: 550 }
+        { type: "pass", from: { x: 66, y: 1.3 }, to: { x: 63, y: 1.3 }, duration: 400 },
+        { type: "move", playerId: "p1", to: { x: 52, y: 15 }, duration: 550 }
       ],
       challengeEligible: true
     },
@@ -3694,22 +3696,22 @@
       phase: "corner-kick",
       concept: "corners-short",
       prompt: "We have gone short. What does Player 1 do after the first touch?",
-      seeIt: "Ball is live on the short. Player 1 has touched it. Player 2 is ready to dribble the line. Back-post group stays put to keep the near space open.",
+      seeIt: "Ball is live on the short — still with Player 2 on the goal line at the corner, ready to dribble parallel to that line. Player 1 has touched it. Back-post group stays put to keep the near space open.",
       interactionType: "multiple-choice",
       showTeachingZones: true,
       players: [
-        { id: "p1", team: "ours", number: "1", role: "Player 1", x: 64, y: 8, label: "P1" },
-        { id: "p2", team: "ours", number: "2", role: "Player 2", x: 60, y: 12, label: "P2" },
+        { id: "p1", team: "ours", number: "1", role: "Player 1", x: 64.5, y: 4, label: "P1" },
+        { id: "p2", team: "ours", number: "2", role: "Player 2", x: 64, y: 1.3, label: "P2" },
         { id: "bp1", team: "ours", number: "·", role: "Back-post group", x: 24, y: 10, label: "BP" },
         { id: "bp2", team: "ours", number: "·", role: "Back-post group", x: 28, y: 12, label: "BP" },
         { id: "bp3", team: "ours", number: "·", role: "Back-post group", x: 22, y: 14, label: "BP" }
       ],
       opponents: [
-        { id: "opp-short", team: "opp", number: 3, role: "Corner defender", x: 50, y: 16 }
+        { id: "opp-short", team: "opp", number: 3, role: "Corner defender", x: 56, y: 3 }
       ],
-      ball: { x: 60, y: 12 },
+      ball: { x: 64, y: 1.3 },
       zones: [
-        { id: "near18", label: "Near-post corner of the 18", x: 48, y: 8, w: 12, h: 12 }
+        { id: "near18", label: "Near-post corner of the 18", x: 46, y: 12, w: 12, h: 8 }
       ],
       options: [
         { id: "bend", label: "Make a high bending run toward the near-post corner of the 18" },
@@ -3719,11 +3721,11 @@
       ],
       correctAnswer: "bend",
       hint: "After the touch, Player 1’s job is the bending run into the near-post corner of the 18 — not a crash into traffic.",
-      explanation: "1 touches, then bends high toward the near-post corner of the 18. That run is the pass target once 2 draws the defender.",
-      coachingCue: "1 touches and bends; 2 drives the line.",
+      explanation: "1 touches, then bends high toward the near-post corner of the 18. 2 keeps the ball on the goal line — that run is the cutback target once 2 draws the defender.",
+      coachingCue: "1 touches and bends; 2 dribbles the goal line.",
       animationSteps: [
         { type: "highlight", playerIds: ["p1"] },
-        { type: "move", playerId: "p1", to: { x: 52, y: 12 }, duration: 700 }
+        { type: "move", playerId: "p1", to: { x: 52, y: 15 }, duration: 700 }
       ],
       challengeEligible: true
     },
@@ -3731,49 +3733,49 @@
       id: "corner-04",
       module: "corner",
       chapter: "short-corners",
-      title: "Short Play: 2 Drives — Pass or Keep?",
+      title: "Short Play: Goal-Line Drive — Cutback?",
       difficulty: 2,
       phase: "corner-kick",
       concept: "corners-short",
-      prompt: "Player 2 is dribbling the line. The defender steps hard toward 2. What should 2 do?",
-      seeIt: "1 is on the bending run toward the near-post corner of the 18. 2 is driving up the line. The red defender overcommits toward 2 and the touchline.",
+      prompt: "Player 2 still has the ball and is dribbling parallel to the goal line. The defender steps hard toward 2. What should 2 do?",
+      seeIt: "2 is on the goal line with the ball — between the corner and the near post — holding everyone onside. 1 is bending toward the near-post corner of the 18. The red defender has stepped onto the goal line toward 2.",
       interactionType: "multiple-choice",
       showTeachingZones: true,
       players: [
-        { id: "p1", team: "ours", number: "1", role: "Player 1", x: 52, y: 14, label: "P1" },
-        { id: "p2", team: "ours", number: "2", role: "Player 2", x: 62, y: 18, label: "P2" },
+        { id: "p1", team: "ours", number: "1", role: "Player 1", x: 50, y: 15, label: "P1" },
+        { id: "p2", team: "ours", number: "2", role: "Player 2", x: 56, y: 1.3, label: "P2" },
         { id: "bp1", team: "ours", number: "·", role: "Back-post group", x: 24, y: 10, label: "BP" },
         { id: "bp2", team: "ours", number: "·", role: "Back-post group", x: 28, y: 12, label: "BP" }
       ],
       opponents: [
-        { id: "opp-short", team: "opp", number: 3, role: "Corner defender", x: 58, y: 18 }
+        { id: "opp-short", team: "opp", number: 3, role: "Corner defender", x: 52, y: 2.5 }
       ],
-      ball: { x: 62, y: 18 },
+      ball: { x: 56, y: 1.3 },
       zones: [
-        { id: "ahead1", label: "Into/ahead of 1’s run", x: 48, y: 10, w: 12, h: 10 }
+        { id: "ahead1", label: "Cutback to/ahead of 1", x: 46, y: 11, w: 12, h: 8 }
       ],
       options: [
-        { id: "pass-1", label: "Pass to or just ahead of Player 1’s bending run" },
+        { id: "pass-1", label: "Cut back to or just ahead of Player 1’s bending run" },
         { id: "force-end", label: "Ignore the open 1 and shoot from the corner flag" },
         { id: "turn-back", label: "Turn back and cancel the corner" },
         { id: "chip-crowd", label: "Chip into the back-post crowd immediately" }
       ],
       correctAnswer: "pass-1",
-      hint: "When the defender commits to 2, the pass is on — to or just ahead of 1.",
-      explanation: "Defender overcommits to the dribble → 2 slips it to/ahead of 1. If the defender stays, 2 can keep driving. Read her feet.",
-      coachingCue: "1 touches and bends; 2 drives the line.",
-      rationalePrompt: "Why pass now instead of keeping the dribble?",
+      hint: "When the defender commits to 2 on the goal line, the cutback is on — and everyone is onside because 2 holds the line.",
+      explanation: "Defender overcommits to the goal-line dribble → 2 cutbacks to/ahead of 1. Staying on the goal line keeps receivers onside. If the defender stays, 2 can keep driving the goal line.",
+      coachingCue: "Goal-line dribble = onside cutback.",
+      rationalePrompt: "Why does the cutback work from the goal line?",
       rationaleOptions: [
-        { id: "r1", label: "The defender stepped to 2, so 1 is free on the bend — that is the shot we want" },
+        { id: "r1", label: "2 is on the goal line with the ball, so teammates receiving the cutback stay onside — and the defender stepped, freeing 1" },
         { id: "r2", label: "We never pass on short corners" },
         { id: "r3", label: "Because the back-post group called for it" },
-        { id: "r4", label: "Because Player 1 is offside from the corner" }
+        { id: "r4", label: "Because Player 1 is automatically offside from any short corner" }
       ],
       correctRationale: "r1",
       animationSteps: [
-        { type: "move", playerId: "p2", to: { x: 62, y: 14 }, duration: 400 },
-        { type: "pass", from: { x: 62, y: 14 }, to: { x: 52, y: 12 }, duration: 450 },
-        { type: "move", playerId: "p1", to: { x: 48, y: 10 }, duration: 400 }
+        { type: "move", playerId: "opp-short", to: { x: 54, y: 1.8 }, duration: 350 },
+        { type: "pass", from: { x: 56, y: 1.3 }, to: { x: 50, y: 14 }, duration: 450 },
+        { type: "move", playerId: "p1", to: { x: 48, y: 13 }, duration: 400 }
       ],
       challengeEligible: true
     },
@@ -3781,16 +3783,16 @@
       id: "corner-05",
       module: "corner",
       chapter: "short-corners",
-      title: "Zero Defenders: Drive Until They Commit",
+      title: "Zero Defenders: Drive the Goal Line",
       difficulty: 2,
       phase: "corner-kick",
       concept: "corners-short",
-      prompt: "Zero defenders near the pair. Player 2 has the ball on the short. What is 2’s first job?",
-      seeIt: "Nobody is close. 1 is starting the bend. Empty grass up the line. Back-post group still clearing the near space.",
+      prompt: "Zero defenders near the pair. Player 2 has the ball at the corner. What is 2’s first job?",
+      seeIt: "Nobody is close. 2 has the ball on the goal line at the corner. 1 is starting the bend. Empty grass along the goal line toward the near post. Back-post group still clearing the near space.",
       interactionType: "multiple-choice",
       players: [
         { id: "p1", team: "ours", number: "1", role: "Player 1", x: 58, y: 12, label: "P1" },
-        { id: "p2", team: "ours", number: "2", role: "Player 2", x: 62, y: 14, label: "P2" },
+        { id: "p2", team: "ours", number: "2", role: "Player 2", x: 65, y: 1.3, label: "P2" },
         { id: "bp1", team: "ours", number: "·", role: "Back-post group", x: 24, y: 10, label: "BP" },
         { id: "bp2", team: "ours", number: "·", role: "Back-post group", x: 28, y: 12, label: "BP" }
       ],
@@ -3798,21 +3800,21 @@
         { id: "opp-a", team: "opp", number: 4, role: "Center back", x: 30, y: 16 },
         { id: "opp-b", team: "opp", number: 5, role: "Center back", x: 36, y: 18 }
       ],
-      ball: { x: 62, y: 14 },
+      ball: { x: 65, y: 1.3 },
       options: [
-        { id: "drive", label: "Drive up the line until a defender overcommits, then pass to/ahead of 1" },
+        { id: "drive", label: "Dribble parallel to the goal line until a defender overcommits, then cut back to/ahead of 1" },
         { id: "early-cross", label: "Immediately float a cross from 25 yards out" },
         { id: "stop", label: "Stop and wait for instructions from the bench" },
-        { id: "back-pass", label: "Pass all the way back to corner defense" }
+        { id: "up-touch", label: "Dribble up the touchline away from goal, abandoning the goal-line run" }
       ],
       correctAnswer: "drive",
-      hint: "With zero pressure, 2’s job is to carry until someone has to step — then find 1.",
-      explanation: "Zero nearby → 2 drives the line. Force an overcommit, then release to/ahead of 1. That is why we almost always get a shot.",
-      coachingCue: "Drive the line — force the step.",
+      hint: "With zero pressure, 2 keeps the ball at the corner and drives the goal line — not up the touchline — until someone has to step.",
+      explanation: "Zero nearby → 2 dribbles parallel to the goal line. That holds everyone onside. Force an overcommit, then cut back to/ahead of 1. That is why we almost always get a shot.",
+      coachingCue: "2 dribbles the goal line — force the step.",
       animationSteps: [
-        { type: "move", playerId: "p2", to: { x: 62, y: 8 }, duration: 600 },
-        { type: "move", playerId: "opp-a", to: { x: 50, y: 12 }, duration: 500 },
-        { type: "pass", from: { x: 62, y: 8 }, to: { x: 52, y: 10 }, duration: 400 }
+        { type: "move", playerId: "p2", to: { x: 52, y: 1.3 }, duration: 700 },
+        { type: "move", playerId: "opp-a", to: { x: 50, y: 3 }, duration: 500 },
+        { type: "pass", from: { x: 52, y: 1.3 }, to: { x: 52, y: 14 }, duration: 400 }
       ],
       challengeEligible: true
     },
@@ -3825,19 +3827,19 @@
       phase: "corner-kick",
       concept: "corners-short",
       prompt: "What is wrong with this short-corner picture?",
-      seeIt: "We are trying to play short, but three attackers are standing in the near half-space right where 1 and 2 need to run.",
+      seeIt: "We are trying to play short, but three attackers are standing in the near half-space right where 1 needs to bend and 2 needs to cut back from the goal line.",
       interactionType: "formation-diagnosis",
       players: [
-        { id: "p1", team: "ours", number: "1", role: "Player 1", x: 66, y: 5, label: "P1" },
-        { id: "p2", team: "ours", number: "2", role: "Player 2", x: 60, y: 10, label: "P2" },
+        { id: "p1", team: "ours", number: "1", role: "Player 1", x: 66, y: 3.5, label: "P1" },
+        { id: "p2", team: "ours", number: "2", role: "Player 2", x: 64, y: 1.3, label: "P2" },
         { id: "crowd1", team: "ours", number: "·", role: "Crowding near space", x: 52, y: 12 },
         { id: "crowd2", team: "ours", number: "·", role: "Crowding near space", x: 48, y: 14 },
         { id: "crowd3", team: "ours", number: "·", role: "Crowding near space", x: 54, y: 16 }
       ],
       opponents: [
-        { id: "opp-short", team: "opp", number: 3, role: "Corner defender", x: 56, y: 14 }
+        { id: "opp-short", team: "opp", number: 3, role: "Corner defender", x: 58, y: 3 }
       ],
-      ball: { x: 66, y: 5 },
+      ball: { x: 64, y: 1.3 },
       options: [
         { id: "crowd", label: "Teammates are crowding the near space — they should be at the back post clearing room" },
         { id: "fine", label: "Nothing — pack the short corner with everyone" },
@@ -3845,8 +3847,8 @@
         { id: "too-deep", label: "Everyone is too deep in our own half" }
       ],
       correctAnswer: "crowd",
-      hint: "Short corners need empty grass for 1’s bend and 2’s drive. That means the rest start at the back post.",
-      explanation: "Back post clears space. If teammates stand in the near channel, the 1–2 play has nowhere to go.",
+      hint: "Short corners need empty grass for 1’s bend and 2’s goal-line cutback. That means the rest start at the back post.",
+      explanation: "Back post clears space. If teammates stand in the near channel, the cutback from the goal line has nowhere to go.",
       coachingCue: "Back post clears space for the short.",
       animationSteps: [
         { type: "move", playerId: "crowd1", to: { x: 24, y: 10 }, duration: 500 },
@@ -3864,27 +3866,28 @@
       phase: "corner-kick",
       concept: "corners-long",
       prompt: "Two defenders are tight on our corner pair. What is the first decision?",
-      seeIt: "Two opponents are out at the flag with Primary and Secondary. The box has lost those two. Long-corner roles are ready from the back-post start.",
+      seeIt: "Pri and Sec both still at the flag. Skittles/Spot/Drop crowded near the back post. Front and Back Targets start further past the back post (Front nearer the goal line), ready to come into the back post on the serve.",
       interactionType: "multiple-choice",
       players: [
-        { id: "primary", team: "ours", number: "P", role: "Primary", x: 66, y: 5, label: "Pri" },
-        { id: "secondary", team: "ours", number: "S", role: "Secondary", x: 60, y: 10, label: "Sec" },
-        { id: "runner", team: "ours", number: "R", role: "Runner", x: 40, y: 12, label: "Run" },
-        { id: "front", team: "ours", number: "F", role: "Front Target", x: 28, y: 10, label: "FT" },
-        { id: "back", team: "ours", number: "B", role: "Back Target", x: 22, y: 10, label: "BT" },
-        { id: "block", team: "ours", number: "K", role: "Block", x: 34, y: 6, label: "Blk" },
-        { id: "spot", team: "ours", number: "O", role: "Spot", x: 34, y: 20, label: "Spt" },
-        { id: "drop", team: "ours", number: "D", role: "Drop", x: 34, y: 28, label: "Drp" },
+        { id: "primary", team: "ours", number: "P", role: "Primary", x: 66, y: 1.5, label: "Pri" },
+        { id: "secondary", team: "ours", number: "S", role: "Secondary", x: 64.5, y: 3.2, label: "Sec" },
+        { id: "skittles", team: "ours", number: "Sk", role: "Skittles", x: 24, y: 10, label: "Skit" },
+        { id: "spot", team: "ours", number: "O", role: "Spot", x: 26, y: 11.5, label: "Spt" },
+        { id: "drop", team: "ours", number: "D", role: "Drop", x: 22.5, y: 12.5, label: "Drp" },
+        // Targets start further past the back post; Front closer to goal line than Back
+        { id: "front", team: "ours", number: "F", role: "Front Target", x: 14, y: 5.5, label: "FT" },
+        { id: "back", team: "ours", number: "B", role: "Back Target", x: 13, y: 12, label: "BT" },
+        { id: "block", team: "ours", number: "K", role: "Block", x: 34, y: 5.5, label: "Blk" },
         { id: "cd1", team: "ours", number: "·", role: "Corner defense", x: 30, y: 50, label: "CD" },
         { id: "cd2", team: "ours", number: "·", role: "Corner defense", x: 40, y: 52, label: "CD" }
       ],
       opponents: [
-        { id: "opp-1", team: "opp", number: 2, role: "Corner defender", x: 62, y: 8 },
-        { id: "opp-2", team: "opp", number: 3, role: "Corner defender", x: 58, y: 12 },
+        { id: "opp-1", team: "opp", number: 2, role: "Corner defender", x: 62, y: 3 },
+        { id: "opp-2", team: "opp", number: 3, role: "Corner defender", x: 61, y: 5.5 },
         { id: "opp-a", team: "opp", number: 4, role: "Center back", x: 36, y: 12 },
-        { id: "opp-b", team: "opp", number: 5, role: "Center back", x: 28, y: 12 }
+        { id: "opp-b", team: "opp", number: 5, role: "Center back", x: 28, y: 11 }
       ],
-      ball: { x: 66, y: 5 },
+      ball: { x: 66, y: 1.5 },
       options: [
         { id: "serve", label: "Serve long — two defenders pulled from the box" },
         { id: "short", label: "Still force the short into a 2v2" },
@@ -3892,13 +3895,35 @@
         { id: "cancel", label: "Cancel and restart from midfield" }
       ],
       correctAnswer: "serve",
-      hint: "Two out at the pair means space appears in the box — go long and run the roles.",
-      explanation: "Two on the pair → long serve. Runner starts the sequence, then Primary delivers across the face for Front/Back Targets.",
+      hint: "Two out at the pair → long. Skittles curls across the middle first; then serve while Spot (penalty spot), Drop (the D), and Targets attack.",
+      explanation: "Long serve. Skittles curls across the middle of the box, then to the D for a rebound. Primary serves. While the ball is in the air: Spot → penalty spot, Drop → the D, Targets come in from past the back post.",
       coachingCue: "Zero or one: short. Two: serve.",
       animationSteps: [
-        { type: "highlight", playerIds: ["primary", "runner", "front", "back"] },
-        { type: "move", playerId: "runner", to: { x: 24, y: 8 }, duration: 500 },
-        { type: "pass", from: { x: 66, y: 5 }, to: { x: 32, y: 8 }, duration: 650 }
+        { type: "highlight", playerIds: ["skittles"] },
+        // Skittles: across the middle → out right → curl back to the D
+        {
+          type: "parallel",
+          duration: 550,
+          steps: [
+            { type: "move", playerId: "skittles", to: { x: 36, y: 9 }, duration: 550 },
+            { type: "move", playerId: "opp-b", to: { x: 34, y: 9 }, duration: 550 }
+          ]
+        },
+        { type: "move", playerId: "skittles", to: { x: 50, y: 13 }, duration: 420 },
+        { type: "move", playerId: "skittles", to: { x: 34, y: 20 }, duration: 480 },
+        // Ball in air: Spot → penalty spot, Drop → D, Targets → into back post
+        {
+          type: "parallel",
+          duration: 750,
+          steps: [
+            { type: "pass", from: { x: 66, y: 1.5 }, to: { x: 28, y: 7 }, duration: 750 },
+            { type: "move", playerId: "spot", to: { x: 34, y: 12 }, duration: 700 },
+            { type: "move", playerId: "drop", to: { x: 34, y: 20.5 }, duration: 700 },
+            { type: "move", playerId: "front", to: { x: 28, y: 5.5 }, duration: 700 },
+            { type: "move", playerId: "back", to: { x: 26, y: 9 }, duration: 700 }
+          ]
+        },
+        { type: "highlight", playerIds: ["front", "back", "spot", "drop", "skittles"] }
       ],
       challengeEligible: true
     },
@@ -3906,42 +3931,52 @@
       id: "corner-08",
       module: "corner",
       chapter: "long-corners",
-      title: "Long: The Runner Starts It",
+      title: "Long: Skittles Starts It",
       difficulty: 2,
       phase: "corner-kick",
       concept: "corners-long",
-      prompt: "On a long corner, what is the Runner’s first job?",
-      seeIt: "Primary is ready at the flag. Front/Back Targets are waiting. The six-yard box still has bodies in the way of a clean serve.",
+      prompt: "On a long corner, what is Skittles’ first job?",
+      seeIt: "Pri and Sec at the flag. Skittles starts with Spot and Drop near the back post — ready to curl across the middle of the box, then circle back to the D for a rebound.",
       interactionType: "multiple-choice",
       players: [
-        { id: "primary", team: "ours", number: "P", role: "Primary", x: 66, y: 5, label: "Pri" },
-        { id: "runner", team: "ours", number: "R", role: "Runner", x: 42, y: 10, label: "Run" },
-        { id: "front", team: "ours", number: "F", role: "Front Target", x: 30, y: 12, label: "FT" },
-        { id: "back", team: "ours", number: "B", role: "Back Target", x: 22, y: 12, label: "BT" },
-        { id: "block", team: "ours", number: "K", role: "Block", x: 34, y: 6, label: "Blk" },
-        { id: "spot", team: "ours", number: "O", role: "Spot", x: 36, y: 22, label: "Spt" }
+        { id: "primary", team: "ours", number: "P", role: "Primary", x: 66, y: 1.5, label: "Pri" },
+        { id: "secondary", team: "ours", number: "S", role: "Secondary", x: 64.5, y: 3.2, label: "Sec" },
+        { id: "skittles", team: "ours", number: "Sk", role: "Skittles", x: 24, y: 10, label: "Skit" },
+        { id: "spot", team: "ours", number: "O", role: "Spot", x: 26, y: 11.5, label: "Spt" },
+        { id: "drop", team: "ours", number: "D", role: "Drop", x: 22.5, y: 12.5, label: "Drp" },
+        { id: "front", team: "ours", number: "F", role: "Front Target", x: 14, y: 5.5, label: "FT" },
+        { id: "back", team: "ours", number: "B", role: "Back Target", x: 13, y: 12, label: "BT" },
+        { id: "block", team: "ours", number: "K", role: "Block", x: 34, y: 5.5, label: "Blk" }
       ],
       opponents: [
-        { id: "opp-1", team: "opp", number: 2, role: "Corner defender", x: 62, y: 8 },
-        { id: "opp-2", team: "opp", number: 3, role: "Corner defender", x: 58, y: 12 },
+        { id: "opp-1", team: "opp", number: 2, role: "Corner defender", x: 62, y: 3 },
+        { id: "opp-2", team: "opp", number: 3, role: "Corner defender", x: 61, y: 5.5 },
+        { id: "opp-mark", team: "opp", number: 5, role: "Marker on Skittles", x: 26, y: 11 },
         { id: "gk", team: "opp", number: 1, role: "Goalkeeper", x: 34, y: 3 }
       ],
-      ball: { x: 66, y: 5 },
+      ball: { x: 66, y: 1.5 },
       options: [
-        { id: "start", label: "Sprint across the face of goal and out of the six — drag defenders, create confusion, then circle for a rebound" },
+        { id: "start", label: "Curl across the middle of the box (drag a defender), then circle back to the D for a rebound" },
         { id: "stand-six", label: "Stand still on the six-yard line blocking our own targets" },
         { id: "take-corner", label: "Take the corner instead of the Primary" },
         { id: "leave", label: "Jog to midfield before the ball is struck" }
       ],
       correctAnswer: "start",
-      hint: "The Runner’s sheet says: tireless and selfless — START the sequence across goal and out of the six.",
-      explanation: "Runner first: across the face, out of the six, drag markers, then be alive for the rebound. That clears the lane for Primary’s serve.",
-      coachingCue: "Runner first — then Primary serves.",
+      hint: "The rebound circle crosses the middle — out toward the right, then back into the D — not a tiny triangle by the post.",
+      explanation: "Skittles leaves the back-post crowd, curls across the middle of the box (hoping to drag a marker), then circles back to the D for a rebound.",
+      coachingCue: "Across the middle — then circle to the D.",
       animationSteps: [
-        { type: "highlight", playerIds: ["runner"] },
-        { type: "move", playerId: "runner", to: { x: 28, y: 6 }, duration: 450 },
-        { type: "move", playerId: "runner", to: { x: 22, y: 16 }, duration: 450 },
-        { type: "move", playerId: "runner", to: { x: 30, y: 26 }, duration: 400 }
+        { type: "highlight", playerIds: ["skittles"] },
+        {
+          type: "parallel",
+          duration: 550,
+          steps: [
+            { type: "move", playerId: "skittles", to: { x: 36, y: 9 }, duration: 550 },
+            { type: "move", playerId: "opp-mark", to: { x: 34, y: 9 }, duration: 550 }
+          ]
+        },
+        { type: "move", playerId: "skittles", to: { x: 50, y: 13 }, duration: 420 },
+        { type: "move", playerId: "skittles", to: { x: 34, y: 20 }, duration: 480 }
       ],
       challengeEligible: true
     },
@@ -3953,36 +3988,47 @@
       difficulty: 2,
       phase: "corner-kick",
       concept: "corners-long",
-      prompt: "The Runner has cleared space. What should the Primary do?",
-      seeIt: "Runner has dragged bodies across the six. Front Target and Back Target are ready to attack the posts. Keeper is in goal.",
+      prompt: "Skittles has curled across the middle and circled to the D. What should the Primary do — and when do Spot, Drop, and the Targets move?",
+      seeIt: "Skittles has finished at the D. Spot and Drop are still near the back-post start. Front and Back Targets are still further past the back post (Front nearer the goal line) — they come into the back post with the ball in the air.",
       interactionType: "multiple-choice",
       players: [
-        { id: "primary", team: "ours", number: "P", role: "Primary", x: 66, y: 5, label: "Pri" },
-        { id: "runner", team: "ours", number: "R", role: "Runner", x: 28, y: 24, label: "Run" },
-        { id: "front", team: "ours", number: "F", role: "Front Target", x: 40, y: 12, label: "FT" },
-        { id: "back", team: "ours", number: "B", role: "Back Target", x: 24, y: 12, label: "BT" },
-        { id: "block", team: "ours", number: "K", role: "Block", x: 34, y: 6, label: "Blk" }
+        { id: "primary", team: "ours", number: "P", role: "Primary", x: 66, y: 1.5, label: "Pri" },
+        { id: "secondary", team: "ours", number: "S", role: "Secondary", x: 64.5, y: 3.2, label: "Sec" },
+        { id: "skittles", team: "ours", number: "Sk", role: "Skittles", x: 34, y: 20, label: "Skit" },
+        { id: "front", team: "ours", number: "F", role: "Front Target", x: 14, y: 5.5, label: "FT" },
+        { id: "back", team: "ours", number: "B", role: "Back Target", x: 13, y: 12, label: "BT" },
+        { id: "block", team: "ours", number: "K", role: "Block", x: 34, y: 5.5, label: "Blk" },
+        { id: "spot", team: "ours", number: "O", role: "Spot", x: 26, y: 11.5, label: "Spt" },
+        { id: "drop", team: "ours", number: "D", role: "Drop", x: 22.5, y: 12.5, label: "Drp" }
       ],
       opponents: [
-        { id: "opp-1", team: "opp", number: 2, role: "Corner defender", x: 62, y: 8 },
-        { id: "opp-2", team: "opp", number: 3, role: "Corner defender", x: 58, y: 12 },
+        { id: "opp-1", team: "opp", number: 2, role: "Corner defender", x: 62, y: 3 },
+        { id: "opp-2", team: "opp", number: 3, role: "Corner defender", x: 61, y: 5.5 },
         { id: "gk", team: "opp", number: 1, role: "Goalkeeper", x: 34, y: 3 }
       ],
-      ball: { x: 66, y: 5 },
+      ball: { x: 66, y: 1.5 },
       options: [
-        { id: "face", label: "Strike across the face of goal for Front and Back Targets — far enough to force the keeper to decide" },
+        { id: "face", label: "Serve across the face — while the ball is in the air, Spot→penalty spot, Drop→the D, Targets come into the back post" },
         { id: "soft", label: "Roll a soft ball that dies at the near cone" },
-        { id: "short-now", label: "Ignore the Runner and play short into the two defenders" },
+        { id: "short-now", label: "Ignore Skittles and play short into the two defenders" },
         { id: "midfield", label: "Pass backward to Corner Defense on purpose" }
       ],
       correctAnswer: "face",
-      hint: "Primary waits for the Runner to move traffic, then serves across the face for the Targets.",
-      explanation: "Signal ready, wait for the Runner, then serve across the face. Front and Back Targets attack it. Make the keeper choose.",
-      coachingCue: "Runner first — then Primary serves.",
+      hint: "With the ball in the air: Spot to the penalty spot, Drop to the D (not deep), Targets crash in from past the back post.",
+      explanation: "Primary serves. While the ball flies: Spot hits the penalty spot, Drop holds the D, and Front/Back Targets come in from beyond the back post (Front nearer the goal line).",
+      coachingCue: "Serve — Spot to the spot, Drop to the D, Targets in.",
       animationSteps: [
-        { type: "pass", from: { x: 66, y: 5 }, to: { x: 34, y: 8 }, duration: 650 },
-        { type: "move", playerId: "front", to: { x: 38, y: 6 }, duration: 450 },
-        { type: "move", playerId: "back", to: { x: 26, y: 6 }, duration: 450 }
+        {
+          type: "parallel",
+          duration: 750,
+          steps: [
+            { type: "pass", from: { x: 66, y: 1.5 }, to: { x: 28, y: 7 }, duration: 750 },
+            { type: "move", playerId: "spot", to: { x: 34, y: 12 }, duration: 700 },
+            { type: "move", playerId: "drop", to: { x: 34, y: 20.5 }, duration: 700 },
+            { type: "move", playerId: "front", to: { x: 28, y: 5.5 }, duration: 700 },
+            { type: "move", playerId: "back", to: { x: 26, y: 9 }, duration: 700 }
+          ]
+        }
       ],
       challengeEligible: true
     },
@@ -3995,38 +4041,52 @@
       phase: "corner-kick",
       concept: "corners-long",
       prompt: "Match the long-corner job to the correct role.",
-      seeIt: "Long corner is about to be struck. Know who screens the keeper, who cleans the spot, who holds the D, and who protects the counter.",
+      seeIt: "Pri/Sec at the corner. Skittles/Spot/Drop start near the back post. Targets start further past the back post (Front nearer the goal line). On the serve: Spot → penalty spot, Drop → the D, Targets come into the back post.",
       interactionType: "multiple-choice",
       players: [
-        { id: "primary", team: "ours", number: "P", role: "Primary", x: 66, y: 5, label: "Pri" },
-        { id: "block", team: "ours", number: "K", role: "Block", x: 34, y: 6, label: "Blk" },
-        { id: "spot", team: "ours", number: "O", role: "Spot", x: 36, y: 22, label: "Spt" },
-        { id: "drop", team: "ours", number: "D", role: "Drop", x: 34, y: 30, label: "Drp" },
+        { id: "primary", team: "ours", number: "P", role: "Primary", x: 66, y: 1.5, label: "Pri" },
+        { id: "secondary", team: "ours", number: "S", role: "Secondary", x: 64.5, y: 3.2, label: "Sec" },
+        { id: "skittles", team: "ours", number: "Sk", role: "Skittles", x: 24, y: 10, label: "Skit" },
+        { id: "spot", team: "ours", number: "O", role: "Spot", x: 26, y: 11.5, label: "Spt" },
+        { id: "drop", team: "ours", number: "D", role: "Drop", x: 22.5, y: 12.5, label: "Drp" },
+        { id: "block", team: "ours", number: "K", role: "Block", x: 34, y: 5.5, label: "Blk" },
         { id: "cd1", team: "ours", number: "·", role: "Corner defense", x: 30, y: 52, label: "CD" },
         { id: "cd2", team: "ours", number: "·", role: "Corner defense", x: 42, y: 52, label: "CD" },
-        { id: "front", team: "ours", number: "F", role: "Front Target", x: 40, y: 10, label: "FT" },
-        { id: "back", team: "ours", number: "B", role: "Back Target", x: 24, y: 10, label: "BT" }
+        { id: "front", team: "ours", number: "F", role: "Front Target", x: 14, y: 5.5, label: "FT" },
+        { id: "back", team: "ours", number: "B", role: "Back Target", x: 13, y: 12, label: "BT" }
       ],
       opponents: [
         { id: "gk", team: "opp", number: 1, role: "Goalkeeper", x: 34, y: 3 },
-        { id: "opp-1", team: "opp", number: 2, role: "Corner defender", x: 62, y: 8 },
-        { id: "opp-2", team: "opp", number: 3, role: "Corner defender", x: 58, y: 12 }
+        { id: "opp-1", team: "opp", number: 2, role: "Corner defender", x: 62, y: 3 },
+        { id: "opp-2", team: "opp", number: 3, role: "Corner defender", x: 61, y: 5.5 }
       ],
-      ball: { x: 66, y: 5 },
+      ball: { x: 66, y: 1.5 },
       options: [
-        { id: "correct-set", label: "Block screens the keeper; Spot cleans the penalty spot; Drop holds the top of the D; Corner Defense keeps +1 behind" },
+        { id: "correct-set", label: "Block screens the keeper; Spot cleans the penalty spot; Drop holds the D; Corner Defense keeps +1 behind" },
         { id: "all-crash", label: "Everyone including Corner Defense crashes the six-yard box" },
         { id: "no-block", label: "Nobody screens the keeper — leave her free to claim everything" },
         { id: "drop-posts", label: "The Drop and Spot both stand on the goal line" }
       ],
       correctAnswer: "correct-set",
-      hint: "Block = nuisance on the keeper. Spot = penalty spot rebounds. Drop = top of the D. Corner Defense = +1 to delay counters.",
-      explanation: "Those four jobs protect the serve and the transition: screen, clean the spot, hold the D, and keep +1 numbers in back.",
+      hint: "Spot = the penalty spot (not deep). Drop = the D (not halfway to midfield). Targets start past the back post and come in.",
+      explanation: "Block screens the keeper. Spot hits the penalty spot. Drop holds the D. Corner Defense keeps +1. Targets start further past the back post and crash in on the serve.",
       coachingCue: "Know the job — not just a shirt number.",
       animationSteps: [
-        { type: "highlight", playerIds: ["block", "spot", "drop", "cd1", "cd2"] },
-        { type: "move", playerId: "spot", to: { x: 34, y: 16 }, duration: 500 },
-        { type: "move", playerId: "drop", to: { x: 34, y: 32 }, duration: 500 }
+        { type: "highlight", playerIds: ["skittles", "block", "spot", "drop", "front", "back", "cd1", "cd2"] },
+        { type: "move", playerId: "skittles", to: { x: 36, y: 9 }, duration: 500 },
+        { type: "move", playerId: "skittles", to: { x: 50, y: 13 }, duration: 400 },
+        { type: "move", playerId: "skittles", to: { x: 34, y: 20 }, duration: 450 },
+        {
+          type: "parallel",
+          duration: 700,
+          steps: [
+            { type: "pass", from: { x: 66, y: 1.5 }, to: { x: 28, y: 7 }, duration: 700 },
+            { type: "move", playerId: "spot", to: { x: 34, y: 12 }, duration: 650 },
+            { type: "move", playerId: "drop", to: { x: 34, y: 20.5 }, duration: 650 },
+            { type: "move", playerId: "front", to: { x: 28, y: 5.5 }, duration: 650 },
+            { type: "move", playerId: "back", to: { x: 26, y: 9 }, duration: 650 }
+          ]
+        }
       ],
       challengeEligible: true
     },
