@@ -13,6 +13,7 @@
   const MODULES = IQ.MODULES;
   const SCENARIOS = IQ.SCENARIOS;
   const GLOSSARY = IQ.GLOSSARY;
+  const NAV_GROUPS = IQ.NAV_GROUPS || [];
   const PW = CONFIG.pitch.width;
   const PL = CONFIG.pitch.length;
   const REDUCED_MOTION = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -189,6 +190,9 @@
   }
 
   function setNavCurrent(view, moduleId) {
+    const mod = moduleId ? findModule(moduleId) : null;
+    const groupId = mod?.group || null;
+
     $$("[data-nav]").forEach((el) => {
       const key = el.getAttribute("data-nav");
       const current =
@@ -200,12 +204,19 @@
       if (current) el.setAttribute("aria-current", "page");
       else el.removeAttribute("aria-current");
     });
+
+    $$("[data-nav-group]").forEach((el) => {
+      const key = el.getAttribute("data-nav-group");
+      if (groupId && key === groupId) el.setAttribute("aria-current", "page");
+      else el.removeAttribute("aria-current");
+    });
   }
 
   /* ---------- Pitch SVG ---------- */
   function pitchMarkup(scenario, opts = {}) {
     const hideLabels = opts.hideLabels || false;
     const showCoachTargets = state.coach;
+    const view = scenario.pitchView || { x: 0, y: 0, w: PW, h: PL };
     const stripes = [];
     for (let i = 0; i < 6; i += 1) {
       stripes.push(
@@ -249,7 +260,7 @@
     const goalX = (PW - goalW) / 2;
 
     return `
-      <svg class="pitch-svg" viewBox="0 0 ${PW} ${PL}" role="img" aria-label="Tactical pitch diagram">
+      <svg class="pitch-svg" viewBox="${view.x} ${view.y} ${view.w} ${view.h}" role="img" aria-label="Tactical pitch diagram">
         <defs>
           <marker id="arrowhead" markerWidth="4" markerHeight="4" refX="3" refY="2" orient="auto">
             <path d="M0,0 L4,2 L0,4 Z" fill="var(--brand)" />
@@ -278,12 +289,9 @@
   }
 
   function ballMarkup(x, y) {
-    // Classic small soccer ball (not a plain dot)
     return `
       <g class="ball" id="pitch-ball" data-x="${x}" data-y="${y}" transform="translate(${x},${y})">
-        <circle class="ball-body" r="0.95" />
-        <circle class="ball-pent" r="0.28" />
-        <path class="ball-seam" d="M0,-0.95 Q0.55,-0.35 0.82,0.45 M0,-0.95 Q-0.55,-0.35 -0.82,0.45 M0.82,0.45 Q0,0.75 -0.82,0.45" />
+        <text class="ball-emoji" text-anchor="middle" dominant-baseline="central">⚽</text>
       </g>
     `;
   }
@@ -306,17 +314,18 @@
   function tokenMarkup(p, hideLabels) {
     const isOpp = p.team === "opp";
     const cls = isOpp ? "player-token opp" : "player-token";
-    const role = hideLabels ? "" : (p.label || shortRole(p.role) || "");
+    const role = hideLabels ? "" : tokenAbbrev(p);
     const roleText = role
-      ? `<text class="token-role" x="0" y="3.1">${escapeHtml(role)}</text>`
+      ? `<text class="token-role" x="0" y="3.15">${escapeHtml(role)}</text>`
       : "";
     // Smaller triangles so pitch scale reads clearly
     const shape = isOpp
       ? `<polygon class="token-disk" points="0,1.55 -1.45,-1.15 1.45,-1.15" />` // ▼
       : `<polygon class="token-disk" points="0,-1.55 -1.45,1.15 1.45,1.15" />`; // ▲
     const numY = isOpp ? "-0.15" : "0.45";
+    const fullRole = roleFullName(p);
     return `
-      <g class="${cls}" data-player-id="${escapeHtml(p.id)}" data-role="${escapeHtml(p.role || "")}" data-number="${escapeHtml(String(p.number))}" data-x="${p.x}" data-y="${p.y}" transform="translate(${p.x},${p.y})">
+      <g class="${cls}" data-player-id="${escapeHtml(p.id)}" data-role="${escapeHtml(fullRole)}" data-number="${escapeHtml(String(p.number))}" data-x="${p.x}" data-y="${p.y}" transform="translate(${p.x},${p.y})">
         ${shape}
         <text class="token-num" x="0" y="${numY}">${escapeHtml(String(p.number))}</text>
         ${roleText}
@@ -337,19 +346,65 @@
     };
   }
 
+  /** Standard shirt symbology — number inside triangle, abbrev below */
+  const SHIRT_ABBREV = {
+    1: "GK",
+    2: "RB",
+    3: "LB",
+    4: "RCB",
+    5: "LCB",
+    6: "DM",
+    7: "RW",
+    8: "CM",
+    9: "CF",
+    10: "AM",
+    11: "LW",
+  };
+
+  const SHIRT_FULL = {
+    1: "Goalkeeper",
+    2: "Right back",
+    3: "Left back",
+    4: "Right center back",
+    5: "Left center back",
+    6: "Defensive midfielder",
+    7: "Right winger",
+    8: "Central midfielder",
+    9: "Center forward",
+    10: "Attacking midfielder",
+    11: "Left winger",
+  };
+
+  function tokenAbbrev(p) {
+    const n = Number(p.number);
+    if (Number.isInteger(n) && SHIRT_ABBREV[n]) return SHIRT_ABBREV[n];
+    if (p.label) return p.label;
+    return shortRole(p.role);
+  }
+
+  function roleFullName(p) {
+    const n = Number(p.number);
+    if (Number.isInteger(n) && SHIRT_FULL[n]) return SHIRT_FULL[n];
+    return p.role || "";
+  }
+
   function shortRole(role) {
     if (!role) return "";
     const map = {
       Goalkeeper: "GK",
-      "Right fullback": "RFB",
-      "Left fullback": "LFB",
+      "Right back": "RB",
+      "Left back": "LB",
+      "Right fullback": "RB",
+      "Left fullback": "LB",
+      "Right center back": "RCB",
+      "Left center back": "LCB",
       "Center back": "CB",
-      "Defensive midfielder": "6",
-      "Central midfielder": "8",
-      "Attacking midfielder": "10",
+      "Defensive midfielder": "DM",
+      "Central midfielder": "CM",
+      "Attacking midfielder": "AM",
       "Right winger": "RW",
       "Left winger": "LW",
-      "Center forward": "9",
+      "Center forward": "CF",
       "Wide point": "Wide",
       "Half-space point": "½-sp",
       "Deep support": "Deep",
@@ -362,6 +417,14 @@
       Spot: "Spt",
       Drop: "Drp",
       Block: "Blk",
+      "Near-post run": "Near",
+      "Far-post run": "Far",
+      "Cutback run": "Cut",
+      "Front Target": "FT",
+      "Back Target": "BT",
+      "Corner defense": "CD",
+      "Corner defender": "Def",
+      "Back-post group": "BP",
     };
     return map[role] || role.split(" ").map((w) => w[0]).join("").slice(0, 3).toUpperCase();
   }
@@ -478,7 +541,7 @@
     root.innerHTML = `
       <section class="hero">
         <h1>The Blueprint</h1>
-        <p>Brighton Fresh/Soph Blue Team — see it, choose it, explain it. Train the 4-3-3 game model: transitions, five-lane occupation, wide combinations, man-oriented defending, and corner decisions.</p>
+        <p>Brighton Fresh/Soph Blue Team — see it, choose it, explain it. Train attacking shape, wide patterns, supporting runs, defensive shape, and set pieces.</p>
         <div class="hero-meta">
           <span class="pill">Progress <strong>${overall.done}/${overall.total}</strong></span>
           <span class="pill">Saved on this device</span>
@@ -538,7 +601,8 @@
         const chapterLabel = ({
           "attack-the-moment": "Attack the moment",
           "create-2-3-5": "Create the 2-3-5",
-          "wide-attack": "Wide attack",
+          "wide-attack": "Wide attack patterns",
+          "supporting-runs": "Supporting runs",
           "defensive-responsibilities": "Part 1 · Matchups",
           "defend-4-4-2": "Part 2 · 4-4-2",
           "short-corners": "Part 1 · Short",
@@ -952,7 +1016,7 @@
 
       case "match-responsibilities":
         panel.innerHTML = `
-          <div class="match-status" id="match-status">Select one of our players, then the opponent she should mark.</div>
+          <div class="match-status" id="match-status">Select one of our players, then the opponent she should mark. Correct pairs gray out.</div>
           <div class="alt-actions" style="margin-top:0.5rem">
             <button type="button" class="btn btn-ghost" id="match-undo">Undo last pair</button>
             <button type="button" class="btn btn-primary" id="match-submit">Check matchups</button>
@@ -960,11 +1024,20 @@
           <ul id="match-pairs-list" class="muted" style="margin:0.5rem 0 0;padding-left:1.1rem"></ul>
         `;
         $("#match-undo")?.addEventListener("click", () => {
-          session.matchSelections.pop();
+          const last = session.matchSelections.pop();
+          if (last) {
+            $(`[data-player-id="${last.defenderId}"]`)?.classList.remove("is-matched");
+            $(`[data-player-id="${last.attackerId}"]`)?.classList.remove("is-matched");
+          }
+          session._matchPick = null;
+          $$(".player-token").forEach((g) => g.classList.remove("is-selected"));
           updateMatchList();
+          paintMatchTokens();
+          $("#match-status").textContent = "Pair removed. Select one of our players, then an opponent.";
         });
         $("#match-submit")?.addEventListener("click", () => submitMatch());
         updateMatchList();
+        paintMatchTokens();
         break;
 
       case "movement-and-pass":
@@ -1079,6 +1152,51 @@
     commitDecision(ids.join(","), ok);
   }
 
+  function matchDefenderIds(pair) {
+    if (pair.defenderIds && pair.defenderIds.length) return pair.defenderIds;
+    if (pair.defenderId) return [pair.defenderId];
+    return [];
+  }
+
+  function isCorrectMatchPair(defenderId, attackerId) {
+    const needed = state.session.scenario.matchPairs || [];
+    return needed.some(
+      (n) => n.attackerId === attackerId && matchDefenderIds(n).includes(defenderId)
+    );
+  }
+
+  function isPlayerMatched(playerId) {
+    return state.session.matchSelections.some(
+      (m) => m.defenderId === playerId || m.attackerId === playerId
+    );
+  }
+
+  function paintMatchTokens() {
+    $$(".player-token").forEach((g) => {
+      const id = g.getAttribute("data-player-id");
+      g.classList.toggle("is-matched", isPlayerMatched(id));
+    });
+  }
+
+  function shakeToken(g) {
+    if (!g) return;
+    const { x, y } = getTokenPos(g);
+    const offsets = [0, -1.4, 1.4, -1, 1, -0.5, 0];
+    let i = 0;
+    const tick = () => {
+      if (i >= offsets.length) {
+        setTokenPos(g, x, y);
+        g.classList.remove("is-wrong");
+        return;
+      }
+      setTokenPos(g, x + offsets[i], y);
+      i += 1;
+      setTimeout(tick, 35);
+    };
+    g.classList.add("is-wrong");
+    tick();
+  }
+
   function handleMatchSelect(playerId) {
     const session = state.session;
     if (session.locked || session.stage !== "decision") return;
@@ -1086,11 +1204,23 @@
     const player = all.find((p) => p.id === playerId);
     if (!player) return;
 
+    if (isPlayerMatched(playerId)) {
+      showToast("That player is already matched");
+      return;
+    }
+
     $$(".player-token").forEach((g) => g.classList.remove("is-selected"));
     const el = $(`[data-player-id="${playerId}"]`);
     if (!session._matchPick) {
       if (player.team !== "ours") {
         showToast("Select one of our players first");
+        return;
+      }
+      const assignable = (session.scenario.matchPairs || []).some((n) =>
+        matchDefenderIds(n).includes(playerId)
+      );
+      if (!assignable) {
+        showToast("That player isn’t in the key matchups for this exercise");
         return;
       }
       session._matchPick = playerId;
@@ -1101,17 +1231,42 @@
         showToast("Select an opponent to pair");
         return;
       }
+      const defenderId = session._matchPick;
+      const attackerId = playerId;
+      const defEl = $(`[data-player-id="${defenderId}"]`);
+      const attEl = el;
+
+      if (!isCorrectMatchPair(defenderId, attackerId)) {
+        shakeToken(defEl);
+        shakeToken(attEl);
+        session._matchPick = null;
+        $$(".player-token").forEach((g) => g.classList.remove("is-selected"));
+        $("#match-status").textContent = "Not that matchup — try again. Select one of our players first.";
+        showToast("Wrong matchup");
+        return;
+      }
+
+      // Correct: gray out both; only one CB needed on the 9
       session.matchSelections = session.matchSelections.filter(
-        (m) => m.defenderId !== session._matchPick && m.attackerId !== playerId
+        (m) => m.defenderId !== defenderId && m.attackerId !== attackerId
       );
-      session.matchSelections.push({
-        defenderId: session._matchPick,
-        attackerId: playerId,
-      });
+      session.matchSelections.push({ defenderId, attackerId });
       session._matchPick = null;
       $$(".player-token").forEach((g) => g.classList.remove("is-selected"));
+      paintMatchTokens();
       updateMatchList();
-      $("#match-status").textContent = "Pair saved. Add another or check matchups.";
+
+      const needed = session.scenario.matchPairs || [];
+      const done = needed.every((n) =>
+        session.matchSelections.some(
+          (g) => g.attackerId === n.attackerId && matchDefenderIds(n).includes(g.defenderId)
+        )
+      );
+      if (done) {
+        $("#match-status").textContent = "All key matchups set — check matchups to finish.";
+      } else {
+        $("#match-status").textContent = "Correct — grayed out. Select another of our players.";
+      }
     }
   }
 
@@ -1122,6 +1277,7 @@
       state.session.scenario.players || [],
       state.session.scenario.opponents || []
     );
+    const needed = state.session.scenario.matchPairs || [];
     ul.innerHTML = state.session.matchSelections
       .map((m) => {
         const d = all.find((p) => p.id === m.defenderId);
@@ -1129,6 +1285,10 @@
         return `<li>Our #${d?.number} → Opp #${a?.number}</li>`;
       })
       .join("");
+    const remaining = needed.length - state.session.matchSelections.length;
+    if (remaining > 0) {
+      ul.innerHTML += `<li class="muted">${remaining} matchup${remaining === 1 ? "" : "s"} left</li>`;
+    }
   }
 
   function submitMatch() {
@@ -1138,7 +1298,9 @@
     const ok =
       needed.length > 0 &&
       needed.every((n) =>
-        got.some((g) => g.defenderId === n.defenderId && g.attackerId === n.attackerId)
+        got.some(
+          (g) => g.attackerId === n.attackerId && matchDefenderIds(n).includes(g.defenderId)
+        )
       ) &&
       got.length === needed.length;
     commitDecision(JSON.stringify(got), ok);
@@ -1539,13 +1701,15 @@
       "gap-pass": "Gap passes",
       "half-space-run": "Half-space runs",
       "wide-rotation": "Wide rotations",
-      defense: "Defensive responsibilities",
+      "supporting-runs": "Supporting runs",
+      defense: "Defensive shape",
       "defending-shape": "4-4-2 defensive shape",
       corners: "Corners",
       "corners-short": "Short corners",
       "corners-long": "Long corners",
       attack: "Attacking shape",
-      wide: "Wide attack",
+      wide: "Wide attack patterns",
+      support: "Supporting runs",
       corner: "Corners",
     };
 
@@ -1638,6 +1802,28 @@
   $$("[data-close-drawer]").forEach((el) =>
     el.addEventListener("click", () => openDrawer(false))
   );
+
+  // Desktop flyouts: click toggle for touch; hover/focus-within via CSS
+  $$("[data-flyout]").forEach((fly) => {
+    const trigger = $(".nav-flyout-trigger", fly);
+    if (!trigger || trigger.tagName === "A") return;
+    trigger.addEventListener("click", (e) => {
+      e.preventDefault();
+      const open = !fly.classList.contains("is-open");
+      $$("[data-flyout]").forEach((f) => f.classList.remove("is-open"));
+      $$(".nav-flyout-trigger[aria-expanded]").forEach((t) => t.setAttribute("aria-expanded", "false"));
+      if (open) {
+        fly.classList.add("is-open");
+        trigger.setAttribute("aria-expanded", "true");
+      }
+    });
+  });
+  document.addEventListener("click", (e) => {
+    if (!e.target.closest("[data-flyout]")) {
+      $$("[data-flyout]").forEach((f) => f.classList.remove("is-open"));
+      $$(".nav-flyout-trigger[aria-expanded]").forEach((t) => t.setAttribute("aria-expanded", "false"));
+    }
+  });
 
   const settingsModal = $("#settings-modal");
   $("#settings-btn")?.addEventListener("click", () => {

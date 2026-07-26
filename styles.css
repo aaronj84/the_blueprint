@@ -151,8 +151,9 @@ a {
   display: none;
   flex: 1;
   justify-content: center;
-  gap: 0.25rem;
+  gap: 0.15rem;
   flex-wrap: wrap;
+  align-items: center;
 }
 
 .nav-link {
@@ -162,19 +163,68 @@ a {
   text-decoration: none;
   font-size: 0.82rem;
   font-weight: 600;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
 }
 
 .nav-link:hover,
-.nav-link[aria-current="page"] {
+.nav-link[aria-current="page"],
+.nav-flyout-trigger[aria-current="page"] {
   color: var(--text);
   background: var(--bg-soft);
 }
 
-.nav-link[aria-current="page"] {
+.nav-link[aria-current="page"],
+.nav-flyout-trigger[aria-current="page"] {
   color: var(--brand);
   box-shadow: inset 0 -2px 0 var(--brand);
   border-radius: 0;
   background: transparent;
+}
+
+.nav-flyout {
+  position: relative;
+}
+
+.nav-flyout-panel {
+  display: none;
+  position: absolute;
+  top: calc(100% + 0.35rem);
+  left: 50%;
+  transform: translateX(-50%);
+  min-width: 13.5rem;
+  padding: 0.4rem;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow);
+  z-index: 40;
+}
+
+.nav-flyout:hover .nav-flyout-panel,
+.nav-flyout:focus-within .nav-flyout-panel,
+.nav-flyout.is-open .nav-flyout-panel {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.nav-flyout-panel a {
+  display: block;
+  padding: 0.55rem 0.7rem;
+  border-radius: 8px;
+  color: var(--text);
+  text-decoration: none;
+  font-size: 0.84rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.nav-flyout-panel a:hover,
+.nav-flyout-panel a[aria-current="page"] {
+  background: var(--bg-soft);
+  color: var(--brand);
 }
 
 .header-actions {
@@ -259,6 +309,16 @@ a {
   text-decoration: none;
   color: var(--text);
   font-weight: 600;
+}
+
+.nav-drawer-heading {
+  margin: 0.75rem 0 0.15rem;
+  padding: 0 1rem;
+  font-size: 0.7rem;
+  font-weight: 750;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-dim);
 }
 
 .nav-drawer-panel a:hover,
@@ -810,14 +870,20 @@ body.coach-mode .coach-banner {
 }
 
 .player-token .token-role {
-  fill: rgba(255, 255, 255, 0.95);
-  font-size: 1.45px;
-  font-weight: 650;
+  fill: var(--ours);
+  font-size: 1.35px;
+  font-weight: 750;
+  font-family: var(--font-display);
   text-anchor: middle;
+  dominant-baseline: hanging;
   pointer-events: none;
-  paint-order: stroke;
-  stroke: rgba(11, 31, 51, 0.45);
-  stroke-width: 0.35px;
+  paint-order: stroke fill;
+  stroke: rgba(245, 248, 242, 0.95);
+  stroke-width: 0.5px;
+}
+
+.player-token.opp .token-role {
+  fill: var(--opp);
 }
 
 .player-token.is-highlight .token-disk {
@@ -840,6 +906,21 @@ body.coach-mode .coach-banner {
   stroke-width: 1;
 }
 
+.player-token.is-matched {
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+.player-token.is-matched .token-disk {
+  fill: #8a96a3;
+  stroke: #5c6773;
+}
+
+.player-token.is-wrong .token-disk {
+  stroke: var(--incorrect);
+  stroke-width: 1.1;
+}
+
 .player-token.is-dragging {
   opacity: 0.92;
 }
@@ -853,9 +934,9 @@ body.coach-mode .coach-banner {
 }
 
 .teaching-zone {
-  fill: rgba(240, 193, 75, 0.14);
-  stroke: rgba(240, 193, 75, 0.45);
-  stroke-width: 0.4;
+  fill: rgba(240, 193, 75, 0.22);
+  stroke: rgba(240, 193, 75, 0.7);
+  stroke-width: 0.45;
   stroke-dasharray: 1.2 0.8;
   pointer-events: none;
 }
@@ -896,21 +977,10 @@ body:not(.coach-mode) .coach-only {
   pointer-events: none;
 }
 
-.ball .ball-body {
-  fill: #f5f0e6;
-  stroke: #1a1a1a;
-  stroke-width: 0.22;
-}
-
-.ball .ball-pent {
-  fill: #1a1a1a;
-}
-
-.ball .ball-seam {
-  fill: none;
-  stroke: #1a1a1a;
-  stroke-width: 0.14;
-  stroke-linecap: round;
+.ball .ball-emoji {
+  font-size: 2.6px;
+  line-height: 1;
+  user-select: none;
 }
 
 .anim-path {

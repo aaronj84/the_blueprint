@@ -7,7 +7,7 @@
   <meta name="theme-color" content="#f4f7fb" />
   <title>The Blueprint — Brighton Fresh/Soph Blue Team</title>
   <link rel="icon" href="assets/logo.svg" type="image/svg+xml" />
-  <link rel="stylesheet" href="styles.css?v=20260724j" />
+  <link rel="stylesheet" href="styles.css?v=20260725m" />
 </head>
 <body>
   <a class="sr-only" href="#main">Skip to content</a>
@@ -23,10 +23,34 @@
 
     <nav class="nav-desktop" aria-label="Primary">
       <a class="nav-link" href="#home" data-nav="home">Home</a>
-      <a class="nav-link" href="#attack" data-nav="attack">Attack</a>
-      <a class="nav-link" href="#wide" data-nav="wide">Wide</a>
-      <a class="nav-link" href="#defense" data-nav="defense">Defense</a>
-      <a class="nav-link" href="#corner" data-nav="corner">Corners</a>
+
+      <div class="nav-flyout" data-flyout>
+        <button type="button" class="nav-link nav-flyout-trigger" data-nav-group="attack-group" aria-expanded="false" aria-haspopup="true">
+          Attack
+        </button>
+        <div class="nav-flyout-panel" role="menu">
+          <a href="#attack" data-nav="attack" role="menuitem">Attacking Shape</a>
+          <a href="#wide" data-nav="wide" role="menuitem">Wide Attack Patterns</a>
+          <a href="#support" data-nav="support" role="menuitem">Supporting Runs</a>
+        </div>
+      </div>
+
+      <div class="nav-flyout" data-flyout>
+        <a class="nav-link nav-flyout-trigger" href="#defense" data-nav="defense" data-nav-group="defense-group">Defense</a>
+        <div class="nav-flyout-panel" role="menu">
+          <a href="#defense" data-nav="defense" role="menuitem">Defensive Shape</a>
+        </div>
+      </div>
+
+      <div class="nav-flyout" data-flyout>
+        <button type="button" class="nav-link nav-flyout-trigger" data-nav-group="set-pieces-group" aria-expanded="false" aria-haspopup="true">
+          Set Pieces
+        </button>
+        <div class="nav-flyout-panel" role="menu">
+          <a href="#corner" data-nav="corner" role="menuitem">Corners</a>
+        </div>
+      </div>
+
       <a class="nav-link" href="#challenge" data-nav="challenge">Challenge</a>
       <a class="nav-link" href="#glossary" data-nav="glossary">Glossary</a>
     </nav>
@@ -50,11 +74,19 @@
     <div class="nav-drawer-backdrop" data-close-drawer></div>
     <nav class="nav-drawer-panel" aria-label="Mobile">
       <a href="#home" data-nav="home" data-close-drawer>Home</a>
-      <a href="#attack" data-nav="attack" data-close-drawer>Attack the Moment</a>
-      <a href="#wide" data-nav="wide" data-close-drawer>Wide Attack</a>
-      <a href="#defense" data-nav="defense" data-close-drawer>Defensive Responsibilities</a>
-      <a href="#corner" data-nav="corner" data-close-drawer>Corner Decision Lab</a>
-      <a href="#challenge" data-nav="challenge" data-close-drawer>Mixed Challenge</a>
+
+      <p class="nav-drawer-heading">Attack</p>
+      <a href="#attack" data-nav="attack" data-close-drawer>Attacking Shape</a>
+      <a href="#wide" data-nav="wide" data-close-drawer>Wide Attack Patterns</a>
+      <a href="#support" data-nav="support" data-close-drawer>Supporting Runs</a>
+
+      <p class="nav-drawer-heading">Defense</p>
+      <a href="#defense" data-nav="defense" data-close-drawer>Defensive Shape</a>
+
+      <p class="nav-drawer-heading">Set Pieces</p>
+      <a href="#corner" data-nav="corner" data-close-drawer>Corners</a>
+
+      <a href="#challenge" data-nav="challenge" data-close-drawer>Challenge</a>
       <a href="#glossary" data-nav="glossary" data-close-drawer>Glossary</a>
     </nav>
   </div>
@@ -80,7 +112,7 @@
     </div>
   </div>
 
-  <script src="scenarios.js?v=20260724j"></script>
-  <script src="app.js?v=20260724j"></script>
+  <script src="scenarios.js?v=20260725m"></script>
+  <script src="app.js?v=20260725m"></script>
 </body>
 </html>

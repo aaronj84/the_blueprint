@@ -16,7 +16,7 @@
       opp: "#8b3a3a",
       oppStroke: "#4a1a1a",
       oppText: "#ffffff",
-      ball: "#f5f0e6",
+      ball: "#ffffff",
       highlight: "#f0c14b",
       correct: "#2d6a4f",
       incorrect: "#9b2226",
@@ -68,16 +68,32 @@
       definition: "Keeping a spare defender behind the primary marker so one can pressure while another covers the next dangerous action."
     },
     {
+      term: "Near-post run",
+      definition: "A supporting run that attacks the near post when a cross (or serve) is coming. One of three standard supporting runs with far post and cutback."
+    },
+    {
+      term: "Far-post run",
+      definition: "A supporting run that attacks the far post when a cross is coming — often arriving late across the face."
+    },
+    {
+      term: "Cutback run",
+      definition: "A supporting run toward the penalty spot (or the cutback zone) when a wide player drives the goal line — ready for the ball pulled back, not only balls whipped to the posts."
+    },
+    {
+      term: "Supporting runs (cross)",
+      definition: "Anytime we are about to hit a cross — wide attack, set piece, or breakaway — attackers organize near post, far post, and cutback to the penalty spot."
+    },
+    {
       term: "Man-oriented defending",
       definition: "Starting with clear individual matchups while staying connected to teammates and protecting central space."
     },
     {
       term: "Half-space run",
-      definition: "A run in behind the opponent’s wide defender (between FB and CB toward the box), usually after a switch. Best as a gap pass: the ball travels in front of that defender while the runner goes behind her."
+      definition: "A run in behind the opponent’s wide defender (between FB and CB toward the box), usually from the wide triangle after a switch. Best as a gap pass: ball in front of that defender, runner behind her — aiming for shot, cross, or cutback."
     },
     {
       term: "Wide rotation",
-      definition: "When a half-space run is tracked and unavailable, the runner comes back out and another triangle player fills the half-space so we keep a useful shape."
+      definition: "When the half-space runner is tracked: she checks back to the corner (wide), while A rotates underneath and C follows — rebuilding the triangle so we can try another half-space run and gap pass. If the chance is gone and the defense is set, switch and try the other side."
     },
     {
       term: "Gap pass",
@@ -154,14 +170,34 @@
     cornerDefense: "Corner Defense — delay counters, win long balls, +1 numbers in back"
   };
 
+  const NAV_GROUPS = [
+    {
+      id: "attack-group",
+      label: "Attack",
+      modules: ["attack", "wide", "support"]
+    },
+    {
+      id: "defense-group",
+      label: "Defense",
+      href: "#defense",
+      modules: ["defense"]
+    },
+    {
+      id: "set-pieces-group",
+      label: "Set Pieces",
+      modules: ["corner"]
+    }
+  ];
+
   const MODULES = [
     {
       id: "attack",
-      title: "Attack the Moment",
+      title: "Attacking Shape",
       subtitle: "Transition & 2-3-5",
       purpose: "Decide when to attack immediately and how to occupy five lanes in possession.",
       chapters: ["attack-the-moment", "create-2-3-5"],
       hash: "attack",
+      group: "attack-group",
       overview: {
         headline: "Win it → look forward → occupy five lanes",
         intro: "This module teaches our attacking game model in two connected parts: the first seconds after we win the ball, then how we occupy the field once possession is established.",
@@ -193,47 +229,95 @@
     },
     {
       id: "wide",
-      title: "Wide Attack",
-      subtitle: "Half-space run & rotation",
-      purpose: "After a switch, play the half-space gap pass — run behind their 3, pass in front — and rotate when tracked.",
+      title: "Wide Attack Patterns",
+      subtitle: "Triangle → gap pass → rotate or switch",
+      purpose: "Find the wide triangle, play the half-space gap pass, rotate when tracked, switch when the chance is gone.",
       chapters: ["wide-attack"],
       hash: "wide",
+      group: "attack-group",
       overview: {
-        headline: "Switch → half-space gap pass → rotate if needed",
-        intro: "These are our first two wide-area patterns in the final third. Patterns 3 and 4 (inverted rotation / third man) come later — master these first.",
+        headline: "Triangle → gap pass → finish, rotate, or switch",
+        intro: "Once we find the wide triangle (A wide, B half-space, C deep), this is the decision tree. When the cross is on, Supporting Runs covers near post / far post / cutback.",
         principles: [
           {
-            title: "#1 Half-space run = gap pass",
-            body: "Often after a switch. Label the triangle as A (wide), B (half-space), C (deep) — not fixed shirt numbers. Whoever is A has the ball wide. B runs in behind their wide defender. A’s pass travels in front of that defender. Different gaps force her to choose: drop with the runner, or step to the ball."
+            title: "1. Find the wide triangle",
+            body: "A = wide (usually the ball after a switch), B = half-space, C = deep support. Letters are spaces — not fixed shirt numbers. Any of our attackers can occupy A, B, or C."
           },
           {
-            title: "Give-and-go to start from wide",
-            body: "If B starts with the ball inside, she can play wide to A first, then make the half-space run herself. The return pass now starts from the touchline — still in front of their wide defender while B runs behind."
+            title: "2. Gap pass to the half-space runner",
+            body: "Look for B running in behind their wide defender. A’s pass travels in front of that defender — different gaps. Ideally B drives the goal line and shoots, crosses, or cuts back to a supporting runner."
           },
           {
-            title: "#2 Rotation when the run fails",
-            body: "If the half-space run is tracked and the pass is not on, do not force it. The runner comes back out of the half-space. Another player from the triangle fills that half-space. Keep a useful shape."
+            title: "3. As B runs — C follows, A underneath",
+            body: "While B attacks the half-space, C follows and A rotates underneath. That keeps the triangle alive so if the first ball does not create a finish, B can become the next wide player."
           },
           {
-            title: "Keep the triangle",
-            body: "Wide player, half-space player, and deep support (often the fullback) form the three points. Rotation changes who occupies the half-space — it does not dump everyone into the same lane."
+            title: "4. Tracked? B back to the corner — try again",
+            body: "If B is tracked and the gap pass is off, she rotates back to the corner (wide). A’s and C’s rotation has already rebuilt the triangle — so we can create a new half-space run and another ball in behind."
+          },
+          {
+            title: "5. Chance gone? Switch",
+            body: "If the side is blocked off, the chance has died, or their defense has organized — do not force it. Switch to the other side and run the same idea from there."
           }
         ],
         cues: [
-          "Switch → look half-space.",
+          "Find the triangle → look half-space.",
           "Run behind the 3. Pass in front of the 3.",
-          "Different run, different gap.",
-          "Tracked? Rotate — runner out, teammate in."
+          "B runs → C follows, A underneath.",
+          "Tracked? B to the corner — new gap pass.",
+          "Blocked / organized? Switch sides."
+        ]
+      }
+    },
+    {
+      id: "support",
+      title: "Supporting Runs",
+      subtitle: "Near · Far · Cutback",
+      purpose: "Anytime a cross is coming — wide attack, set piece, or breakaway — attack near post, far post, and the cutback to the penalty spot.",
+      chapters: ["supporting-runs"],
+      hash: "support",
+      group: "attack-group",
+      overview: {
+        headline: "Near post · Far post · Cutback to the spot",
+        intro: "When we are about to hit a cross, supporting runners do not ball-watch. The same three-run pattern holds from wide attack, set pieces, and breakaways.",
+        principles: [
+          {
+            title: "Three runs, every time",
+            body: "Near post. Far post. Cutback toward the penalty spot. Fill those jobs — shirt numbers can change."
+          },
+          {
+            title: "Near post",
+            body: "Attack the front post with pace. Arrive as the ball arrives — force the first defender and the keeper to deal with a runner."
+          },
+          {
+            title: "Far post",
+            body: "Arrive across the face at the back post. Often the late runner if the near-post and cutback draws the first line."
+          },
+          {
+            title: "Cutback to the penalty spot",
+            body: "When the wide player drives the goal line, someone must be on or around the penalty spot for the ball pulled back — not everyone crashing the posts."
+          },
+          {
+            title: "Same pattern, every context",
+            body: "Wide-attack cross, corner serve, breakaway pull-back — the supporting-run jobs stay the same."
+          }
+        ],
+        cues: [
+          "Near. Far. Cutback.",
+          "Don’t ball-watch — fill a post or the spot.",
+          "Goal-line drive → someone on the penalty spot.",
+          "Same three runs: open play, set piece, breakaway."
         ]
       }
     },
     {
       id: "defense",
-      title: "Defensive Responsibilities",
+      title: "Defensive Shape",
       subtitle: "Matchups & 4-4-2",
       purpose: "Know your matchup, then organize out of possession into a 4-4-2 — 8 next to 6, 7 and 11 covering deep wide attackers.",
       chapters: ["defensive-responsibilities", "defend-4-4-2"],
       hash: "defense",
+      group: "defense-group",
       overview: {
         headline: "Know your player — then fill the 4-4-2",
         intro: "This module has two connected parts: man-oriented matchups and cover, then how we occupy the field out of possession as a 4-4-2 — the defensive mirror of our attacking 2-3-5.",
@@ -273,14 +357,15 @@
     },
     {
       id: "corner",
-      title: "Corner Decision Lab",
+      title: "Corners",
       subtitle: "Short play + long roles",
       purpose: "Decide short vs long, run our short-corner 1–2 play, then master long-corner roles.",
       chapters: ["short-corners", "long-corners"],
       hash: "corner",
+      group: "set-pieces-group",
       overview: {
         headline: "Two corner tools: short play, then long serve",
-        intro: "First read how many defenders are on our corner pair. Then either run the short 1–2 play (we almost always get a shot) or serve the long corner with clear roles.",
+        intro: "First read how many defenders are on our corner pair. Then either run the short 1–2 play (we almost always get a shot) or serve the long corner with clear roles. Supporting Runs still apply on the serve — near, far, and spot.",
         principles: [
           {
             title: "Part 1 — When to go short",
@@ -327,14 +412,14 @@
       phase: "attacking-transition",
       concept: "transition",
       prompt: "We just won the ball at the 8. Their midfield is split and our 11 is free on the left. What should the 8 do first?",
-      seeIt: "8 has the ball facing forward. Opp 6 and 8 are separated — there is a clear lane into the left channel. Our 11 is unmarked with space ahead. Their CBs are tight on our 9 — that is not the free player.",
+      seeIt: "8 has the ball facing forward. Opp 6 and 8 are separated. Their 2 is tucked near midfield, so our 11 has a clear lane of green ahead. Their CBs are tight on our 9 — that is not the free player.",
       interactionType: "multiple-choice",
       players: [
         { id: "our-1", team: "ours", number: 1, role: "Goalkeeper", x: 34, y: 98 },
-        { id: "our-4", team: "ours", number: 4, role: "Center back", x: 28, y: 78 },
-        { id: "our-5", team: "ours", number: 5, role: "Center back", x: 40, y: 78 },
-        { id: "our-2", team: "ours", number: 2, role: "Right fullback", x: 56, y: 70 },
-        { id: "our-3", team: "ours", number: 3, role: "Left fullback", x: 12, y: 70 },
+        { id: "our-4", team: "ours", number: 4, role: "Right center back", x: 28, y: 78 },
+        { id: "our-5", team: "ours", number: 5, role: "Left center back", x: 40, y: 78 },
+        { id: "our-2", team: "ours", number: 2, role: "Right back", x: 56, y: 70 },
+        { id: "our-3", team: "ours", number: 3, role: "Left back", x: 12, y: 70 },
         { id: "our-6", team: "ours", number: 6, role: "Defensive midfielder", x: 36, y: 62 },
         { id: "our-8", team: "ours", number: 8, role: "Central midfielder", x: 34, y: 52 },
         { id: "our-10", team: "ours", number: 10, role: "Attacking midfielder", x: 44, y: 42 },
@@ -343,11 +428,13 @@
         { id: "our-9", team: "ours", number: 9, role: "Center forward", x: 36, y: 20 }
       ],
       opponents: [
-        { id: "opp-4", team: "opp", number: 4, role: "Center back", x: 30, y: 18 },
-        { id: "opp-5", team: "opp", number: 5, role: "Center back", x: 42, y: 18 },
+        { id: "opp-1", team: "opp", number: 1, role: "Goalkeeper", x: 34, y: 4 },
+        { id: "opp-4", team: "opp", number: 4, role: "Right center back", x: 30, y: 18 },
+        { id: "opp-5", team: "opp", number: 5, role: "Left center back", x: 42, y: 18 },
         { id: "opp-6", team: "opp", number: 6, role: "Defensive midfielder", x: 48, y: 40 },
         { id: "opp-8", team: "opp", number: 8, role: "Central midfielder", x: 42, y: 50 },
-        { id: "opp-2", team: "opp", number: 2, role: "Right fullback", x: 22, y: 28 },
+        // Tucked near midfield so the gap behind our 11 is obvious
+        { id: "opp-2", team: "opp", number: 2, role: "Right back", x: 18, y: 48 },
         { id: "opp-9", team: "opp", number: 9, role: "Center forward", x: 34, y: 68 }
       ],
       ball: { x: 34, y: 52 },
@@ -395,9 +482,9 @@
       correctRationale: "r1",
       animationSteps: [
         { type: "highlight", playerIds: ["our-8", "our-11"] },
-        { type: "move", playerId: "our-11", to: { x: 14, y: 22 }, duration: 500 },
-        { type: "pass", from: { x: 34, y: 52 }, to: { x: 14, y: 28 }, duration: 550 },
-        { type: "move", playerId: "our-11", to: { x: 16, y: 16 }, duration: 450 }
+        { type: "move", playerId: "our-11", to: { x: 12, y: 22 }, duration: 500 },
+        { type: "pass", from: { x: 34, y: 52 }, to: { x: 12, y: 28 }, duration: 550 },
+        { type: "move", playerId: "our-11", to: { x: 14, y: 14 }, duration: 450 }
       ],
       challengeEligible: true
     },
@@ -425,7 +512,7 @@
           id: "our-4",
           team: "ours",
           number: 4,
-          role: "Center back",
+          role: "Right center back",
           x: 26,
           y: 80
         },
@@ -433,7 +520,7 @@
           id: "our-5",
           team: "ours",
           number: 5,
-          role: "Center back",
+          role: "Left center back",
           x: 42,
           y: 80
         },
@@ -441,7 +528,7 @@
           id: "our-2",
           team: "ours",
           number: 2,
-          role: "Right fullback",
+          role: "Right back",
           x: 58,
           y: 78
         },
@@ -449,7 +536,7 @@
           id: "our-3",
           team: "ours",
           number: 3,
-          role: "Left fullback",
+          role: "Left back",
           x: 10,
           y: 78
         },
@@ -523,7 +610,7 @@
           id: "opp-4",
           team: "opp",
           number: 4,
-          role: "Center back",
+          role: "Right center back",
           x: 28,
           y: 24
         },
@@ -531,7 +618,7 @@
           id: "opp-5",
           team: "opp",
           number: 5,
-          role: "Center back",
+          role: "Left center back",
           x: 40,
           y: 24
         },
@@ -628,7 +715,7 @@
           id: "our-4",
           team: "ours",
           number: 4,
-          role: "Center back",
+          role: "Right center back",
           x: 28,
           y: 72
         },
@@ -636,7 +723,7 @@
           id: "our-5",
           team: "ours",
           number: 5,
-          role: "Center back",
+          role: "Left center back",
           x: 42,
           y: 72
         },
@@ -644,7 +731,7 @@
           id: "our-2",
           team: "ours",
           number: 2,
-          role: "Right fullback",
+          role: "Right back",
           x: 58,
           y: 58
         },
@@ -652,7 +739,7 @@
           id: "our-3",
           team: "ours",
           number: 3,
-          role: "Left fullback",
+          role: "Left back",
           x: 10,
           y: 68
         },
@@ -710,7 +797,7 @@
           id: "opp-2",
           team: "opp",
           number: 2,
-          role: "Right fullback",
+          role: "Right back",
           x: 12,
           y: 30
         },
@@ -718,7 +805,7 @@
           id: "opp-4",
           team: "opp",
           number: 4,
-          role: "Center back",
+          role: "Right center back",
           x: 30,
           y: 20
         },
@@ -726,7 +813,7 @@
           id: "opp-5",
           team: "opp",
           number: 5,
-          role: "Center back",
+          role: "Left center back",
           x: 42,
           y: 20
         }
@@ -830,7 +917,7 @@
           id: "our-4",
           team: "ours",
           number: 4,
-          role: "Center back",
+          role: "Right center back",
           x: 28,
           y: 70
         },
@@ -838,7 +925,7 @@
           id: "our-5",
           team: "ours",
           number: 5,
-          role: "Center back",
+          role: "Left center back",
           x: 42,
           y: 70
         },
@@ -846,7 +933,7 @@
           id: "our-2",
           team: "ours",
           number: 2,
-          role: "Right fullback",
+          role: "Right back",
           x: 56,
           y: 56
         },
@@ -854,7 +941,7 @@
           id: "our-3",
           team: "ours",
           number: 3,
-          role: "Left fullback",
+          role: "Left back",
           x: 14,
           y: 58
         },
@@ -912,7 +999,7 @@
           id: "opp-2",
           team: "opp",
           number: 2,
-          role: "Right fullback",
+          role: "Right back",
           x: 18,
           y: 28
         },
@@ -920,7 +1007,7 @@
           id: "opp-4",
           team: "opp",
           number: 4,
-          role: "Center back",
+          role: "Right center back",
           x: 30,
           y: 18
         },
@@ -928,7 +1015,7 @@
           id: "opp-5",
           team: "opp",
           number: 5,
-          role: "Center back",
+          role: "Left center back",
           x: 42,
           y: 18
         }
@@ -1001,14 +1088,14 @@
       phase: "established-possession",
       concept: "attacking-shape",
       prompt: "Ball is on the right with our 7. Our left fullback (3) is stuck on the far touchline. What should she do?",
-      seeIt: "Play is overloaded on the right. Left fullback is hugging the far touchline with no nearby teammate. Central rest defense is thin.",
+      seeIt: "Play is overloaded on the right. Left back is hugging the far touchline with no nearby teammate. Central rest defense is thin.",
       interactionType: "multiple-choice",
       players: [
         {
           id: "our-4",
           team: "ours",
           number: 4,
-          role: "Center back",
+          role: "Right center back",
           x: 30,
           y: 68
         },
@@ -1016,7 +1103,7 @@
           id: "our-5",
           team: "ours",
           number: 5,
-          role: "Center back",
+          role: "Left center back",
           x: 44,
           y: 66
         },
@@ -1024,7 +1111,7 @@
           id: "our-2",
           team: "ours",
           number: 2,
-          role: "Right fullback",
+          role: "Right back",
           x: 58,
           y: 40
         },
@@ -1032,7 +1119,7 @@
           id: "our-3",
           team: "ours",
           number: 3,
-          role: "Left fullback",
+          role: "Left back",
           x: 4,
           y: 44
         },
@@ -1158,7 +1245,7 @@
           id: "our-4",
           team: "ours",
           number: 4,
-          role: "Center back",
+          role: "Right center back",
           x: 28,
           y: 62
         },
@@ -1166,7 +1253,7 @@
           id: "our-5",
           team: "ours",
           number: 5,
-          role: "Center back",
+          role: "Left center back",
           x: 42,
           y: 62
         },
@@ -1174,7 +1261,7 @@
           id: "our-2",
           team: "ours",
           number: 2,
-          role: "Right fullback",
+          role: "Right back",
           x: 58,
           y: 40
         },
@@ -1182,7 +1269,7 @@
           id: "our-3",
           team: "ours",
           number: 3,
-          role: "Left fullback",
+          role: "Left back",
           x: 10,
           y: 40
         },
@@ -1240,7 +1327,7 @@
           id: "opp-4",
           team: "opp",
           number: 4,
-          role: "Center back",
+          role: "Right center back",
           x: 28,
           y: 16
         },
@@ -1248,7 +1335,7 @@
           id: "opp-5",
           team: "opp",
           number: 5,
-          role: "Center back",
+          role: "Left center back",
           x: 40,
           y: 16
         },
@@ -1333,7 +1420,7 @@
           id: "our-4",
           team: "ours",
           number: 4,
-          role: "Center back",
+          role: "Right center back",
           x: 28,
           y: 68
         },
@@ -1341,7 +1428,7 @@
           id: "our-5",
           team: "ours",
           number: 5,
-          role: "Center back",
+          role: "Left center back",
           x: 42,
           y: 68
         },
@@ -1349,7 +1436,7 @@
           id: "our-2",
           team: "ours",
           number: 2,
-          role: "Right fullback",
+          role: "Right back",
           x: 58,
           y: 48
         },
@@ -1357,7 +1444,7 @@
           id: "our-3",
           team: "ours",
           number: 3,
-          role: "Left fullback",
+          role: "Left back",
           x: 12,
           y: 50
         },
@@ -1415,7 +1502,7 @@
           id: "opp-2",
           team: "opp",
           number: 2,
-          role: "Right fullback",
+          role: "Right back",
           x: 14,
           y: 26
         },
@@ -1423,7 +1510,7 @@
           id: "opp-4",
           team: "opp",
           number: 4,
-          role: "Center back",
+          role: "Right center back",
           x: 30,
           y: 18
         }
@@ -1531,7 +1618,7 @@
           id: "our-2",
           team: "ours",
           number: 2,
-          role: "Right fullback",
+          role: "Right back",
           x: 56,
           y: 44
         },
@@ -1539,7 +1626,7 @@
           id: "our-3",
           team: "ours",
           number: 3,
-          role: "Left fullback",
+          role: "Left back",
           x: 12,
           y: 46
         },
@@ -1547,7 +1634,7 @@
           id: "our-4",
           team: "ours",
           number: 4,
-          role: "Center back",
+          role: "Right center back",
           x: 28,
           y: 66
         },
@@ -1555,7 +1642,7 @@
           id: "our-5",
           team: "ours",
           number: 5,
-          role: "Center back",
+          role: "Left center back",
           x: 42,
           y: 66
         }
@@ -1565,7 +1652,7 @@
           id: "opp-4",
           team: "opp",
           number: 4,
-          role: "Center back",
+          role: "Right center back",
           x: 28,
           y: 18
         },
@@ -1573,7 +1660,7 @@
           id: "opp-5",
           team: "opp",
           number: 5,
-          role: "Center back",
+          role: "Left center back",
           x: 40,
           y: 18
         },
@@ -1643,27 +1730,31 @@
       phase: "wide-combination",
       concept: "half-space-run",
       prompt: "Ball is with Wide (A) after a switch. Who should make the half-space run?",
-      seeIt: "Any three players can form this triangle. Here: A = wide (ball), B = half-space, C = deep support. Their wide defender is the key. Watch two gaps: behind her and in front of her.",
+      seeIt: "We've switched and settled. Defense is flat and compressed to the ball. A is high and wide (onside). B occupies the half-space between their 5 and 3 — also onside. C is deep support. Their 3 shows to A and sits inside her.",
       interactionType: "multiple-choice",
       showTeachingZones: true,
+      // Attacking-third crop (like the coaching-manual board)
+      pitchView: { x: 0, y: 0, w: 68, h: 58 },
       players: [
-        { id: "tri-a", team: "ours", number: "A", role: "Wide point", x: 62, y: 28, label: "Wide" },
-        { id: "tri-b", team: "ours", number: "B", role: "Half-space point", x: 48, y: 34, label: "Half-space" },
-        { id: "tri-c", team: "ours", number: "C", role: "Deep support", x: 56, y: 48, label: "Deep" },
-        { id: "tri-d", team: "ours", number: "D", role: "Box threat", x: 34, y: 18, label: "Box" },
-        { id: "our-6", team: "ours", number: 6, role: "Defensive midfielder", x: 34, y: 58 }
+        // Organized attacking shape after the switch — all onside (at/under the line)
+        { id: "tri-a", team: "ours", number: "A", role: "Wide point", x: 64, y: 19, label: "Wide" },
+        { id: "tri-b", team: "ours", number: "B", role: "Half-space point", x: 50, y: 20, label: "Half-space" },
+        { id: "tri-c", team: "ours", number: "C", role: "Deep support", x: 50, y: 40, label: "Deep" },
+        { id: "tri-d", team: "ours", number: "D", role: "Box threat", x: 36, y: 28, label: "Box" },
+        { id: "our-6", team: "ours", number: 6, role: "Defensive midfielder", x: 32, y: 48 }
       ],
       opponents: [
-        { id: "opp-wb", team: "opp", number: 3, role: "Wide defender", x: 56, y: 20 },
-        { id: "opp-cb1", team: "opp", number: 4, role: "Center back", x: 40, y: 16 },
-        { id: "opp-cb2", team: "opp", number: 5, role: "Center back", x: 26, y: 16 },
-        { id: "opp-m", team: "opp", number: 8, role: "Central midfielder", x: 46, y: 30 },
-        { id: "opp-dm", team: "opp", number: 6, role: "Defensive midfielder", x: 34, y: 32 }
+        { id: "opp-1", team: "opp", number: 1, role: "Goalkeeper", x: 34, y: 3 },
+        // Flat back line at the edge of the box, compressed to ball side
+        { id: "opp-cb1", team: "opp", number: 4, role: "Right center back", x: 30, y: 17 },
+        { id: "opp-cb2", team: "opp", number: 5, role: "Left center back", x: 46, y: 17 },
+        { id: "opp-wb", team: "opp", number: 3, role: "Wide defender", x: 56, y: 17 },
+        { id: "opp-dm", team: "opp", number: 6, role: "Defensive midfielder", x: 42, y: 32 }
       ],
-      ball: { x: 62, y: 28 },
+      ball: { x: 65.5, y: 17.5 },
       zones: [
-        { id: "run-behind", label: "Run behind wide defender", x: 44, y: 6, w: 12, h: 12 },
-        { id: "pass-front", label: "Pass in front of wide defender", x: 50, y: 18, w: 10, h: 10 }
+        // Half-space corridor between their 5 and 3, into the box (B's run)
+        { id: "half-space", label: "Half-space", x: 48, y: 2, w: 10, h: 16 }
       ],
       options: [
         { id: "b-run", label: "B (half-space)" },
@@ -1672,9 +1763,9 @@
         { id: "a-dribble", label: "A (keep it and dribble alone)" }
       ],
       correctAnswer: "b-run",
-      hint: "After a switch to the wide point, the half-space point is usually first to attack behind their wide defender.",
-      explanation: "B runs in behind their wide defender. A’s pass travels in front of that defender. Different gaps — and A/B/C can be filled by a 7, 10, 2, 8, or whoever occupies those spaces.",
-      coachingCue: "Run behind. Pass in front.",
+      hint: "After the switch we are organized and onside. B is already in the half-space lane — she attacks behind their 3 while the pass stays in front.",
+      explanation: "B runs the half-space behind their 3. A’s pass travels in front of that defender. Different gaps — and A/B/C can be filled by a 7, 10, 2, 8, or whoever occupies those spaces.",
+      coachingCue: "Switch → settle onside. Run behind. Pass in front.",
       rationalePrompt: "Why B — and how should the pass relate to their wide defender?",
       rationaleOptions: [
         {
@@ -1696,10 +1787,17 @@
       ],
       correctRationale: "r1",
       animationSteps: [
-        { type: "highlight", playerIds: ["tri-a", "tri-b", "opp-wb"] },
-        { type: "move", playerId: "tri-b", to: { x: 48, y: 8 }, duration: 650 },
-        { type: "pass", from: { x: 62, y: 28 }, to: { x: 52, y: 16 }, duration: 500 },
-        { type: "move", playerId: "tri-b", to: { x: 50, y: 12 }, duration: 400 }
+        { type: "highlight", playerIds: ["tri-a", "tri-b", "opp-wb", "opp-cb2"] },
+        {
+          type: "parallel",
+          duration: 700,
+          steps: [
+            { type: "move", playerId: "tri-b", to: { x: 50, y: 8 }, duration: 700 },
+            { type: "move", playerId: "opp-cb2", to: { x: 48, y: 10 }, duration: 700 }
+          ]
+        },
+        { type: "pass", from: { x: 65.5, y: 17.5 }, to: { x: 52, y: 14 }, duration: 500 },
+        { type: "move", playerId: "tri-b", to: { x: 51, y: 12 }, duration: 350 }
       ],
       challengeEligible: true
     },
@@ -1712,25 +1810,27 @@
       phase: "wide-combination",
       concept: "half-space-run",
       prompt: "Build the gap pass: choose B’s run, then A’s pass.",
-      seeIt: "Triangle: A wide (ball), B half-space, C deep. Their wide defender is the key. B threatens one side of her; the pass must use the other.",
+      seeIt: "Settled after the switch. Flat back line compressed to the ball. A wide (onside). B in the half-space between their 5 and 3 (onside). C deep. Their 3 shows to A — B threatens one side of her; the pass must use the other.",
       interactionType: "movement-and-pass",
       showTeachingZones: true,
+      pitchView: { x: 0, y: 0, w: 68, h: 58 },
       players: [
-        { id: "tri-a", team: "ours", number: "A", role: "Wide point", x: 62, y: 26, label: "Wide" },
-        { id: "tri-b", team: "ours", number: "B", role: "Half-space point", x: 48, y: 32, label: "Half-space" },
-        { id: "tri-c", team: "ours", number: "C", role: "Deep support", x: 56, y: 46, label: "Deep" },
-        { id: "tri-d", team: "ours", number: "D", role: "Box threat", x: 34, y: 16, label: "Box" }
+        { id: "tri-a", team: "ours", number: "A", role: "Wide point", x: 64, y: 19, label: "Wide" },
+        { id: "tri-b", team: "ours", number: "B", role: "Half-space point", x: 50, y: 20, label: "Half-space" },
+        { id: "tri-c", team: "ours", number: "C", role: "Deep support", x: 50, y: 40, label: "Deep" },
+        { id: "tri-d", team: "ours", number: "D", role: "Box threat", x: 36, y: 28, label: "Box" }
       ],
       opponents: [
-        { id: "opp-wb", team: "opp", number: 3, role: "Wide defender", x: 56, y: 18 },
-        { id: "opp-cb1", team: "opp", number: 4, role: "Center back", x: 40, y: 14 },
-        { id: "opp-cb2", team: "opp", number: 5, role: "Center back", x: 26, y: 14 },
-        { id: "opp-m", team: "opp", number: 8, role: "Central midfielder", x: 46, y: 28 }
+        { id: "opp-1", team: "opp", number: 1, role: "Goalkeeper", x: 34, y: 3 },
+        { id: "opp-cb1", team: "opp", number: 4, role: "Right center back", x: 30, y: 17 },
+        { id: "opp-cb2", team: "opp", number: 5, role: "Left center back", x: 46, y: 17 },
+        { id: "opp-wb", team: "opp", number: 3, role: "Wide defender", x: 56, y: 17 },
+        { id: "opp-dm", team: "opp", number: 6, role: "Defensive midfielder", x: 42, y: 32 }
       ],
-      ball: { x: 62, y: 26 },
+      ball: { x: 65.5, y: 17.5 },
       zones: [
-        { id: "behind", label: "Behind wide defender", x: 44, y: 4, w: 12, h: 12 },
-        { id: "front", label: "In front of wide defender", x: 50, y: 16, w: 10, h: 10 }
+        { id: "behind", label: "Behind wide defender", x: 48, y: 2, w: 10, h: 12 },
+        { id: "front", label: "In front of wide defender", x: 50, y: 12, w: 10, h: 6 }
       ],
       runOptions: [
         { id: "run-behind", label: "B runs in behind their wide defender toward the box" },
@@ -1749,10 +1849,17 @@
       explanation: "B behind. Pass from A in front. One defender cannot solve both — and those letters can be any of our attackers who occupy the triangle.",
       coachingCue: "Run behind. Pass in front.",
       animationSteps: [
-        { type: "highlight", playerIds: ["tri-b", "opp-wb"] },
-        { type: "move", playerId: "tri-b", to: { x: 48, y: 8 }, duration: 600 },
-        { type: "pass", from: { x: 62, y: 26 }, to: { x: 52, y: 16 }, duration: 500 },
-        { type: "move", playerId: "tri-b", to: { x: 50, y: 12 }, duration: 400 }
+        { type: "highlight", playerIds: ["tri-b", "opp-wb", "opp-cb2"] },
+        {
+          type: "parallel",
+          duration: 700,
+          steps: [
+            { type: "move", playerId: "tri-b", to: { x: 50, y: 8 }, duration: 700 },
+            { type: "move", playerId: "opp-cb2", to: { x: 48, y: 10 }, duration: 700 }
+          ]
+        },
+        { type: "pass", from: { x: 65.5, y: 17.5 }, to: { x: 52, y: 14 }, duration: 500 },
+        { type: "move", playerId: "tri-b", to: { x: 51, y: 12 }, duration: 350 }
       ],
       challengeEligible: true,
       options: []
@@ -1778,8 +1885,8 @@
       ],
       opponents: [
         { id: "opp-wb", team: "opp", number: 3, role: "Wide defender", x: 56, y: 20 },
-        { id: "opp-cb1", team: "opp", number: 4, role: "Center back", x: 40, y: 16 },
-        { id: "opp-cb2", team: "opp", number: 5, role: "Center back", x: 26, y: 16 }
+        { id: "opp-cb1", team: "opp", number: 4, role: "Right center back", x: 28, y: 16 },
+        { id: "opp-cb2", team: "opp", number: 5, role: "Left center back", x: 48, y: 22 }
       ],
       ball: { x: 50, y: 34 },
       zones: [
@@ -1846,41 +1953,46 @@
       phase: "wide-combination",
       concept: "wide-rotation",
       prompt: "B made the half-space run, but a midfielder tracked her all the way. What should we do?",
-      seeIt: "B is running into the half-space and is tracked. The pass into that run is closed. A still has the ball wide. C is available as deep support.",
+      seeIt: "B is tracked in the half-space — the gap pass is closed. A has rotated underneath; C has followed. We still have a live triangle if we use it.",
       interactionType: "multiple-choice",
       showTeachingZones: true,
+      pitchView: { x: 0, y: 0, w: 68, h: 58 },
       players: [
-        { id: "tri-a", team: "ours", number: "A", role: "Wide point", x: 62, y: 26, label: "Wide" },
-        { id: "tri-b", team: "ours", number: "B", role: "Half-space point", x: 50, y: 18, label: "Half-space" },
-        { id: "tri-c", team: "ours", number: "C", role: "Deep support", x: 54, y: 44, label: "Deep" },
-        { id: "tri-d", team: "ours", number: "D", role: "Box threat", x: 34, y: 16, label: "Box" },
-        { id: "our-6", team: "ours", number: 6, role: "Defensive midfielder", x: 34, y: 56 }
+        { id: "tri-a", team: "ours", number: "A", role: "Wide point", x: 54, y: 34, label: "Underneath" },
+        { id: "tri-b", team: "ours", number: "B", role: "Half-space point", x: 50, y: 10, label: "Half-space" },
+        { id: "tri-c", team: "ours", number: "C", role: "Deep support", x: 52, y: 24, label: "Follow" },
+        { id: "tri-d", team: "ours", number: "D", role: "Box threat", x: 34, y: 16, label: "Box" }
       ],
       opponents: [
-        { id: "opp-wb", team: "opp", number: 3, role: "Wide defender", x: 56, y: 18 },
-        { id: "opp-cb1", team: "opp", number: 4, role: "Center back", x: 40, y: 14 },
-        { id: "opp-m", team: "opp", number: 8, role: "Central midfielder", x: 48, y: 20 },
-        { id: "opp-w", team: "opp", number: 11, role: "Wide midfielder", x: 58, y: 36 }
+        { id: "opp-1", team: "opp", number: 1, role: "Goalkeeper", x: 34, y: 3 },
+        { id: "opp-cb1", team: "opp", number: 4, role: "Right center back", x: 30, y: 17 },
+        { id: "opp-cb2", team: "opp", number: 5, role: "Left center back", x: 46, y: 14 },
+        { id: "opp-wb", team: "opp", number: 3, role: "Wide defender", x: 56, y: 17 },
+        { id: "opp-m", team: "opp", number: 8, role: "Central midfielder", x: 48, y: 12 }
       ],
-      ball: { x: 62, y: 26 },
+      ball: { x: 54, y: 32 },
       zones: [
-        { id: "half-space", label: "Half-space", x: 44, y: 6, w: 14, h: 16 }
+        { id: "corner", label: "Back to the corner", x: 58, y: 14, w: 8, h: 10 },
+        { id: "half-space", label: "Next half-space", x: 48, y: 2, w: 10, h: 14 }
       ],
       options: [
-        { id: "rotate", label: "Rotate — B comes out; another triangle player fills the half-space" },
+        {
+          id: "rotate",
+          label: "B rotates back to the corner — A/C’s shape sets up a new half-space run and gap pass"
+        },
         { id: "force", label: "Force the pass into the tracked runner anyway" },
         { id: "stop", label: "Everyone freezes and waits for a free kick" },
         { id: "both-crash", label: "Send A and C into the same tracked lane behind B" }
       ],
       correctAnswer: "rotate",
-      hint: "When the half-space run does not work, pattern #2 is rotation — not forcing a covered pass.",
-      explanation: "Tracked run = pass is off. B comes back out; a teammate (often C) fills the half-space. Roles rotate — that is the point of A/B/C.",
-      coachingCue: "Tracked? Rotate — runner out, teammate in.",
-      rationalePrompt: "Why rotate instead of forcing the ball into the tracked runner?",
+      hint: "Tracked = gap pass is off. B comes back to the corner (wide). The A/C rotation has already rebuilt the triangle for another try.",
+      explanation: "When B is tracked, she rotates back to the corner. A underneath and C following have kept the triangle — so we can create a new half-space run and another ball in behind instead of forcing a covered pass.",
+      coachingCue: "Tracked? B to the corner — new gap pass.",
+      rationalePrompt: "Why send B back to the corner instead of forcing the ball into her?",
       rationaleOptions: [
         {
           id: "r1",
-          label: "The lane is covered — so B comes out and a teammate fills the half-space instead of playing into a chased run"
+          label: "The lane is covered — B becomes wide at the corner so the rotated triangle can try another half-space run"
         },
         {
           id: "r2",
@@ -1897,9 +2009,12 @@
       ],
       correctRationale: "r1",
       animationSteps: [
-        { type: "highlight", playerIds: ["tri-b", "opp-m"] },
-        { type: "move", playerId: "tri-b", to: { x: 52, y: 36 }, duration: 550 },
-        { type: "move", playerId: "tri-c", to: { x: 48, y: 20 }, duration: 550 }
+        { type: "highlight", playerIds: ["tri-b", "opp-m", "tri-a", "tri-c"] },
+        // B back to the corner (wide)
+        { type: "move", playerId: "tri-b", to: { x: 64, y: 18 }, duration: 600 },
+        // New half-space runner from the rotated shape (C steps into B)
+        { type: "move", playerId: "tri-c", to: { x: 50, y: 16 }, duration: 550 },
+        { type: "pass", from: { x: 54, y: 32 }, to: { x: 64, y: 18 }, duration: 450 }
       ],
       challengeEligible: true
     },
@@ -1907,43 +2022,47 @@
       id: "wide-05",
       module: "wide",
       chapter: "wide-attack",
-      title: "Who Fills After the Rotation?",
+      title: "Who Makes the Next Half-Space Run?",
       difficulty: 2,
       phase: "wide-combination",
       concept: "wide-rotation",
-      prompt: "B is checking back out of the half-space. Who should fill it?",
-      seeIt: "B is coming out (tracked). Half-space is emptying. A still holds the touchline with the ball. C is the free deep point.",
+      prompt: "B has rotated back to the corner. A is underneath, C has followed. Who should attack the half-space next?",
+      seeIt: "B is now wide at the corner. A sits underneath with the ball. C is the free player between them — ready to become the new half-space runner.",
       interactionType: "multiple-choice",
       showTeachingZones: true,
+      pitchView: { x: 0, y: 0, w: 68, h: 58 },
       players: [
-        { id: "tri-a", team: "ours", number: "A", role: "Wide point", x: 62, y: 26, label: "Wide" },
-        { id: "tri-b", team: "ours", number: "B", role: "Half-space point", x: 52, y: 32, label: "Half-space" },
-        { id: "tri-c", team: "ours", number: "C", role: "Deep support", x: 54, y: 46, label: "Deep" },
-        { id: "tri-d", team: "ours", number: "D", role: "Box threat", x: 30, y: 18, label: "Box" },
-        { id: "our-6", team: "ours", number: 6, role: "Defensive midfielder", x: 34, y: 58 }
+        { id: "tri-b", team: "ours", number: "B", role: "Wide point", x: 64, y: 18, label: "Corner" },
+        { id: "tri-a", team: "ours", number: "A", role: "Deep support", x: 54, y: 34, label: "Underneath" },
+        { id: "tri-c", team: "ours", number: "C", role: "Half-space point", x: 52, y: 26, label: "Ready" },
+        { id: "tri-d", team: "ours", number: "D", role: "Box threat", x: 34, y: 16, label: "Box" }
       ],
       opponents: [
-        { id: "opp-wb", team: "opp", number: 3, role: "Wide defender", x: 56, y: 18 },
-        { id: "opp-cb1", team: "opp", number: 4, role: "Center back", x: 40, y: 14 },
-        { id: "opp-m", team: "opp", number: 8, role: "Central midfielder", x: 48, y: 24 }
+        { id: "opp-1", team: "opp", number: 1, role: "Goalkeeper", x: 34, y: 3 },
+        { id: "opp-cb1", team: "opp", number: 4, role: "Right center back", x: 30, y: 17 },
+        { id: "opp-cb2", team: "opp", number: 5, role: "Left center back", x: 46, y: 17 },
+        { id: "opp-wb", team: "opp", number: 3, role: "Wide defender", x: 56, y: 17 },
+        { id: "opp-m", team: "opp", number: 8, role: "Central midfielder", x: 44, y: 28 }
       ],
-      ball: { x: 62, y: 26 },
+      ball: { x: 54, y: 32 },
       zones: [
-        { id: "half-space", label: "Half-space to fill", x: 44, y: 10, w: 14, h: 14 }
+        { id: "half-space", label: "Next half-space", x: 48, y: 2, w: 10, h: 16 }
       ],
       options: [
-        { id: "c-fill", label: "C steps up into the half-space" },
-        { id: "a-leave", label: "A abandons the touchline and stacks on top of B" },
+        { id: "c-fill", label: "C — she becomes the new half-space runner for the next gap pass" },
+        { id: "a-leave", label: "A abandons underneath and stacks on top of B at the corner" },
         { id: "six-join", label: "The 6 abandons rest defense to crash the same lane" },
         { id: "empty", label: "Leave the half-space empty and hope" }
       ],
       correctAnswer: "c-fill",
-      hint: "Rotation means someone from the triangle replaces the runner in the half-space — usually the deep point while wide keeps width.",
-      explanation: "B out, C in. A keeps width. We still have a triangle — just with different bodies in A/B/C.",
-      coachingCue: "Fill the half-space; don’t stack it.",
+      hint: "Letters move with the spaces. B is now wide; C is free to become the next B.",
+      explanation: "B back to the corner = new A. A underneath = deep support. C steps into the half-space for the next gap pass. Same pattern, new bodies.",
+      coachingCue: "B to the corner — new half-space runner.",
       animationSteps: [
-        { type: "move", playerId: "tri-b", to: { x: 54, y: 40 }, duration: 500 },
-        { type: "move", playerId: "tri-c", to: { x: 48, y: 18 }, duration: 600 }
+        { type: "highlight", playerIds: ["tri-c", "tri-b", "tri-a"] },
+        { type: "move", playerId: "tri-c", to: { x: 50, y: 10 }, duration: 600 },
+        { type: "pass", from: { x: 54, y: 32 }, to: { x: 64, y: 18 }, duration: 400 },
+        { type: "pass", from: { x: 64, y: 18 }, to: { x: 52, y: 14 }, duration: 500 }
       ],
       challengeEligible: true
     },
@@ -1966,7 +2085,7 @@
       ],
       opponents: [
         { id: "opp-wb", team: "opp", number: 3, role: "Wide defender", x: 56, y: 20 },
-        { id: "opp-cb1", team: "opp", number: 4, role: "Center back", x: 40, y: 14 },
+        { id: "opp-cb1", team: "opp", number: 4, role: "Right center back", x: 28, y: 14 },
         { id: "opp-m", team: "opp", number: 8, role: "Central midfielder", x: 46, y: 28 }
       ],
       ball: { x: 54, y: 36 },
@@ -2006,8 +2125,8 @@
       ],
       opponents: [
         { id: "opp-wb", team: "opp", number: 3, role: "Wide defender", x: 50, y: 28 },
-        { id: "opp-cb1", team: "opp", number: 4, role: "Center back", x: 38, y: 22 },
-        { id: "opp-cb2", team: "opp", number: 5, role: "Center back", x: 26, y: 20 },
+        { id: "opp-cb1", team: "opp", number: 4, role: "Right center back", x: 28, y: 20 },
+        { id: "opp-cb2", team: "opp", number: 5, role: "Left center back", x: 44, y: 24 },
         { id: "opp-fb", team: "opp", number: 2, role: "Far fullback", x: 14, y: 30 }
       ],
       ball: { x: 62, y: 32 },
@@ -2031,37 +2150,352 @@
       id: "wide-08",
       module: "wide",
       chapter: "wide-attack",
-      title: "Keep the Triangle While You Attack",
+      title: "Rotate Under the Half-Space Run",
       difficulty: 2,
       phase: "wide-combination",
-      concept: "half-space-run",
-      prompt: "As B runs the half-space, what should A and C provide?",
-      seeIt: "B is attacking the half-space. If A also collapses inside and C abandons the deep point, we lose the next option if the run is tracked.",
+      concept: "wide-rotation",
+      prompt: "As B runs the half-space, what should A and C do?",
+      seeIt: "B is attacking the half-space. If A just holds the touchline and C stays glued deep, we cannot recirculate — B cannot become the next wide player if the cross is not on.",
       interactionType: "multiple-choice",
+      showTeachingZones: true,
+      pitchView: { x: 0, y: 0, w: 68, h: 58 },
       players: [
-        { id: "tri-a", team: "ours", number: "A", role: "Wide point", x: 62, y: 26, label: "Wide" },
+        { id: "tri-a", team: "ours", number: "A", role: "Wide point", x: 64, y: 19, label: "Wide" },
         { id: "tri-b", team: "ours", number: "B", role: "Half-space point", x: 50, y: 20, label: "Half-space" },
-        { id: "tri-c", team: "ours", number: "C", role: "Deep support", x: 54, y: 44, label: "Deep" }
+        { id: "tri-c", team: "ours", number: "C", role: "Deep support", x: 50, y: 40, label: "Deep" }
       ],
       opponents: [
-        { id: "opp-wb", team: "opp", number: 3, role: "Wide defender", x: 56, y: 18 },
-        { id: "opp-cb1", team: "opp", number: 4, role: "Center back", x: 40, y: 14 },
+        { id: "opp-1", team: "opp", number: 1, role: "Goalkeeper", x: 34, y: 3 },
+        { id: "opp-cb1", team: "opp", number: 4, role: "Right center back", x: 30, y: 17 },
+        { id: "opp-cb2", team: "opp", number: 5, role: "Left center back", x: 46, y: 17 },
+        { id: "opp-wb", team: "opp", number: 3, role: "Wide defender", x: 56, y: 17 },
         { id: "opp-m", team: "opp", number: 8, role: "Central midfielder", x: 46, y: 28 }
       ],
-      ball: { x: 62, y: 26 },
-      options: [
-        { id: "width-depth", label: "A keeps width; C stays as the deep supporting point ready to fill or bounce" },
-        { id: "all-in", label: "A and C both follow B into the same half-space lane" },
-        { id: "abandon", label: "Both drop to the halfway line immediately" },
-        { id: "switch-back", label: "Ignore the run and switch back without looking" }
+      ball: { x: 65.5, y: 17.5 },
+      zones: [
+        { id: "half-space", label: "Half-space", x: 48, y: 2, w: 10, h: 16 }
       ],
-      correctAnswer: "width-depth",
-      hint: "The triangle has to survive the first action so rotation is available if the run is tracked.",
-      explanation: "B’s run only works as a team pattern if A keeps width and C remains the deep point — ready to receive or to fill on rotation. Numbers can change; the shape cannot.",
-      coachingCue: "Fill the half-space; don’t stack it.",
+      options: [
+        {
+          id: "rotate-under",
+          label: "C follows B; A rotates underneath — so B can become wide next if the cross isn’t on"
+        },
+        {
+          id: "width-depth",
+          label: "A freezes on the touchline; C stays glued as a deep statue"
+        },
+        {
+          id: "all-in",
+          label: "A and C both sprint into the same half-space lane as B"
+        },
+        {
+          id: "abandon",
+          label: "Both drop to the halfway line immediately"
+        }
+      ],
+      correctAnswer: "rotate-under",
+      hint: "Think rotation: C steps up with the run; A comes underneath the triangle so the shape stays alive.",
+      explanation: "As B runs the half-space, C follows and A rotates underneath. Ideally B finishes (shot / cross / cutback). If not, B can become wide next — and if she was tracked, she checks to the corner for another gap-pass try.",
+      coachingCue: "B runs → C follows, A underneath.",
       animationSteps: [
-        { type: "move", playerId: "tri-b", to: { x: 50, y: 10 }, duration: 550 },
-        { type: "highlight", playerIds: ["tri-a", "tri-c"] }
+        { type: "highlight", playerIds: ["tri-a", "tri-b", "tri-c"] },
+        {
+          type: "parallel",
+          duration: 700,
+          steps: [
+            { type: "move", playerId: "tri-b", to: { x: 50, y: 8 }, duration: 700 },
+            { type: "move", playerId: "opp-m", to: { x: 48, y: 12 }, duration: 700 },
+            // C follows the half-space run
+            { type: "move", playerId: "tri-c", to: { x: 52, y: 24 }, duration: 700 },
+            // A rotates underneath
+            { type: "move", playerId: "tri-a", to: { x: 54, y: 34 }, duration: 700 }
+          ]
+        }
+      ],
+      challengeEligible: true
+    },
+
+    {
+      id: "wide-09",
+      module: "wide",
+      chapter: "wide-attack",
+      title: "Chance Gone — Switch",
+      difficulty: 2,
+      phase: "wide-combination",
+      concept: "wide-rotation",
+      prompt: "The near side is blocked. Their back line is set. Another gap pass here looks forced. What next?",
+      seeIt: "We've tried the triangle and the half-space. Numbers are around the ball. Their 3, 5, and midfield are compact. Far side has space and a free wide player.",
+      interactionType: "multiple-choice",
+      pitchView: { x: 0, y: 0, w: 68, h: 70 },
+      players: [
+        { id: "tri-a", team: "ours", number: "A", role: "Wide point", x: 62, y: 22, label: "Wide" },
+        { id: "tri-b", team: "ours", number: "B", role: "Half-space point", x: 52, y: 28, label: "Half-space" },
+        { id: "tri-c", team: "ours", number: "C", role: "Deep support", x: 48, y: 40, label: "Deep" },
+        { id: "far-wide", team: "ours", number: 11, role: "Left winger", x: 10, y: 30, label: "Far" },
+        { id: "our-6", team: "ours", number: 6, role: "Defensive midfielder", x: 34, y: 48 },
+        { id: "our-8", team: "ours", number: 8, role: "Central midfielder", x: 40, y: 42 }
+      ],
+      opponents: [
+        { id: "opp-1", team: "opp", number: 1, role: "Goalkeeper", x: 34, y: 3 },
+        { id: "opp-cb1", team: "opp", number: 4, role: "Right center back", x: 28, y: 18 },
+        { id: "opp-cb2", team: "opp", number: 5, role: "Left center back", x: 44, y: 16 },
+        { id: "opp-wb", team: "opp", number: 3, role: "Wide defender", x: 56, y: 18 },
+        { id: "opp-m", team: "opp", number: 8, role: "Central midfielder", x: 48, y: 26 },
+        { id: "opp-dm", team: "opp", number: 6, role: "Defensive midfielder", x: 40, y: 30 },
+        { id: "opp-fb", team: "opp", number: 2, role: "Right back", x: 16, y: 28 }
+      ],
+      ball: { x: 54, y: 36 },
+      options: [
+        {
+          id: "switch",
+          label: "Switch to the far side and build a new wide triangle from there"
+        },
+        {
+          id: "force",
+          label: "Force another needle-thread gap pass into the traffic"
+        },
+        {
+          id: "long",
+          label: "Hit a hopeful long ball over the top with no runner"
+        },
+        {
+          id: "dribble",
+          label: "Have A dribble into three defenders alone"
+        }
+      ],
+      correctAnswer: "switch",
+      hint: "When the chance is gone and they are organized, don’t force the near-side pattern — switch and try the same idea elsewhere.",
+      explanation: "Blocked off or organized defense = the near-side chance has died. Switch to the far side, find a new wide triangle, and look for the half-space gap pass again.",
+      coachingCue: "Blocked / organized? Switch sides.",
+      animationSteps: [
+        { type: "highlight", playerIds: ["tri-a", "tri-c", "our-8", "far-wide"] },
+        { type: "pass", from: { x: 54, y: 36 }, to: { x: 40, y: 42 }, duration: 450 },
+        { type: "pass", from: { x: 40, y: 42 }, to: { x: 12, y: 32 }, duration: 650 },
+        { type: "move", playerId: "far-wide", to: { x: 8, y: 22 }, duration: 400 }
+      ],
+      challengeEligible: true
+    },
+
+    /* ---------- Supporting Runs ---------- */
+    {
+      id: "support-01",
+      module: "support",
+      chapter: "supporting-runs",
+      title: "The Three Supporting Runs",
+      difficulty: 1,
+      phase: "supporting-runs",
+      concept: "supporting-runs",
+      prompt: "A cross is coming from the wide channel. What three supporting runs do we fill?",
+      seeIt: "Wide player is about to deliver. Three attackers need jobs in the box — not everyone ball-watching or stacking the same post.",
+      interactionType: "multiple-choice",
+      showTeachingZones: true,
+      pitchView: { x: 0, y: 0, w: 68, h: 50 },
+      players: [
+        { id: "crosser", team: "ours", number: "X", role: "Wide delivery", x: 64, y: 12, label: "Cross" },
+        { id: "near", team: "ours", number: "N", role: "Near-post run", x: 42, y: 22, label: "Near" },
+        { id: "cut", team: "ours", number: "K", role: "Cutback run", x: 40, y: 28, label: "Cutback" },
+        { id: "far", team: "ours", number: "F", role: "Far-post run", x: 28, y: 24, label: "Far" },
+        { id: "trail", team: "ours", number: 8, role: "Central midfielder", x: 48, y: 36 }
+      ],
+      opponents: [
+        { id: "opp-1", team: "opp", number: 1, role: "Goalkeeper", x: 34, y: 3 },
+        { id: "opp-4", team: "opp", number: 4, role: "Right center back", x: 28, y: 12 },
+        { id: "opp-5", team: "opp", number: 5, role: "Left center back", x: 42, y: 12 },
+        { id: "opp-3", team: "opp", number: 3, role: "Left back", x: 54, y: 14 }
+      ],
+      ball: { x: 65, y: 10 },
+      zones: [
+        { id: "near-z", label: "Near post", x: 40, y: 2, w: 10, h: 8 },
+        { id: "spot-z", label: "Penalty spot", x: 30, y: 9, w: 8, h: 6 },
+        { id: "far-z", label: "Far post", x: 20, y: 2, w: 10, h: 8 }
+      ],
+      options: [
+        { id: "three", label: "Near post, far post, and cutback toward the penalty spot" },
+        { id: "posts-only", label: "Only near post and far post — nobody on the cutback" },
+        { id: "stack-near", label: "Everyone crash the near post" },
+        { id: "watch", label: "Stand and watch the cross from the D" }
+      ],
+      correctAnswer: "three",
+      hint: "Three jobs: near, far, and the cutback to the spot.",
+      explanation: "Anytime a cross is coming we fill near post, far post, and cutback to the penalty spot. Same pattern from wide attack, set pieces, or a breakaway.",
+      coachingCue: "Near. Far. Cutback.",
+      animationSteps: [
+        { type: "highlight", playerIds: ["near", "far", "cut", "crosser"] },
+        {
+          type: "parallel",
+          duration: 650,
+          steps: [
+            { type: "move", playerId: "near", to: { x: 44, y: 5 }, duration: 650 },
+            { type: "move", playerId: "far", to: { x: 24, y: 5 }, duration: 650 },
+            { type: "move", playerId: "cut", to: { x: 34, y: 12 }, duration: 650 },
+            { type: "pass", from: { x: 65, y: 10 }, to: { x: 34, y: 8 }, duration: 650 }
+          ]
+        }
+      ],
+      challengeEligible: true
+    },
+    {
+      id: "support-02",
+      module: "support",
+      chapter: "supporting-runs",
+      title: "Near-Post Job",
+      difficulty: 1,
+      phase: "supporting-runs",
+      concept: "supporting-runs",
+      prompt: "The cross is whipped toward the six. Which runner’s job is the near post?",
+      seeIt: "Delivery from the right. Three attackers are labeled by their supporting-run jobs.",
+      interactionType: "multiple-choice",
+      pitchView: { x: 0, y: 0, w: 68, h: 48 },
+      players: [
+        { id: "crosser", team: "ours", number: "X", role: "Wide delivery", x: 64, y: 10, label: "Cross" },
+        { id: "near", team: "ours", number: "N", role: "Near-post run", x: 44, y: 18, label: "Near" },
+        { id: "cut", team: "ours", number: "K", role: "Cutback run", x: 38, y: 26, label: "Cutback" },
+        { id: "far", team: "ours", number: "F", role: "Far-post run", x: 26, y: 20, label: "Far" }
+      ],
+      opponents: [
+        { id: "opp-1", team: "opp", number: 1, role: "Goalkeeper", x: 34, y: 3 },
+        { id: "opp-5", team: "opp", number: 5, role: "Left center back", x: 42, y: 10 }
+      ],
+      ball: { x: 65, y: 8 },
+      options: [
+        { id: "near", label: "Near — attack the front post as the ball arrives" },
+        { id: "far", label: "Far — only the back-post runner" },
+        { id: "cut", label: "Cutback — only the penalty-spot runner" },
+        { id: "crosser", label: "The crosser follows her own cross to the near post" }
+      ],
+      correctAnswer: "near",
+      hint: "Near post = front post, ball-side.",
+      explanation: "The near-post runner attacks the front post with timing — force the first defender and the keeper to deal with a body arriving with the ball.",
+      coachingCue: "Near post — arrive with the ball.",
+      animationSteps: [
+        { type: "highlight", playerIds: ["near"] },
+        { type: "move", playerId: "near", to: { x: 44, y: 5 }, duration: 550 },
+        { type: "pass", from: { x: 65, y: 8 }, to: { x: 42, y: 5 }, duration: 500 }
+      ],
+      challengeEligible: true
+    },
+    {
+      id: "support-03",
+      module: "support",
+      chapter: "supporting-runs",
+      title: "Far-Post Job",
+      difficulty: 1,
+      phase: "supporting-runs",
+      concept: "supporting-runs",
+      prompt: "Near post and cutback are occupied. What is the far-post runner’s job?",
+      seeIt: "Cross from the right. Near and cutback are filled. Someone must still arrive at the back post.",
+      interactionType: "multiple-choice",
+      pitchView: { x: 0, y: 0, w: 68, h: 48 },
+      players: [
+        { id: "crosser", team: "ours", number: "X", role: "Wide delivery", x: 64, y: 10, label: "Cross" },
+        { id: "near", team: "ours", number: "N", role: "Near-post run", x: 44, y: 8, label: "Near" },
+        { id: "cut", team: "ours", number: "K", role: "Cutback run", x: 34, y: 14, label: "Cutback" },
+        { id: "far", team: "ours", number: "F", role: "Far-post run", x: 26, y: 22, label: "Far" }
+      ],
+      opponents: [
+        { id: "opp-1", team: "opp", number: 1, role: "Goalkeeper", x: 34, y: 3 },
+        { id: "opp-4", team: "opp", number: 4, role: "Right center back", x: 26, y: 10 }
+      ],
+      ball: { x: 65, y: 8 },
+      options: [
+        { id: "far", label: "Arrive across the face at the far post — often the late runner" },
+        { id: "stop", label: "Stop at the top of the box and watch" },
+        { id: "near-too", label: "Also crash the near post so we double it" },
+        { id: "retreat", label: "Drop to midfield for the counter" }
+      ],
+      correctAnswer: "far",
+      hint: "Far post is the back post — arrive across the face.",
+      explanation: "The far-post runner arrives at the back post, often late across the face after near post and cutback have drawn the first line.",
+      coachingCue: "Far post — arrive across the face.",
+      animationSteps: [
+        { type: "highlight", playerIds: ["far"] },
+        { type: "move", playerId: "far", to: { x: 24, y: 5 }, duration: 650 },
+        { type: "pass", from: { x: 65, y: 8 }, to: { x: 26, y: 6 }, duration: 600 }
+      ],
+      challengeEligible: true
+    },
+    {
+      id: "support-04",
+      module: "support",
+      chapter: "supporting-runs",
+      title: "Cutback to the Spot",
+      difficulty: 2,
+      phase: "supporting-runs",
+      concept: "supporting-runs",
+      prompt: "The wide player is driving the goal line. Posts are covered. Where must someone be for the cutback?",
+      seeIt: "7 is on the goal line with the ball. Near and far runners are heading to the posts. The pull-back lane to the penalty spot is empty unless someone fills it.",
+      interactionType: "multiple-choice",
+      showTeachingZones: true,
+      pitchView: { x: 0, y: 0, w: 68, h: 48 },
+      players: [
+        { id: "crosser", team: "ours", number: "X", role: "Wide delivery", x: 58, y: 4, label: "Goal line" },
+        { id: "near", team: "ours", number: "N", role: "Near-post run", x: 44, y: 8, label: "Near" },
+        { id: "far", team: "ours", number: "F", role: "Far-post run", x: 24, y: 8, label: "Far" },
+        { id: "cut", team: "ours", number: "K", role: "Cutback run", x: 40, y: 26, label: "Cutback" }
+      ],
+      opponents: [
+        { id: "opp-1", team: "opp", number: 1, role: "Goalkeeper", x: 34, y: 3 },
+        { id: "opp-4", team: "opp", number: 4, role: "Right center back", x: 28, y: 10 },
+        { id: "opp-5", team: "opp", number: 5, role: "Left center back", x: 42, y: 10 },
+        { id: "opp-3", team: "opp", number: 3, role: "Left back", x: 54, y: 8 }
+      ],
+      ball: { x: 58, y: 3 },
+      zones: [
+        { id: "spot-z", label: "Penalty spot / cutback", x: 30, y: 9, w: 8, h: 6 }
+      ],
+      options: [
+        { id: "spot", label: "On or around the penalty spot — ready for the ball pulled back" },
+        { id: "corner", label: "Standing in the corner flag" },
+        { id: "halfway", label: "On the halfway line" },
+        { id: "both-posts", label: "A third body also on the near post" }
+      ],
+      correctAnswer: "spot",
+      hint: "Goal-line drive → cutback runner on the penalty spot.",
+      explanation: "When the wide player drives the goal line, someone must be on or around the penalty spot for the cutback — not everyone only crashing the posts.",
+      coachingCue: "Goal-line drive → someone on the spot.",
+      animationSteps: [
+        { type: "highlight", playerIds: ["cut", "crosser"] },
+        { type: "move", playerId: "cut", to: { x: 34, y: 12 }, duration: 550 },
+        { type: "pass", from: { x: 58, y: 3 }, to: { x: 34, y: 12 }, duration: 500 }
+      ],
+      challengeEligible: true
+    },
+    {
+      id: "support-05",
+      module: "support",
+      chapter: "supporting-runs",
+      title: "Same Pattern, Every Context",
+      difficulty: 1,
+      phase: "supporting-runs",
+      concept: "supporting-runs",
+      prompt: "When do near / far / cutback supporting runs apply?",
+      seeIt: "Three situations: a wide-attack cross, a corner serve, and a breakaway pull-back along the goal line.",
+      interactionType: "multiple-choice",
+      players: [
+        { id: "a", team: "ours", number: "W", role: "Wide delivery", x: 60, y: 20, label: "Wide" },
+        { id: "b", team: "ours", number: "P", role: "Primary", x: 64, y: 4, label: "Corner" },
+        { id: "c", team: "ours", number: "B", role: "Breakaway", x: 8, y: 16, label: "Break" }
+      ],
+      opponents: [
+        { id: "opp-1", team: "opp", number: 1, role: "Goalkeeper", x: 34, y: 4 }
+      ],
+      ball: { x: 60, y: 18 },
+      pitchView: { x: 0, y: 0, w: 68, h: 55 },
+      options: [
+        {
+          id: "all",
+          label: "Wide-attack crosses, set pieces, and breakaways — same three runs"
+        },
+        { id: "corners-only", label: "Only on corners" },
+        { id: "open-only", label: "Only in open play — never on set pieces" },
+        { id: "never", label: "Only if the coach yells the runners’ names" }
+      ],
+      correctAnswer: "all",
+      hint: "If a cross (or serve / pull-back) is coming, the three jobs are the same.",
+      explanation: "Near post, far post, and cutback to the spot — whether the delivery is from wide attack, a set piece, or a breakaway. Build the habit so it is automatic.",
+      coachingCue: "Same three runs — every cross.",
+      animationSteps: [
+        { type: "highlight", playerIds: ["a", "b", "c"] }
       ],
       challengeEligible: true
     },
@@ -2075,170 +2509,54 @@
       phase: "defending-established",
       concept: "defense",
       prompt: "Assign key responsibilities against a 4-3-3. Pair each of our players with the opponent she should primarily account for.",
-      seeIt: "Opponent in a 4-3-3. Pair: our 2→opp 11, our 3→opp 7, our 10→opp 6, our 6→opp 10.",
+      seeIt: "Full 11v11. Fullbacks→wingers, wingers→their fullbacks, 10→their 6, 6→their 10, 8→their 8. Either CB (4 or 5) can take their 9 — that is plus-one.",
       interactionType: "match-responsibilities",
       players: [
-        {
-          id: "our-2",
-          team: "ours",
-          number: 2,
-          role: "Right fullback",
-          x: 56,
-          y: 60
-        },
-        {
-          id: "our-3",
-          team: "ours",
-          number: 3,
-          role: "Left fullback",
-          x: 12,
-          y: 60
-        },
-        {
-          id: "our-6",
-          team: "ours",
-          number: 6,
-          role: "Defensive midfielder",
-          x: 34,
-          y: 55
-        },
-        {
-          id: "our-10",
-          team: "ours",
-          number: 10,
-          role: "Attacking midfielder",
-          x: 34,
-          y: 40
-        },
-        {
-          id: "our-4",
-          team: "ours",
-          number: 4,
-          role: "Center back",
-          x: 28,
-          y: 72
-        },
-        {
-          id: "our-5",
-          team: "ours",
-          number: 5,
-          role: "Center back",
-          x: 42,
-          y: 72
-        },
-        {
-          id: "our-8",
-          team: "ours",
-          number: 8,
-          role: "Central midfielder",
-          x: 44,
-          y: 48
-        },
-        {
-          id: "our-7",
-          team: "ours",
-          number: 7,
-          role: "Right winger",
-          x: 58,
-          y: 42
-        },
-        {
-          id: "our-11",
-          team: "ours",
-          number: 11,
-          role: "Left winger",
-          x: 10,
-          y: 42
-        },
-        {
-          id: "our-9",
-          team: "ours",
-          number: 9,
-          role: "Center forward",
-          x: 34,
-          y: 28
-        }
+        { id: "our-1", team: "ours", number: 1, role: "Goalkeeper", x: 34, y: 96 },
+        { id: "our-4", team: "ours", number: 4, role: "Right center back", x: 28, y: 74 },
+        { id: "our-5", team: "ours", number: 5, role: "Left center back", x: 42, y: 74 },
+        { id: "our-2", team: "ours", number: 2, role: "Right back", x: 56, y: 64 },
+        { id: "our-3", team: "ours", number: 3, role: "Left back", x: 12, y: 64 },
+        { id: "our-6", team: "ours", number: 6, role: "Defensive midfielder", x: 34, y: 56 },
+        { id: "our-8", team: "ours", number: 8, role: "Central midfielder", x: 44, y: 48 },
+        { id: "our-10", team: "ours", number: 10, role: "Attacking midfielder", x: 34, y: 40 },
+        { id: "our-7", team: "ours", number: 7, role: "Right winger", x: 58, y: 36 },
+        { id: "our-11", team: "ours", number: 11, role: "Left winger", x: 10, y: 36 },
+        { id: "our-9", team: "ours", number: 9, role: "Center forward", x: 34, y: 24 }
       ],
       opponents: [
-        {
-          id: "opp-11",
-          team: "opp",
-          number: 11,
-          role: "Left winger",
-          x: 54,
-          y: 48
-        },
-        {
-          id: "opp-7",
-          team: "opp",
-          number: 7,
-          role: "Right winger",
-          x: 14,
-          y: 48
-        },
-        {
-          id: "opp-6",
-          team: "opp",
-          number: 6,
-          role: "Defensive midfielder",
-          x: 34,
-          y: 32
-        },
-        {
-          id: "opp-10",
-          team: "opp",
-          number: 10,
-          role: "Attacking midfielder",
-          x: 34,
-          y: 44
-        },
-        {
-          id: "opp-9",
-          team: "opp",
-          number: 9,
-          role: "Center forward",
-          x: 34,
-          y: 62
-        },
-        {
-          id: "opp-8",
-          team: "opp",
-          number: 8,
-          role: "Central midfielder",
-          x: 44,
-          y: 38
-        }
+        { id: "opp-1", team: "opp", number: 1, role: "Goalkeeper", x: 34, y: 6 },
+        { id: "opp-4", team: "opp", number: 4, role: "Right center back", x: 28, y: 16 },
+        { id: "opp-5", team: "opp", number: 5, role: "Left center back", x: 40, y: 16 },
+        { id: "opp-2", team: "opp", number: 2, role: "Right back", x: 56, y: 22 },
+        { id: "opp-3", team: "opp", number: 3, role: "Left back", x: 12, y: 22 },
+        { id: "opp-6", team: "opp", number: 6, role: "Defensive midfielder", x: 34, y: 30 },
+        { id: "opp-8", team: "opp", number: 8, role: "Central midfielder", x: 44, y: 38 },
+        { id: "opp-10", team: "opp", number: 10, role: "Attacking midfielder", x: 34, y: 44 },
+        { id: "opp-7", team: "opp", number: 7, role: "Right winger", x: 14, y: 48 },
+        { id: "opp-11", team: "opp", number: 11, role: "Left winger", x: 54, y: 48 },
+        { id: "opp-9", team: "opp", number: 9, role: "Center forward", x: 34, y: 62 }
       ],
-      ball: {
-        x: 34,
-        y: 32
-      },
+      ball: { x: 34, y: 30 },
       matchPairs: [
-        {
-          defenderId: "our-2",
-          attackerId: "opp-11"
-        },
-        {
-          defenderId: "our-3",
-          attackerId: "opp-7"
-        },
-        {
-          defenderId: "our-10",
-          attackerId: "opp-6"
-        },
-        {
-          defenderId: "our-6",
-          attackerId: "opp-10"
-        }
+        { defenderId: "our-2", attackerId: "opp-11" },
+        { defenderId: "our-3", attackerId: "opp-7" },
+        { defenderId: "our-7", attackerId: "opp-3" },
+        { defenderId: "our-11", attackerId: "opp-2" },
+        { defenderId: "our-10", attackerId: "opp-6" },
+        { defenderId: "our-6", attackerId: "opp-10" },
+        { defenderId: "our-8", attackerId: "opp-8" },
+        // Plus-one on the 9: either CB is correct
+        { defenderIds: ["our-4", "our-5"], attackerId: "opp-9" }
       ],
       correctAnswer: "match-433",
-      hint: "Fullbacks take wingers. The 10 accounts for their deepest midfielder. The 6 takes the highest central midfield threat.",
-      explanation: "Vs 4-3-3: fullbacks on wingers, 10 on their 6, 6 on their advanced midfielder, CBs plus-one on the 9.",
+      hint: "Fullbacks on wingers; wingers on their fullbacks; 10 on their 6; 6 on their 10; 8 on their 8. Either 4 or 5 can take their 9.",
+      explanation: "Vs 4-3-3: fullbacks↔wingers, wingers↔fullbacks, 10 on their 6, 6 on their advanced midfielder, 8 on the second central midfielder, and CBs keep plus-one on the 9 (4 or 5).",
       coachingCue: "Know your player; protect the shape.",
       animationSteps: [
         {
           type: "highlight",
-          playerIds: ["our-2", "our-3", "our-10", "our-6"]
+          playerIds: ["our-2", "our-3", "our-7", "our-11", "our-10", "our-6", "our-8", "our-4", "our-5", "opp-9"]
         }
       ],
       challengeEligible: true,
@@ -2302,7 +2620,7 @@
           id: "opp-4",
           team: "opp",
           number: 4,
-          role: "Center back",
+          role: "Right center back",
           x: 28,
           y: 22
         },
@@ -2310,7 +2628,7 @@
           id: "opp-5",
           team: "opp",
           number: 5,
-          role: "Center back",
+          role: "Left center back",
           x: 42,
           y: 22
         },
@@ -2397,7 +2715,7 @@
           id: "our-4",
           team: "ours",
           number: 4,
-          role: "Center back",
+          role: "Right center back",
           x: 28,
           y: 70
         },
@@ -2405,7 +2723,7 @@
           id: "our-5",
           team: "ours",
           number: 5,
-          role: "Center back",
+          role: "Left center back",
           x: 42,
           y: 70
         }
@@ -2491,7 +2809,7 @@
           id: "our-4",
           team: "ours",
           number: 4,
-          role: "Center back",
+          role: "Right center back",
           x: 30,
           y: 68
         },
@@ -2499,7 +2817,7 @@
           id: "our-5",
           team: "ours",
           number: 5,
-          role: "Center back",
+          role: "Left center back",
           x: 38,
           y: 66
         },
@@ -2515,7 +2833,7 @@
           id: "our-2",
           team: "ours",
           number: 2,
-          role: "Right fullback",
+          role: "Right back",
           x: 56,
           y: 62
         },
@@ -2523,7 +2841,7 @@
           id: "our-3",
           team: "ours",
           number: 3,
-          role: "Left fullback",
+          role: "Left back",
           x: 12,
           y: 62
         }
@@ -2610,7 +2928,7 @@
           id: "our-4",
           team: "ours",
           number: 4,
-          role: "Center back",
+          role: "Right center back",
           x: 28,
           y: 70
         },
@@ -2618,7 +2936,7 @@
           id: "our-5",
           team: "ours",
           number: 5,
-          role: "Center back",
+          role: "Left center back",
           x: 42,
           y: 70
         },
@@ -2626,7 +2944,7 @@
           id: "our-2",
           team: "ours",
           number: 2,
-          role: "Right fullback",
+          role: "Right back",
           x: 54,
           y: 58
         },
@@ -2713,14 +3031,14 @@
       players: [
         { id: "our-7", team: "ours", number: 7, role: "Right winger", x: 62, y: 36, label: "RW" },
         { id: "our-11", team: "ours", number: 11, role: "Left winger", x: 6, y: 36, label: "LW" },
-        { id: "our-2", team: "ours", number: 2, role: "Right fullback", x: 50, y: 56, label: "RFB" },
-        { id: "our-3", team: "ours", number: 3, role: "Left fullback", x: 18, y: 56, label: "LFB" },
+        { id: "our-2", team: "ours", number: 2, role: "Right back", x: 50, y: 56 },
+        { id: "our-3", team: "ours", number: 3, role: "Left back", x: 18, y: 56 },
         { id: "our-9", team: "ours", number: 9, role: "Center forward", x: 34, y: 26 },
         { id: "our-6", team: "ours", number: 6, role: "Defensive midfielder", x: 34, y: 48 }
       ],
       opponents: [
         { id: "opp-cb-l", team: "opp", number: 5, role: "Left center back", x: 22, y: 16, label: "CB" },
-        { id: "opp-cb-c", team: "opp", number: 4, role: "Center back", x: 34, y: 14, label: "CB" },
+        { id: "opp-cb-c", team: "opp", number: 4, role: "Right center back", x: 34, y: 14, label: "CB" },
         { id: "opp-cb-r", team: "opp", number: 6, role: "Right center back", x: 46, y: 16, label: "CB" },
         { id: "opp-wb-r", team: "opp", number: 2, role: "Right wingback", x: 64, y: 30, label: "RWB" },
         { id: "opp-wb-l", team: "opp", number: 3, role: "Left wingback", x: 4, y: 30, label: "LWB" },
@@ -2809,7 +3127,7 @@
           id: "our-3",
           team: "ours",
           number: 3,
-          role: "Left fullback",
+          role: "Left back",
           x: 14,
           y: 64
         },
@@ -2827,7 +3145,7 @@
           id: "opp-2",
           team: "opp",
           number: 2,
-          role: "Right fullback",
+          role: "Right back",
           x: 58,
           y: 36
         },
@@ -2835,7 +3153,7 @@
           id: "opp-3",
           team: "opp",
           number: 3,
-          role: "Left fullback",
+          role: "Left back",
           x: 10,
           y: 40
         },
@@ -2955,7 +3273,7 @@
           id: "our-2",
           team: "ours",
           number: 2,
-          role: "Right fullback",
+          role: "Right back",
           x: 52,
           y: 58
         },
@@ -2971,7 +3289,7 @@
           id: "our-4",
           team: "ours",
           number: 4,
-          role: "Center back",
+          role: "Right center back",
           x: 28,
           y: 70
         },
@@ -2979,7 +3297,7 @@
           id: "our-5",
           team: "ours",
           number: 5,
-          role: "Center back",
+          role: "Left center back",
           x: 42,
           y: 70
         }
@@ -3112,7 +3430,7 @@
           id: "our-4",
           team: "ours",
           number: 4,
-          role: "Center back",
+          role: "Right center back",
           x: 28,
           y: 60
         },
@@ -3120,7 +3438,7 @@
           id: "our-5",
           team: "ours",
           number: 5,
-          role: "Center back",
+          role: "Left center back",
           x: 42,
           y: 60
         }
@@ -3138,7 +3456,7 @@
           id: "opp-4",
           team: "opp",
           number: 4,
-          role: "Center back",
+          role: "Right center back",
           x: 30,
           y: 20
         }
@@ -3258,7 +3576,7 @@
           id: "opp-5",
           team: "opp",
           number: 5,
-          role: "Center back",
+          role: "Left center back",
           x: 42,
           y: 18
         },
@@ -3266,7 +3584,7 @@
           id: "opp-4",
           team: "opp",
           number: 4,
-          role: "Center back",
+          role: "Right center back",
           x: 28,
           y: 20
         },
@@ -3340,10 +3658,10 @@
       seeIt: "We are organized: back four, a flat midfield four across the pitch, and two higher (9 and 10). Midfield reads 7–8–6–11.",
       interactionType: "multiple-choice",
       players: [
-        { id: "our-2", team: "ours", number: 2, role: "Right fullback", x: 56, y: 72 },
-        { id: "our-4", team: "ours", number: 4, role: "Center back", x: 28, y: 74 },
-        { id: "our-5", team: "ours", number: 5, role: "Center back", x: 42, y: 74 },
-        { id: "our-3", team: "ours", number: 3, role: "Left fullback", x: 12, y: 72 },
+        { id: "our-2", team: "ours", number: 2, role: "Right back", x: 56, y: 72 },
+        { id: "our-4", team: "ours", number: 4, role: "Right center back", x: 28, y: 74 },
+        { id: "our-5", team: "ours", number: 5, role: "Left center back", x: 42, y: 74 },
+        { id: "our-3", team: "ours", number: 3, role: "Left back", x: 12, y: 72 },
         { id: "our-7", team: "ours", number: 7, role: "Right winger", x: 58, y: 52 },
         { id: "our-8", team: "ours", number: 8, role: "Central midfielder", x: 42, y: 54 },
         { id: "our-6", team: "ours", number: 6, role: "Defensive midfielder", x: 28, y: 54 },
@@ -3398,10 +3716,10 @@
       dragPlayerId: "our-8",
       dragTarget: { x: 44, y: 54, r: 9 },
       players: [
-        { id: "our-2", team: "ours", number: 2, role: "Right fullback", x: 56, y: 72 },
-        { id: "our-4", team: "ours", number: 4, role: "Center back", x: 28, y: 74 },
-        { id: "our-5", team: "ours", number: 5, role: "Center back", x: 42, y: 74 },
-        { id: "our-3", team: "ours", number: 3, role: "Left fullback", x: 12, y: 72 },
+        { id: "our-2", team: "ours", number: 2, role: "Right back", x: 56, y: 72 },
+        { id: "our-4", team: "ours", number: 4, role: "Right center back", x: 28, y: 74 },
+        { id: "our-5", team: "ours", number: 5, role: "Left center back", x: 42, y: 74 },
+        { id: "our-3", team: "ours", number: 3, role: "Left back", x: 12, y: 72 },
         { id: "our-6", team: "ours", number: 6, role: "Defensive midfielder", x: 30, y: 54 },
         { id: "our-8", team: "ours", number: 8, role: "Central midfielder", x: 40, y: 36 },
         { id: "our-10", team: "ours", number: 10, role: "Attacking midfielder", x: 28, y: 34 },
@@ -3446,10 +3764,10 @@
       seeIt: "Opp 2 and 3 are pushed high on the touchlines. Our 7 and 11 are still stuck high with the 9/10. The midfield four has holes on both flanks.",
       interactionType: "multiple-choice",
       players: [
-        { id: "our-2", team: "ours", number: 2, role: "Right fullback", x: 56, y: 74 },
-        { id: "our-4", team: "ours", number: 4, role: "Center back", x: 28, y: 76 },
-        { id: "our-5", team: "ours", number: 5, role: "Center back", x: 42, y: 76 },
-        { id: "our-3", team: "ours", number: 3, role: "Left fullback", x: 12, y: 74 },
+        { id: "our-2", team: "ours", number: 2, role: "Right back", x: 56, y: 74 },
+        { id: "our-4", team: "ours", number: 4, role: "Right center back", x: 28, y: 76 },
+        { id: "our-5", team: "ours", number: 5, role: "Left center back", x: 42, y: 76 },
+        { id: "our-3", team: "ours", number: 3, role: "Left back", x: 12, y: 74 },
         { id: "our-6", team: "ours", number: 6, role: "Defensive midfielder", x: 30, y: 56 },
         { id: "our-8", team: "ours", number: 8, role: "Central midfielder", x: 42, y: 56 },
         { id: "our-7", team: "ours", number: 7, role: "Right winger", x: 58, y: 28 },
@@ -3458,8 +3776,8 @@
         { id: "our-9", team: "ours", number: 9, role: "Center forward", x: 28, y: 30 }
       ],
       opponents: [
-        { id: "opp-2", team: "opp", number: 2, role: "Right fullback", x: 12, y: 48 },
-        { id: "opp-3", team: "opp", number: 3, role: "Left fullback", x: 56, y: 48 },
+        { id: "opp-2", team: "opp", number: 2, role: "Right back", x: 12, y: 48 },
+        { id: "opp-3", team: "opp", number: 3, role: "Left back", x: 56, y: 48 },
         { id: "opp-6", team: "opp", number: 6, role: "Defensive midfielder", x: 34, y: 26 },
         { id: "opp-8", team: "opp", number: 8, role: "Central midfielder", x: 40, y: 40 }
       ],
@@ -3504,10 +3822,10 @@
       seeIt: "The 6 is isolated. The 8 stayed high with the 10. The 7 dropped, but the 11 is still high — left flank open for their fullback.",
       interactionType: "formation-diagnosis",
       players: [
-        { id: "our-2", team: "ours", number: 2, role: "Right fullback", x: 56, y: 74 },
-        { id: "our-4", team: "ours", number: 4, role: "Center back", x: 28, y: 76 },
-        { id: "our-5", team: "ours", number: 5, role: "Center back", x: 42, y: 76 },
-        { id: "our-3", team: "ours", number: 3, role: "Left fullback", x: 12, y: 74 },
+        { id: "our-2", team: "ours", number: 2, role: "Right back", x: 56, y: 74 },
+        { id: "our-4", team: "ours", number: 4, role: "Right center back", x: 28, y: 76 },
+        { id: "our-5", team: "ours", number: 5, role: "Left center back", x: 42, y: 76 },
+        { id: "our-3", team: "ours", number: 3, role: "Left back", x: 12, y: 74 },
         { id: "our-6", team: "ours", number: 6, role: "Defensive midfielder", x: 34, y: 56 },
         { id: "our-8", team: "ours", number: 8, role: "Central midfielder", x: 44, y: 34 },
         { id: "our-7", team: "ours", number: 7, role: "Right winger", x: 58, y: 52 },
@@ -3516,7 +3834,7 @@
         { id: "our-9", team: "ours", number: 9, role: "Center forward", x: 36, y: 28 }
       ],
       opponents: [
-        { id: "opp-2", team: "opp", number: 2, role: "Right fullback", x: 12, y: 46 },
+        { id: "opp-2", team: "opp", number: 2, role: "Right back", x: 12, y: 46 },
         { id: "opp-8", team: "opp", number: 8, role: "Central midfielder", x: 46, y: 44 },
         { id: "opp-6", team: "opp", number: 6, role: "Defensive midfielder", x: 34, y: 24 }
       ],
@@ -3565,8 +3883,8 @@
         { id: "our-8", team: "ours", number: 8, role: "Central midfielder", x: 42, y: 54 },
         { id: "our-6", team: "ours", number: 6, role: "Defensive midfielder", x: 28, y: 54 },
         { id: "our-11", team: "ours", number: 11, role: "Left winger", x: 10, y: 52 },
-        { id: "our-4", team: "ours", number: 4, role: "Center back", x: 28, y: 74 },
-        { id: "our-5", team: "ours", number: 5, role: "Center back", x: 42, y: 74 },
+        { id: "our-4", team: "ours", number: 4, role: "Right center back", x: 28, y: 74 },
+        { id: "our-5", team: "ours", number: 5, role: "Left center back", x: 42, y: 74 },
         { id: "our-10", team: "ours", number: 10, role: "Attacking midfielder", x: 40, y: 36 },
         { id: "our-9", team: "ours", number: 9, role: "Center forward", x: 28, y: 34 }
       ],
@@ -3625,8 +3943,8 @@
         { id: "cd2", team: "ours", number: "·", role: "Corner defense", x: 40, y: 50, label: "CD" }
       ],
       opponents: [
-        { id: "opp-a", team: "opp", number: 4, role: "Center back", x: 32, y: 12 },
-        { id: "opp-b", team: "opp", number: 5, role: "Center back", x: 26, y: 14 },
+        { id: "opp-a", team: "opp", number: 4, role: "Right center back", x: 32, y: 12 },
+        { id: "opp-b", team: "opp", number: 5, role: "Left center back", x: 26, y: 14 },
         { id: "opp-c", team: "opp", number: 6, role: "Midfielder", x: 36, y: 22 }
       ],
       ball: { x: 66, y: 1.3 },
@@ -3667,8 +3985,8 @@
       ],
       opponents: [
         { id: "opp-short", team: "opp", number: 3, role: "Corner defender", x: 58, y: 3 },
-        { id: "opp-a", team: "opp", number: 4, role: "Center back", x: 30, y: 12 },
-        { id: "opp-b", team: "opp", number: 5, role: "Center back", x: 24, y: 14 }
+        { id: "opp-a", team: "opp", number: 4, role: "Right center back", x: 30, y: 12 },
+        { id: "opp-b", team: "opp", number: 5, role: "Left center back", x: 24, y: 14 }
       ],
       ball: { x: 66, y: 1.3 },
       options: [
@@ -3797,8 +4115,8 @@
         { id: "bp2", team: "ours", number: "·", role: "Back-post group", x: 28, y: 12, label: "BP" }
       ],
       opponents: [
-        { id: "opp-a", team: "opp", number: 4, role: "Center back", x: 30, y: 16 },
-        { id: "opp-b", team: "opp", number: 5, role: "Center back", x: 36, y: 18 }
+        { id: "opp-a", team: "opp", number: 4, role: "Right center back", x: 30, y: 16 },
+        { id: "opp-b", team: "opp", number: 5, role: "Left center back", x: 36, y: 18 }
       ],
       ball: { x: 65, y: 1.3 },
       options: [
@@ -3884,8 +4202,8 @@
       opponents: [
         { id: "opp-1", team: "opp", number: 2, role: "Corner defender", x: 62, y: 3 },
         { id: "opp-2", team: "opp", number: 3, role: "Corner defender", x: 61, y: 5.5 },
-        { id: "opp-a", team: "opp", number: 4, role: "Center back", x: 36, y: 12 },
-        { id: "opp-b", team: "opp", number: 5, role: "Center back", x: 28, y: 11 }
+        { id: "opp-a", team: "opp", number: 4, role: "Right center back", x: 36, y: 12 },
+        { id: "opp-b", team: "opp", number: 5, role: "Left center back", x: 28, y: 11 }
       ],
       ball: { x: 66, y: 1.5 },
       options: [
@@ -4098,6 +4416,7 @@
     CONFIG,
     GLOSSARY,
     CORNER_ROLES,
+    NAV_GROUPS,
     MODULES,
     SCENARIOS
   });
