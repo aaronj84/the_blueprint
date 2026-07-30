@@ -191,6 +191,41 @@
 
   const MODULES = [
     {
+      id: "demo",
+      title: "Demo",
+      subtitle: "How The Blueprint works",
+      purpose: "A quick walkthrough for the team — see the pitch, pick an answer, get the cue.",
+      chapters: ["demo-walkthrough"],
+      hash: "demo",
+      overview: {
+        headline: "See it → Choose it → Remember the cue",
+        intro: "Use this module to learn how the site works before diving into real tactics. Two silly stages — same interactions you'll use everywhere else.",
+        principles: [
+          {
+            title: "Open a module",
+            body: "Each module starts with an overview of principles and coaching cues. Read it, then jump into scenarios — or skip and come back later."
+          },
+          {
+            title: "Work a scenario",
+            body: "Pitch on one side, question on the other. Look at the picture (numbers + role codes under each player), pick your decision, and sometimes explain why."
+          },
+          {
+            title: "Get the cue",
+            body: "Right answers unlock a short coaching cue and a replay animation. Miss once and you'll get a hint — miss twice and the answer is revealed."
+          },
+          {
+            title: "Progress stays on this device",
+            body: "Mastery is saved in the browser on this phone/laptop. Mixed Challenge pulls unlabeled questions from the real modules. Coach mode (?coach=1) shows targets when teaching from the front."
+          }
+        ],
+        cues: [
+          "See it → Choose it → Explain it → Cue.",
+          "Numbers = shirts. Letters under triangles = job codes.",
+          "Demo first — then Attack, Defense, Set Pieces."
+        ]
+      }
+    },
+    {
       id: "attack",
       title: "Attacking Shape",
       subtitle: "Transition & 2-3-5",
@@ -403,6 +438,88 @@
   ];
 
   const SCENARIOS = [
+    {
+      id: "demo-01",
+      module: "demo",
+      chapter: "demo-walkthrough",
+      title: "A Lame Dad Joke",
+      difficulty: 1,
+      phase: "demo",
+      concept: "demo",
+      prompt: "Why was our base 4-3-3 bad at keeping secrets?",
+      seeIt: "Base 4-3-3. Shirt number inside each triangle; role code underneath (GK, RB, DM, CF…). Attack toward the top.",
+      interactionType: "multiple-choice",
+      players: [
+        { id: "our-1", team: "ours", number: 1, role: "Goalkeeper", x: 34, y: 96 },
+        { id: "our-2", team: "ours", number: 2, role: "Right back", x: 58, y: 74 },
+        { id: "our-4", team: "ours", number: 4, role: "Right center back", x: 42, y: 78 },
+        { id: "our-5", team: "ours", number: 5, role: "Left center back", x: 26, y: 78 },
+        { id: "our-3", team: "ours", number: 3, role: "Left back", x: 10, y: 74 },
+        { id: "our-6", team: "ours", number: 6, role: "Defensive midfielder", x: 34, y: 56 },
+        { id: "our-8", team: "ours", number: 8, role: "Central midfielder", x: 48, y: 48 },
+        { id: "our-10", team: "ours", number: 10, role: "Attacking midfielder", x: 20, y: 48 },
+        { id: "our-7", team: "ours", number: 7, role: "Right winger", x: 58, y: 28 },
+        { id: "our-9", team: "ours", number: 9, role: "Center forward", x: 34, y: 20 },
+        { id: "our-11", team: "ours", number: 11, role: "Left winger", x: 10, y: 28 }
+      ],
+      opponents: [],
+      ball: { x: 34, y: 42 },
+      options: [
+        { id: "too-many", label: "Too many people standing around on the grass" },
+        { id: "wings", label: "Because word travels fast down the wings" },
+        { id: "six-spills", label: "The 6 always spills" },
+        { id: "forwards", label: "Three forwards can't keep anything up front" }
+      ],
+      correctAnswer: "wings",
+      hint: "Think about who plays wide… and how gossip spreads.",
+      explanation: "Word travels fast down the wings. (Yes, that was the joke. Welcome to The Blueprint.)",
+      coachingCue: "Numbers = shirts. Letters = jobs.",
+      animationSteps: [
+        { type: "highlight", playerIds: ["our-7", "our-11"] }
+      ],
+      challengeEligible: false
+    },
+    {
+      id: "demo-02",
+      module: "demo",
+      chapter: "demo-walkthrough",
+      title: "Coach Aaron's Grandure",
+      difficulty: 1,
+      phase: "demo",
+      concept: "demo",
+      prompt: "Why is Coach Johnson the best?",
+      seeIt: "No tactics here — just tap an answer. More than one option can be right. Pick either correct one to see how feedback and cues work.",
+      interactionType: "multiple-choice",
+      players: [
+        { id: "our-9", team: "ours", number: 9, role: "Center forward", x: 34, y: 52 }
+      ],
+      opponents: [],
+      ball: { x: 34, y: 48 },
+      options: [
+        { id: "not", label: "He's clearly not" },
+        {
+          id: "guitar",
+          label: "His mastery of the rhythm guitar parts from Under the Table and Dreaming by Dave Matthews Band"
+        },
+        {
+          id: "puns",
+          label: "His disarming combination of terrible puns and large-group social interaction ineptitude"
+        },
+        {
+          id: "snapchat",
+          label: "He thinks Snapchat is where you talk with your friends while fight-dance snapping like in West Side Story"
+        }
+      ],
+      correctAnswers: ["guitar", "puns"],
+      correctAnswer: "guitar",
+      hint: "Two answers work. Think music… or terrible puns.",
+      explanation: "Correct — Dave Matthews mastery and/or the puns-plus-social-ineptitude combo. (Snapchat choreography is still wrong. So is \"he's clearly not.\" Probably.)",
+      coachingCue: "More than one answer can be right — tap either and keep rolling.",
+      animationSteps: [
+        { type: "highlight", playerIds: ["our-9"] }
+      ],
+      challengeEligible: false
+    },
     {
       id: "attack-01",
       module: "attack",

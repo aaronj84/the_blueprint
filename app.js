@@ -599,6 +599,7 @@
           status = "In progress";
         }
         const chapterLabel = ({
+          "demo-walkthrough": "Demo walkthrough",
           "attack-the-moment": "Attack the moment",
           "create-2-3-5": "Create the 2-3-5",
           "wide-attack": "Wide attack patterns",
@@ -773,7 +774,11 @@
         </div>
         <div class="coach-banner">Coach mode — answers and targets visible. Scenario ID: <code>${escapeHtml(s.id)}</code></div>
         <div class="coach-controls">
-          <div class="coach-meta">correct: ${escapeHtml(String(s.correctAnswer))} | cue: ${escapeHtml(s.coachingCue || "")}</div>
+          <div class="coach-meta">correct: ${escapeHtml(
+            Array.isArray(s.correctAnswers) && s.correctAnswers.length
+              ? s.correctAnswers.join(" | ")
+              : String(s.correctAnswer)
+          )} | cue: ${escapeHtml(s.coachingCue || "")}</div>
           <label class="muted">Module filter
             <select id="coach-module-filter">
               <option value="">All</option>
@@ -1306,10 +1311,17 @@
     commitDecision(JSON.stringify(got), ok);
   }
 
+  function isCorrectDecision(scenario, answerId) {
+    if (Array.isArray(scenario.correctAnswers) && scenario.correctAnswers.length) {
+      return scenario.correctAnswers.includes(answerId);
+    }
+    return answerId === scenario.correctAnswer;
+  }
+
   function selectDecision(answerId) {
     if (state.session.locked || state.session.stage !== "decision") return;
     const s = state.session.scenario;
-    const ok = answerId === s.correctAnswer;
+    const ok = isCorrectDecision(s, answerId);
     commitDecision(answerId, ok);
   }
 
@@ -1415,7 +1427,7 @@
       $$(".option-btn").forEach((btn) => {
         const id = btn.getAttribute("data-option") || btn.getAttribute("data-rationale");
         if (!id) return;
-        if (id === s.correctAnswer || id === s.correctRationale) btn.classList.add("is-correct");
+        if (isCorrectDecision(s, id) || id === s.correctRationale) btn.classList.add("is-correct");
         if (
           (btn.getAttribute("data-option") === session.selected && !decisionOk) ||
           (btn.getAttribute("data-rationale") === session.selectedRationale && rationaleOk === false)
