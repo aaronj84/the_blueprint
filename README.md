@@ -4,6 +4,18 @@ Interactive 4-3-3 tactical learning site for Brighton’s Fresh/Soph Blue team (
 
 Vanilla HTML, CSS, and JavaScript. No build step. Opens from `index.html` and deploys to GitHub Pages.
 
+## Use the site (public)
+
+**Open the interactive app here:**
+
+**[https://aaronj84.github.io/the_blueprint/](https://aaronj84.github.io/the_blueprint/)**
+
+Works in any modern browser on phone or laptop. Progress is saved on that device only (no login).
+
+- Start with **Demo** in the top nav for a quick walkthrough.
+- Coach teaching from the front: add `?coach=1` —  
+  [https://aaronj84.github.io/the_blueprint/?coach=1](https://aaronj84.github.io/the_blueprint/?coach=1)
+
 ## Run locally
 
 1. Clone the repo.
@@ -33,7 +45,7 @@ A `.nojekyll` file is included so GitHub Pages serves files as-is.
 
 Add `?coach=1` to the URL:
 
-`https://example.github.io/the_blueprint/?coach=1#attack-01`
+`https://aaronj84.github.io/the_blueprint/?coach=1#attack-01`
 
 Coach mode shows scenario IDs, correct answers, target areas, cues, prev/next controls, animation replay, and a module filter.
 
