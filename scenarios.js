@@ -222,7 +222,7 @@
           },
           {
             title: "2-3-5 is how we occupy when we attack",
-            body: "Not a second formation. High up the field we fill two deepest, three central support/rest defense, and five attacking lanes. Different players can fill those lanes — wingers inside with fullbacks wide, or wingers wide with fullbacks underneath."
+            body: "Not a second formation. High up the field we fill two deepest, three central support/rest defense, and five attacking lanes. Different players can fill those lanes — wingers inside with fullbacks wide, or wingers wide with 8/10 in the half-spaces and fullbacks beside the 6."
           },
           {
             title: "4-4-2 is how we occupy when we defend",
@@ -627,8 +627,8 @@
       difficulty: 1,
       phase: "basics",
       concept: "attacking-shape",
-      prompt: "Another way into the same 2-3-5 occupation: wingers hold the wide lanes. What do the fullbacks do?",
-      seeIt: "No opponents. 7 and 11 stay wide. Replay shows 2 and 3 tucking underneath / into half-spaces so we still fill five lanes.",
+      prompt: "Another way into the same 2-3-5 occupation: wingers hold the wide lanes. Who steps where?",
+      seeIt: "No opponents. 7 and 11 stay wide. Replay: 8 and 10 step into the front half-spaces; 2 and 3 step up beside the 6 to make the middle three.",
       interactionType: "multiple-choice",
       players: [
         { id: "our-1", team: "ours", number: 1, role: "Goalkeeper", x: 34, y: 96 },
@@ -647,12 +647,12 @@
       ball: { x: 34, y: 50 },
       options: [
         {
-          id: "fb-under",
-          label: "2 and 3 tuck underneath / into half-spaces; 7 and 11 keep the width"
+          id: "mids-up-fb-six",
+          label: "8 and 10 step into the front half-spaces; 2 and 3 step up beside the 6 (middle three)"
         },
         {
-          id: "fb-stay",
-          label: "2 and 3 stay glued to the touchline behind the wingers"
+          id: "fb-under",
+          label: "2 and 3 tuck underneath the wingers into the half-spaces"
         },
         {
           id: "fb-gk",
@@ -663,20 +663,24 @@
           label: "Fullbacks both crash the 9’s shoulder"
         }
       ],
-      correctAnswer: "fb-under",
-      hint: "If the winger is already wide, the fullback should not stack the same lane.",
-      explanation: "Same 2-3-5 occupation map — different cast. Wingers hold width; fullbacks fill the half-spaces underneath. Five lanes, not five statues.",
-      coachingCue: "Winger wide → fullback underneath.",
+      correctAnswer: "mids-up-fb-six",
+      hint: "Wingers already own the wide lanes — so 8/10 fill the half-spaces up front, and 2/3 join the 6.",
+      explanation: "Same 2-3-5 occupation map — different cast. Front five: 11–10–9–8–7 (wingers wide, 8 and 10 in the half-spaces). Middle three: 3–6–2. Deepest two: the center backs.",
+      coachingCue: "Wingers wide → 8/10 half-spaces; 2 and 3 beside the 6.",
       animationSteps: [
-        { type: "highlight", playerIds: ["our-2", "our-3", "our-7", "our-11"] },
+        { type: "highlight", playerIds: ["our-2", "our-3", "our-8", "our-10", "our-7", "our-11"] },
         {
           type: "parallel",
-          duration: 700,
+          duration: 900,
           steps: [
-            { type: "move", playerId: "our-2", to: { x: 48, y: 40 }, duration: 700 },
-            { type: "move", playerId: "our-3", to: { x: 20, y: 40 }, duration: 700 },
-            { type: "move", playerId: "our-7", to: { x: 62, y: 24 }, duration: 700 },
-            { type: "move", playerId: "our-11", to: { x: 6, y: 24 }, duration: 700 }
+            { type: "move", playerId: "our-7", to: { x: 62, y: 22 }, duration: 900 },
+            { type: "move", playerId: "our-11", to: { x: 6, y: 22 }, duration: 900 },
+            { type: "move", playerId: "our-8", to: { x: 46, y: 24 }, duration: 900 },
+            { type: "move", playerId: "our-10", to: { x: 22, y: 24 }, duration: 900 },
+            { type: "move", playerId: "our-2", to: { x: 46, y: 56 }, duration: 900 },
+            { type: "move", playerId: "our-3", to: { x: 22, y: 56 }, duration: 900 },
+            { type: "move", playerId: "our-6", to: { x: 34, y: 56 }, duration: 900 },
+            { type: "move", playerId: "our-9", to: { x: 34, y: 18 }, duration: 900 }
           ]
         }
       ],
@@ -4320,8 +4324,8 @@
       correctAnswer: "yes",
       hint: "This artwork stays inside the program. If you’re a Brighton player, promise yes.",
       explanation:
-        "Locked in. Sequence: (1) Malone raises her hand. (2) Everyone stares at Skittles — she runs to the near-post end-line corner of the 6. (3) Only after she arrives: Go Short or Go Long. (4) Front/Back Targets hold until the ball is in the air, then react. Replay both animations below.",
-      coachingCue: "Malone hand → Skittles to the near-post 6 → then short or long.",
+        "Locked in. You just watched Go Long. Next: tap Watch Go Short below to see the one-defender version (Malone → Stockton → cutback → finish).",
+      coachingCue: "Watch Go Long, then Watch Go Short.",
       // Primary animation: Go Long (two in the Golden Zone)
       animationSteps: [
         {

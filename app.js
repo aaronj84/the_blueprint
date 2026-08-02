@@ -1559,18 +1559,25 @@
     const bits = [];
     if (session.stage === "complete") {
       const hasAlt = !!(s.animationStepsAlt && s.animationStepsAlt.length);
-      bits.push(
-        `<button type="button" class="btn btn-ghost" id="replay-anim">${
-          hasAlt ? "Replay Go Long" : "Replay animation"
-        }</button>`
-      );
       if (hasAlt) {
         bits.push(
-          `<button type="button" class="btn btn-ghost" id="replay-anim-alt">Replay Go Short</button>`
+          `<p class="anim-next-prompt"><strong>Watch both plays:</strong> you just saw Go Long — tap <em>Watch Go Short</em> next.</p>`
         );
+        bits.push(
+          `<button type="button" class="btn btn-secondary" id="replay-anim">Watch Go Long again</button>`
+        );
+        bits.push(
+          `<button type="button" class="btn btn-primary" id="replay-anim-alt">Watch Go Short →</button>`
+        );
+        if (next) bits.push(`<a class="btn btn-secondary" href="#${escapeHtml(next.id)}">Next scenario</a>`);
+        else bits.push(`<a class="btn btn-secondary" href="#${escapeHtml(findModule(s.module).hash)}">Module complete</a>`);
+      } else {
+        bits.push(
+          `<button type="button" class="btn btn-ghost" id="replay-anim">Replay animation</button>`
+        );
+        if (next) bits.push(`<a class="btn btn-primary" href="#${escapeHtml(next.id)}">Next scenario</a>`);
+        else bits.push(`<a class="btn btn-primary" href="#${escapeHtml(findModule(s.module).hash)}">Module complete</a>`);
       }
-      if (next) bits.push(`<a class="btn btn-primary" href="#${escapeHtml(next.id)}">Next scenario</a>`);
-      else bits.push(`<a class="btn btn-primary" href="#${escapeHtml(findModule(s.module).hash)}">Module complete</a>`);
       bits.push(`<a class="btn btn-secondary" href="#${escapeHtml(findModule(s.module).hash)}">Back to module</a>`);
     } else if (session.stage === "decision" && session.attempts > 0 && !session.decisionCorrect) {
       bits.push(`<p class="muted">Try another answer.</p>`);
