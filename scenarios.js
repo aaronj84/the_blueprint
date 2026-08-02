@@ -4283,7 +4283,7 @@
       challengeEligible: false,
       textPrompt: "Type the only of our 4 pillars that doesn't start with D",
       correctText: "keppa",
-      textHint: "Four pillars. Three start with D. One doesn’t.",
+      textHint: "Four pillars. Three start with D. Which doesn’t?",
       textFail: "Not that pillar. Try again — case doesn’t matter.",
       pitchView: { x: 0, y: 0, w: 68, h: 40 },
       players: [
