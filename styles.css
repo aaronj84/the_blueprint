@@ -824,9 +824,14 @@ body.coach-mode .coach-banner {
   width: 100%;
   max-width: 520px;
   margin: 0 auto;
-  touch-action: none;
+  /* Allow vertical page scroll on phones; drag scenarios opt into none */
+  touch-action: pan-y;
   user-select: none;
   -webkit-user-select: none;
+}
+
+.pitch-wrap.is-dragging {
+  touch-action: none;
 }
 
 .pitch-svg {
@@ -845,7 +850,69 @@ body.coach-mode .coach-banner {
 
 .player-token {
   cursor: pointer;
+  touch-action: manipulation;
+}
+
+.player-token.is-draggable {
   touch-action: none;
+}
+
+.reveal-image {
+  margin: 0 0 0.75rem;
+  border-radius: var(--radius);
+  overflow: hidden;
+  border: 1px solid var(--border);
+  background: #fff;
+  box-shadow: var(--shadow);
+}
+
+.reveal-image img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.anim-caption {
+  margin: 0 0 0.65rem;
+  min-height: 1.5em;
+  font-size: 1.15rem;
+  font-weight: 750;
+  letter-spacing: -0.01em;
+  line-height: 1.35;
+  color: var(--brand);
+}
+
+.text-gate {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  margin-top: 0.35rem;
+}
+
+.text-gate-input {
+  flex: 1 1 12rem;
+  min-width: 0;
+  padding: 0.7rem 0.85rem;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  font: inherit;
+  font-size: 1rem;
+  background: var(--bg-panel);
+  color: var(--text);
+}
+
+.text-gate-input:focus {
+  outline: 2px solid var(--brand);
+  outline-offset: 1px;
+}
+
+@media (max-width: 719px) {
+  .pitch-wrap {
+    /* Leave side gutters so thumbs can scroll past the diagram */
+    width: 86%;
+    max-width: 360px;
+  }
 }
 
 .player-token .token-disk {
@@ -867,6 +934,10 @@ body.coach-mode .coach-banner {
   text-anchor: middle;
   dominant-baseline: central;
   pointer-events: none;
+}
+
+.player-token .token-num-sm {
+  font-size: 1.15px;
 }
 
 .player-token .token-role {

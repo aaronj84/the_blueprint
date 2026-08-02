@@ -47,6 +47,7 @@ Use this document as source material. Produce a short slide deck (roughly 8–12
 ### Navigation (top bar)
 
 - **Home**
+- **Basic 4-3-3**
 - **Attack** → Attacking Shape · Wide Attack Patterns · Supporting Runs
 - **Defense** → Defensive Shape
 - **Set Pieces** → Corners
@@ -67,13 +68,13 @@ Use this document as source material. Produce a short slide deck (roughly 8–12
 ### 1. Attacking Shape — *Win it → look forward → occupy five lanes*
 
 **Headline cues**
-- Forward first, not forward forced.
+- Look to go long. If it’s not on — build wide.
 - Inside winger, outside fullback.
 - Five lanes, not five statues.
 - The 6 connects the attack and protects the turnover.
 
 **Principles**
-1. **After we win it:** Scan for immediate attack (free drive, runner with advantage, disorganized back line). If not on — secure, support, then expand.
+1. **After we win it:** Look to go long (free drive, runner with advantage, disorganized back line). If it’s not on — build to wide places to create scoring opportunities.
 2. **2-3-5 is an occupation map**, not a second formation: two deepest, three central support/rest defense, five attacking lanes. Players rotate into spaces.
 3. **Fullbacks read the winger:** winger wide → FB tucks/underneath; winger inside → FB becomes width; far-side FB stays connected.
 4. **The 6** in the attacking third = deepest central connector + first central defender (often around Zone 14).
@@ -138,7 +139,7 @@ B back to the corner                  Switch to the other side
 - Pressure plus cover equals plus-one.
 
 **Principles**
-1. **Base matchups vs 4-3-3:** FBs↔wingers; CBs plus-one on 9; 6 on highest CM threat; 8 on second advancing mid; 10 on their 6; wingers on opposing FBs.
+1. **Base matchups vs 4-3-3:** FBs↔wingers; both CBs on 9 (plus-one); 6 on highest CM threat; 8 on second advancing mid; 10 on their 6; wingers on opposing FBs.
 2. **4-4-2 is defensive occupation** (mirror of attacking 2-3-5): back four, flat midfield four (`7-8-6-11` or `7-6-8-11`), two higher.
 3. **8 drops beside 6**; **7 and 11 drop** to cover deep wide attackers.
 4. **Plus-one** = pressure + cover (not two shadows glued to one player everywhere).
@@ -149,19 +150,25 @@ B back to the corner                  Switch to the other side
 
 ### 5. Corners (Set Pieces)
 
-**Read:** 0–1 defenders on the corner pair → **short**. 2 defenders → **long serve**.
+**Read (Golden Zone):** 0–1 defenders in the near-post corner of the 18 → **Go Short**. 2 defenders → **Go Long**.
 
-**Short**
-- Player 1 touches, then bends to near-post corner of the 18.
-- Player 2 keeps the ball and dribbles **parallel to the goal line** (holds onside for cutbacks).
+**Sequence before the ball**
+- Malone raises her hand.
+- Everyone stares at Skittles — she makes the run.
+- Only after Skittles arrives: Go Short or Go Long from the read.
+- Targets hold until they can react to the ball.
+
+**Go Short**
+- Malone touches, then bends to the Golden Zone.
+- Stockton keeps the ball and dribbles **parallel to the goal line** (holds onside for cutbacks).
 - Others start at back post to clear near space.
 
-**Long**
+**Go Long**
 - Skittles clears first (back post → across → D).
-- Primary serves across the face.
-- While ball is in air: Spot → penalty spot, Drop → D, Front/Back Targets attack, Block screens keeper, Corner Defense +1 behind.
+- Stockton delivers across the face.
+- While ball is in air: Spot → penalty spot, Shield → D, Front/Back Targets attack, Screen screens keeper, Corner Defense +1 behind.
 
-**Cue:** Roles are jobs, not fixed jersey numbers. Supporting-run idea (near/far/spot) still applies on serves.
+**Cue:** Roles are jobs, not fixed jersey numbers. Supporting-run idea (near/far/spot) still applies on deliveries.
 
 ---
 
@@ -171,7 +178,7 @@ B back to the corner                  Switch to the other side
 2. Why this exists — same language on the field and in the app
 3. How the app works — See / Choose / Explain / Cue (+ Challenge + Coach mode)
 4. Map of the curriculum — Attack / Defense / Set Pieces
-5. Attacking Shape — forward first + 2-3-5 occupation
+5. Attacking Shape — look to go long + 2-3-5 occupation
 6. Wide Patterns — the decision tree (biggest “aha” slide)
 7. Supporting Runs — near / far / cutback
 8. Defensive Shape — matchups + 4-4-2 occupation
@@ -183,13 +190,13 @@ B back to the corner                  Switch to the other side
 
 ## Closing cue bank (good for a final slide)
 
-- Forward first, not forward forced.
+- Look to go long. If it’s not on — build wide.
 - Five lanes, not five statues.
 - Run behind. Pass in front.
 - B runs → C follows, A underneath.
 - Near. Far. Cutback.
 - Out of possession: 4-4-2.
-- Zero or one: short. Two: serve.
+- Zero or one in the Golden Zone: Go Short. Two: Go Long.
 
 ---
 

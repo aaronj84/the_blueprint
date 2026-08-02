@@ -136,37 +136,52 @@
       definition: "Not a second formation — how we organize out of possession: back four, flat midfield four (7-8-6-11 or 7-6-8-11), and two higher (9 and 10). The 8 drops next to the 6; the 7 and 11 drop to cover deep wide attackers."
     },
     {
-      term: "Short corner",
-      definition: "Zero or one defender on the corner pair. Player 1 touches then bends to the near-post corner of the 18; Player 2 keeps the ball at the corner and dribbles parallel to the goal line — holding everyone onside for a cutback to 1 or others. Others start at the back post to clear space."
+      term: "Go Short",
+      definition: "Zero or one defender in the Golden Zone (near-post corner of the 18). Malone touches to prep the ball for Stockton, then runs to the Golden Zone; Stockton dribbles the goal line and looks for the cutback."
     },
     {
-      term: "Direct delivery",
-      definition: "Long corner serve used when two defenders are on the corner pair. Skittles clears the six first; Primary serves across the face for Front and Back Targets."
+      term: "Go Long",
+      definition: "Two defenders in the Golden Zone. After Skittles finishes her run, Stockton delivers across the face. Spot, Shield, Targets, and Screen make their moves while the ball is in the air."
+    },
+    {
+      term: "Golden Zone",
+      definition: "The area around the near-post corner of the 18 that we keep open. The read lives here: zero or one defender → Go Short; two → Go Long."
+    },
+    {
+      term: "Malone",
+      definition: "Touches the ball first to prep it for Stockton, then runs to the Golden Zone. Raises her hand to start the sequence."
+    },
+    {
+      term: "Stockton",
+      definition: "Takes the ball after Malone’s touch. On short: dribbles down the goal line. On long: delivers across the face after Skittles arrives."
     },
     {
       term: "Skittles",
-      definition: "Long-corner starter (formerly “The Run”): begins at the back post, curls across the middle of the box to drag a defender, then circles back to the D for a rebound. After the serve, Spot hits the penalty spot, Drop holds the D, and Targets come in from past the back post."
+      definition: "Visible, colorful distraction — we hope the defense fixates on her. Starts near the back post, makes her run first; only after she arrives do we Go Short or Go Long."
     },
     {
-      term: "Corner Block",
-      definition: "Stand in front of the keeper as a nuisance — screen her view — then clean up rebounds."
+      term: "Screen",
+      definition: "Screens the keeper so she can’t see the ball, then cleans up rebounds."
+    },
+    {
+      term: "Shield",
+      definition: "Drops to shield a ball coming out of the box and stop a counterattack (holds the D / recovery space)."
+    },
+    {
+      term: "Spot",
+      definition: "To the penalty spot while the ball is in the air; clean rebounds, balanced to shoot."
     },
   ];
 
   const CORNER_ROLES = {
-    // Short-corner pair (any players can fill)
-    player1: "Player 1 — touches, then bending run to near-post corner of the 18",
-    player2: "Player 2 — keeps the ball at the corner and dribbles parallel to the goal line; cutback to 1 (or others) while holding them onside",
-    // Long-corner roles (from team Long Corners sheet)
-    primary: "Primary — serves across the face of goal after Skittles clears space",
-    secondary: "Secondary — stays at the corner with Primary until the long serve; then drop for rebounds and counters",
-    skittles: "Skittles — starts at the back post; curls across the middle of the box (drag a defender), then circles back to the D for a rebound",
-    runner: "Skittles — starts at the back post; curls across the middle of the box (drag a defender), then circles back to the D for a rebound",
-    frontTarget: "Front Target — starts further past the back post (nearer the goal line than Back), then comes into the back post on the serve",
-    backTarget: "Back Target — starts further past the back post (deeper than Front), then comes into the back post on the serve",
-    block: "The Block — nuisance in front of the keeper; screen, then clean rebounds",
-    spot: "The Spot — to the penalty spot while the ball is in the air; clean rebounds, balanced to shoot",
-    drop: "The Drop — to the D (not deep) while the ball is in the air; cut counters or shoot long rebounds",
+    malone: "Malone — touches first to prep for Stockton, then runs to the Golden Zone",
+    stockton: "Stockton — on short, dribbles the goal line; on long, delivers across the face after Skittles arrives",
+    skittles: "Skittles — colorful distraction; makes her run first; we wait until she arrives before short or long",
+    frontTarget: "Front Target — holds, then reacts to the ball (long delivery or Stockton chip)",
+    backTarget: "Back Target — holds, then reacts to the ball (long delivery or Stockton chip)",
+    screen: "Screen — screens the keeper so she can’t see the ball; then cleans rebounds",
+    spot: "Spot — to the penalty spot while the ball is in the air",
+    shield: "Shield — drops to shield balls out of the box and stop counters",
     cornerDefense: "Corner Defense — delay counters, win long balls, +1 numbers in back"
   };
 
@@ -191,37 +206,34 @@
 
   const MODULES = [
     {
-      id: "demo",
-      title: "Demo",
-      subtitle: "How The Blueprint works",
-      purpose: "A quick walkthrough for the team — see the pitch, pick an answer, get the cue.",
-      chapters: ["demo-walkthrough"],
-      hash: "demo",
+      id: "basics",
+      title: "Basic 4-3-3",
+      subtitle: "Numbers · codes · shape shifts",
+      purpose: "Learn our shirt numbers and position codes, then how we shift into a 2-3-5 in attack and a 4-4-2 out of possession.",
+      chapters: ["basics-numbers", "basics-shapes"],
+      hash: "basics",
       overview: {
-        headline: "See it → Choose it → Remember the cue",
-        intro: "Use this module to learn how the site works before diving into real tactics. Two silly stages — same interactions you'll use everywhere else.",
+        headline: "Know your number → know your job → know the shifts",
+        intro: "Before the game-model modules, lock in the basics: who wears which number, what the code letters mean, and how our base 4-3-3 becomes a 2-3-5 (attack) or a 4-4-2 (defense).",
         principles: [
           {
-            title: "Open a module",
-            body: "Each module starts with an overview of principles and coaching cues. Read it, then jump into scenarios — or skip and come back later."
+            title: "Numbers and codes",
+            body: "Shirt numbers: 1 GK · 2 RB · 3 LB · 4 RCB · 5 LCB · 6 DM · 7 RW · 8 CM · 9 CF · 10 AM · 11 LW. The number is on the triangle; the code is the job."
           },
           {
-            title: "Work a scenario",
-            body: "Pitch on one side, question on the other. Look at the picture (numbers + role codes under each player), pick your decision, and sometimes explain why."
+            title: "2-3-5 is how we occupy when we attack",
+            body: "Not a second formation. High up the field we fill two deepest, three central support/rest defense, and five attacking lanes. Different players can fill those lanes — wingers inside with fullbacks wide, or wingers wide with fullbacks underneath."
           },
           {
-            title: "Get the cue",
-            body: "Right answers unlock a short coaching cue and a replay animation. Miss once and you'll get a hint — miss twice and the answer is revealed."
-          },
-          {
-            title: "Progress stays on this device",
-            body: "Mastery is saved in the browser on this phone/laptop. Mixed Challenge pulls unlabeled questions from the real modules. Coach mode (?coach=1) shows targets when teaching from the front."
+            title: "4-4-2 is how we occupy when we defend",
+            body: "Out of possession we fill a back four, a flat midfield four (7-8-6-11 or 7-6-8-11), and two higher. The 8 drops next to the 6; the 7 and 11 drop to cover deep wide attackers."
           }
         ],
         cues: [
-          "See it → Choose it → Explain it → Cue.",
-          "Numbers = shirts. Letters under triangles = job codes.",
-          "Demo first — then Attack, Defense, Set Pieces."
+          "Number = shirt. Code = job.",
+          "Attack: occupy the 2-3-5.",
+          "Defend: fill the 4-4-2.",
+          "8 next to 6. 7 and 11 cover deep wide."
         ]
       }
     },
@@ -238,8 +250,8 @@
         intro: "This module teaches our attacking game model in two connected parts: the first seconds after we win the ball, then how we occupy the field once possession is established.",
         principles: [
           {
-            title: "Forward first, not forward forced",
-            body: "After a win, scan for an immediate attack: a free drive, a runner with an advantage, or a disorganized back line. If none of those exist — ball winner isolated, first pass covered, opponent already compact — secure the ball, bring support, then expand."
+            title: "Look to go long",
+            body: "After a win, look to go long — a free drive, a runner with an advantage, or a disorganized back line. If it’s not on, build to wide places to create scoring opportunities."
           },
           {
             title: "2-3-5 is an occupation map",
@@ -255,7 +267,7 @@
           }
         ],
         cues: [
-          "Forward first, not forward forced.",
+          "Look to go long. If it’s not on — build wide.",
           "Inside winger, outside fullback.",
           "Five lanes, not five statues.",
           "The 6 connects the attack and protects the turnover."
@@ -359,7 +371,7 @@
         principles: [
           {
             title: "Base matchups (vs 4-3-3)",
-            body: "Fullbacks take wingers. Center backs keep plus-one around the 9. The 6 takes the highest central midfield threat. The 8 takes the second advancing midfielder. The 10 accounts for their deepest midfielder (their 6). Wingers account for opposing fullbacks."
+            body: "Fullbacks take wingers. Both center backs account for the 9 (plus-one = pressure + cover). The 6 takes the highest central midfield threat. The 8 takes the second advancing midfielder. The 10 accounts for their deepest midfielder (their 6). Wingers account for opposing fullbacks."
           },
           {
             title: "4-4-2 is a defensive occupation map",
@@ -393,38 +405,42 @@
     {
       id: "corner",
       title: "Corners",
-      subtitle: "Short play + long roles",
-      purpose: "Decide short vs long, run our short-corner 1–2 play, then master long-corner roles.",
-      chapters: ["short-corners", "long-corners"],
+      subtitle: "Golden Zone · Go Short · Go Long",
+      purpose: "Read the Golden Zone, unlock our corner play, then master short and long roles.",
+      chapters: ["corner-lock", "short-corners", "long-corners"],
       hash: "corner",
       group: "set-pieces-group",
       overview: {
-        headline: "Two corner tools: short play, then long serve",
-        intro: "First read how many defenders are on our corner pair. Then either run the short 1–2 play (we almost always get a shot) or serve the long corner with clear roles. Supporting Runs still apply on the serve — near, far, and spot.",
+        headline: "Read the Golden Zone → Go Short or Go Long",
+        intro: "First unlock our corner play (Brighton eyes only). Then learn the read: defenders in the Golden Zone decide short vs long. Malone and Stockton run the short; Skittles starts the long sequence.",
         principles: [
           {
-            title: "Part 1 — When to go short",
-            body: "Zero or one defender near the corner pair → short. Two defenders → long serve. On short, everyone else starts at the back post to clear space for Player 1 and Player 2."
+            title: "The Golden Zone read",
+            body: "The Golden Zone is the near-post corner of the 18 — we keep it open. Zero or one defender there → Go Short. Two defenders there → Go Long."
           },
           {
-            title: "The short play (1 and 2)",
-            body: "Player 1 touches the ball, then makes a high bending run toward the near-post corner of the 18. Player 2 must keep the ball at the corner and dribble next to — parallel to — the goal line. That run holds everyone onside so 2 can cut back to 1 or any other runner. If the defender overcommits to 2, cut back; if nobody is near (zero), 2 keeps driving the goal line until the defense overcommits, then finds 1."
+            title: "Sequence before the ball moves",
+            body: "Malone raises her hand. Everyone stares at Skittles while she makes her run. Only after Skittles arrives do we Go Short or Go Long. Targets hold until they can react to the ball."
           },
           {
-            title: "Part 2 — Long corner sequence",
-            body: "If two defenders are on Pri and Sec at the corner, do not play short. Skittles, Spot, and Drop start crowded at the back post. Skittles runs past the front post first (hoping to drag a defender). Then Primary serves. While the ball is in the air, Spot and Drop make their moves and Front/Back Targets attack the ball. Block screens the keeper. Corner Defense keeps +1 behind."
+            title: "Go Short — Malone & Stockton",
+            body: "Malone touches the ball to prep it for Stockton, then runs to the Golden Zone. Stockton dribbles parallel to the goal line (holds everyone onside) and looks for the cutback. Others start at the back post to keep the Golden Zone empty."
+          },
+          {
+            title: "Go Long — roles",
+            body: "After Skittles arrives: Stockton delivers across the face. Screen blocks the keeper’s view. Spot hits the penalty spot. Shield drops to stop counters. Front/Back Targets hold, then attack the ball. Corner Defense keeps +1 behind."
           },
           {
             title: "Roles are jobs, not fixed numbers",
-            body: "Primary, Secondary, Skittles, Front/Back Target, Block, Spot, Drop, and Corner Defense can be filled by different players each week — know the job."
+            body: "Stockton, Malone, Skittles, Screen, Spot, Shield, Targets, and Corner Defense can be filled by different players each week — know the job."
           }
         ],
         cues: [
-          "Zero or one: short. Two: serve.",
-          "1 touches and bends; 2 dribbles the goal line.",
-          "Goal-line dribble = onside cutback.",
-          "Back post clears space for the short.",
-          "Skittles first — then Primary serves."
+          "Zero or one in the Golden Zone: Go Short. Two: Go Long.",
+          "Malone raises her hand — then watch Skittles.",
+          "Skittles arrives → then short or long.",
+          "Malone touches; Stockton dribbles the goal line.",
+          "Targets hold — then react to the ball."
         ]
       }
     },
@@ -439,15 +455,15 @@
 
   const SCENARIOS = [
     {
-      id: "demo-01",
-      module: "demo",
-      chapter: "demo-walkthrough",
-      title: "A Lame Dad Joke",
+      id: "basics-01",
+      module: "basics",
+      chapter: "basics-numbers",
+      title: "Base 4-3-3 — Numbers & Codes",
       difficulty: 1,
-      phase: "demo",
-      concept: "demo",
-      prompt: "Why was our base 4-3-3 bad at keeping secrets?",
-      seeIt: "Base 4-3-3. Shirt number inside each triangle; role code underneath (GK, RB, DM, CF…). Attack toward the top.",
+      phase: "basics",
+      concept: "numbering",
+      prompt: "Look at our base 4-3-3. Which number is the defensive midfielder (DM)?",
+      seeIt: "Shirt number inside each triangle; job code underneath. Attack toward the top of the pitch.",
       interactionType: "multiple-choice",
       players: [
         { id: "our-1", team: "ours", number: 1, role: "Goalkeeper", x: 34, y: 96 },
@@ -465,61 +481,272 @@
       opponents: [],
       ball: { x: 34, y: 42 },
       options: [
-        { id: "too-many", label: "Too many people standing around on the grass" },
-        { id: "wings", label: "Because word travels fast down the wings" },
-        { id: "six-spills", label: "The 6 always spills" },
-        { id: "forwards", label: "Three forwards can't keep anything up front" }
+        { id: "n4", label: "4 — RCB" },
+        { id: "n6", label: "6 — DM" },
+        { id: "n8", label: "8 — CM" },
+        { id: "n10", label: "10 — AM" }
       ],
-      correctAnswer: "wings",
-      hint: "Think about who plays wide… and how gossip spreads.",
-      explanation: "Word travels fast down the wings. (Yes, that was the joke. Welcome to The Blueprint.)",
-      coachingCue: "Numbers = shirts. Letters = jobs.",
+      correctAnswer: "n6",
+      hint: "The deepest midfielder sits in front of the center backs — look for DM.",
+      explanation: "The 6 is our defensive midfielder (DM) — the connector in front of the back four.",
+      coachingCue: "Number = shirt. Code = job.",
       animationSteps: [
-        { type: "highlight", playerIds: ["our-7", "our-11"] }
+        { type: "highlight", playerIds: ["our-6"] }
       ],
       challengeEligible: false
     },
     {
-      id: "demo-02",
-      module: "demo",
-      chapter: "demo-walkthrough",
-      title: "Coach Aaron's Grandure",
+      id: "basics-02",
+      module: "basics",
+      chapter: "basics-numbers",
+      title: "Match Numbers to Codes",
       difficulty: 1,
-      phase: "demo",
-      concept: "demo",
-      prompt: "Why is Coach Johnson the best?",
-      seeIt: "No tactics here — just tap an answer. More than one option can be right. Pick either correct one to see how feedback and cues work.",
+      phase: "basics",
+      concept: "numbering",
+      prompt: "Pair each shirt number with its position code. Tap one of our players, then the matching code on the right.",
+      seeIt: "Blue triangles = shirt numbers (codes hidden). Red tokens on the right = job codes. Match every number to its code.",
+      interactionType: "match-responsibilities",
+      players: [
+        { id: "our-1", team: "ours", number: 1, role: "Goalkeeper", x: 28, y: 96, hideLabel: true },
+        { id: "our-2", team: "ours", number: 2, role: "Right back", x: 48, y: 74, hideLabel: true },
+        { id: "our-4", team: "ours", number: 4, role: "Right center back", x: 36, y: 78, hideLabel: true },
+        { id: "our-5", team: "ours", number: 5, role: "Left center back", x: 20, y: 78, hideLabel: true },
+        { id: "our-3", team: "ours", number: 3, role: "Left back", x: 8, y: 74, hideLabel: true },
+        { id: "our-6", team: "ours", number: 6, role: "Defensive midfielder", x: 28, y: 56, hideLabel: true },
+        { id: "our-8", team: "ours", number: 8, role: "Central midfielder", x: 40, y: 48, hideLabel: true },
+        { id: "our-10", team: "ours", number: 10, role: "Attacking midfielder", x: 16, y: 48, hideLabel: true },
+        { id: "our-7", team: "ours", number: 7, role: "Right winger", x: 48, y: 28, hideLabel: true },
+        { id: "our-9", team: "ours", number: 9, role: "Center forward", x: 28, y: 20, hideLabel: true },
+        { id: "our-11", team: "ours", number: 11, role: "Left winger", x: 8, y: 28, hideLabel: true }
+      ],
+      opponents: [
+        { id: "code-gk", team: "opp", number: "GK", role: "Goalkeeper", x: 62, y: 96, hideLabel: true },
+        { id: "code-rb", team: "opp", number: "RB", role: "Right back", x: 62, y: 86, hideLabel: true },
+        { id: "code-rcb", team: "opp", number: "RCB", role: "Right center back", x: 62, y: 77, hideLabel: true },
+        { id: "code-lcb", team: "opp", number: "LCB", role: "Left center back", x: 62, y: 68, hideLabel: true },
+        { id: "code-lb", team: "opp", number: "LB", role: "Left back", x: 62, y: 59, hideLabel: true },
+        { id: "code-dm", team: "opp", number: "DM", role: "Defensive midfielder", x: 62, y: 50, hideLabel: true },
+        { id: "code-cm", team: "opp", number: "CM", role: "Central midfielder", x: 62, y: 41, hideLabel: true },
+        { id: "code-am", team: "opp", number: "AM", role: "Attacking midfielder", x: 62, y: 32, hideLabel: true },
+        { id: "code-rw", team: "opp", number: "RW", role: "Right winger", x: 62, y: 23, hideLabel: true },
+        { id: "code-cf", team: "opp", number: "CF", role: "Center forward", x: 62, y: 14, hideLabel: true },
+        { id: "code-lw", team: "opp", number: "LW", role: "Left winger", x: 62, y: 5, hideLabel: true }
+      ],
+      ball: null,
+      matchPairs: [
+        { defenderId: "our-1", attackerId: "code-gk" },
+        { defenderId: "our-2", attackerId: "code-rb" },
+        { defenderId: "our-3", attackerId: "code-lb" },
+        { defenderId: "our-4", attackerId: "code-rcb" },
+        { defenderId: "our-5", attackerId: "code-lcb" },
+        { defenderId: "our-6", attackerId: "code-dm" },
+        { defenderId: "our-7", attackerId: "code-rw" },
+        { defenderId: "our-8", attackerId: "code-cm" },
+        { defenderId: "our-9", attackerId: "code-cf" },
+        { defenderId: "our-10", attackerId: "code-am" },
+        { defenderId: "our-11", attackerId: "code-lw" }
+      ],
+      correctAnswer: "basics-codes",
+      hint: "1=GK, 2=RB, 3=LB, 4=RCB, 5=LCB, 6=DM, 7=RW, 8=CM, 9=CF, 10=AM, 11=LW.",
+      explanation: "Every shirt maps to a job code. Lock these in — every other module uses this language.",
+      coachingCue: "Number = shirt. Code = job.",
+      animationSteps: [
+        { type: "highlight", playerIds: ["our-6", "code-dm", "our-9", "code-cf"] }
+      ],
+      challengeEligible: false,
+      options: []
+    },
+    {
+      id: "basics-03",
+      module: "basics",
+      chapter: "basics-shapes",
+      title: "Into the 2-3-5 — Outside Fullbacks",
+      difficulty: 1,
+      phase: "basics",
+      concept: "attacking-shape",
+      prompt: "From our base 4-3-3, one way into a 2-3-5 is inside wingers / outside fullbacks. What happens?",
+      seeIt: "No opponents — just our shape. Watch the replay: 7 and 11 tuck into the half-spaces; 2 and 3 become the wide players. Five attacking lanes.",
       interactionType: "multiple-choice",
       players: [
-        { id: "our-9", team: "ours", number: 9, role: "Center forward", x: 34, y: 52 }
+        { id: "our-1", team: "ours", number: 1, role: "Goalkeeper", x: 34, y: 96 },
+        { id: "our-4", team: "ours", number: 4, role: "Right center back", x: 42, y: 72 },
+        { id: "our-5", team: "ours", number: 5, role: "Left center back", x: 26, y: 72 },
+        { id: "our-6", team: "ours", number: 6, role: "Defensive midfielder", x: 34, y: 58 },
+        { id: "our-8", team: "ours", number: 8, role: "Central midfielder", x: 44, y: 48 },
+        { id: "our-10", team: "ours", number: 10, role: "Attacking midfielder", x: 24, y: 48 },
+        { id: "our-2", team: "ours", number: 2, role: "Right back", x: 58, y: 68 },
+        { id: "our-3", team: "ours", number: 3, role: "Left back", x: 10, y: 68 },
+        { id: "our-7", team: "ours", number: 7, role: "Right winger", x: 58, y: 32 },
+        { id: "our-9", team: "ours", number: 9, role: "Center forward", x: 34, y: 22 },
+        { id: "our-11", team: "ours", number: 11, role: "Left winger", x: 10, y: 32 }
       ],
       opponents: [],
-      ball: { x: 34, y: 48 },
+      ball: { x: 34, y: 50 },
       options: [
-        { id: "not", label: "He's clearly not" },
         {
-          id: "guitar",
-          label: "His mastery of the rhythm guitar parts from Under the Table and Dreaming by Dave Matthews Band"
+          id: "inside-wingers",
+          label: "7 and 11 tuck inside; 2 and 3 push high and wide — five lanes"
         },
         {
-          id: "puns",
-          label: "His disarming combination of terrible puns and large-group social interaction ineptitude"
+          id: "drop-wingers",
+          label: "7 and 11 drop next to the 6 into a midfield four"
         },
         {
-          id: "snapchat",
-          label: "He thinks Snapchat is where you talk with your friends while fight-dance snapping like in West Side Story"
+          id: "both-cb-push",
+          label: "Both center backs join the front line as extra 9s"
+        },
+        {
+          id: "keep-433",
+          label: "Nobody moves — we stay in a flat 4-3-3"
         }
       ],
-      correctAnswers: ["guitar", "puns"],
-      correctAnswer: "guitar",
-      hint: "Two answers work. Think music… or terrible puns.",
-      explanation: "Correct — Dave Matthews mastery and/or the puns-plus-social-ineptitude combo. (Snapchat choreography is still wrong. So is \"he's clearly not.\" Probably.)",
-      coachingCue: "More than one answer can be right — tap either and keep rolling.",
+      correctAnswer: "inside-wingers",
+      hint: "Inside winger, outside fullback — who provides the width?",
+      explanation: "Wingers tuck into half-spaces; fullbacks become the wide attackers. Deepest two (CBs) + three central (6/8/10) + five lanes = 2-3-5 occupation.",
+      coachingCue: "Inside winger, outside fullback.",
       animationSteps: [
-        { type: "highlight", playerIds: ["our-9"] }
+        { type: "highlight", playerIds: ["our-2", "our-3", "our-7", "our-11"] },
+        {
+          type: "parallel",
+          duration: 700,
+          steps: [
+            { type: "move", playerId: "our-2", to: { x: 62, y: 36 }, duration: 700 },
+            { type: "move", playerId: "our-3", to: { x: 6, y: 36 }, duration: 700 },
+            { type: "move", playerId: "our-7", to: { x: 46, y: 26 }, duration: 700 },
+            { type: "move", playerId: "our-11", to: { x: 22, y: 26 }, duration: 700 }
+          ]
+        }
       ],
       challengeEligible: false
     },
+    {
+      id: "basics-04",
+      module: "basics",
+      chapter: "basics-shapes",
+      title: "Into the 2-3-5 — Outside Wingers",
+      difficulty: 1,
+      phase: "basics",
+      concept: "attacking-shape",
+      prompt: "Another way into the same 2-3-5 occupation: wingers hold the wide lanes. What do the fullbacks do?",
+      seeIt: "No opponents. 7 and 11 stay wide. Replay shows 2 and 3 tucking underneath / into half-spaces so we still fill five lanes.",
+      interactionType: "multiple-choice",
+      players: [
+        { id: "our-1", team: "ours", number: 1, role: "Goalkeeper", x: 34, y: 96 },
+        { id: "our-4", team: "ours", number: 4, role: "Right center back", x: 42, y: 72 },
+        { id: "our-5", team: "ours", number: 5, role: "Left center back", x: 26, y: 72 },
+        { id: "our-6", team: "ours", number: 6, role: "Defensive midfielder", x: 34, y: 58 },
+        { id: "our-8", team: "ours", number: 8, role: "Central midfielder", x: 44, y: 46 },
+        { id: "our-10", team: "ours", number: 10, role: "Attacking midfielder", x: 24, y: 46 },
+        { id: "our-2", team: "ours", number: 2, role: "Right back", x: 58, y: 68 },
+        { id: "our-3", team: "ours", number: 3, role: "Left back", x: 10, y: 68 },
+        { id: "our-7", team: "ours", number: 7, role: "Right winger", x: 60, y: 28 },
+        { id: "our-9", team: "ours", number: 9, role: "Center forward", x: 34, y: 20 },
+        { id: "our-11", team: "ours", number: 11, role: "Left winger", x: 8, y: 28 }
+      ],
+      opponents: [],
+      ball: { x: 34, y: 50 },
+      options: [
+        {
+          id: "fb-under",
+          label: "2 and 3 tuck underneath / into half-spaces; 7 and 11 keep the width"
+        },
+        {
+          id: "fb-stay",
+          label: "2 and 3 stay glued to the touchline behind the wingers"
+        },
+        {
+          id: "fb-gk",
+          label: "Both fullbacks drop into the goal mouth"
+        },
+        {
+          id: "fb-9",
+          label: "Fullbacks both crash the 9’s shoulder"
+        }
+      ],
+      correctAnswer: "fb-under",
+      hint: "If the winger is already wide, the fullback should not stack the same lane.",
+      explanation: "Same 2-3-5 occupation map — different cast. Wingers hold width; fullbacks fill the half-spaces underneath. Five lanes, not five statues.",
+      coachingCue: "Winger wide → fullback underneath.",
+      animationSteps: [
+        { type: "highlight", playerIds: ["our-2", "our-3", "our-7", "our-11"] },
+        {
+          type: "parallel",
+          duration: 700,
+          steps: [
+            { type: "move", playerId: "our-2", to: { x: 48, y: 40 }, duration: 700 },
+            { type: "move", playerId: "our-3", to: { x: 20, y: 40 }, duration: 700 },
+            { type: "move", playerId: "our-7", to: { x: 62, y: 24 }, duration: 700 },
+            { type: "move", playerId: "our-11", to: { x: 6, y: 24 }, duration: 700 }
+          ]
+        }
+      ],
+      challengeEligible: false
+    },
+    {
+      id: "basics-05",
+      module: "basics",
+      chapter: "basics-shapes",
+      title: "Out of Possession — Into the 4-4-2",
+      difficulty: 1,
+      phase: "basics",
+      concept: "defending-shape",
+      prompt: "We lose the ball. From our 4-3-3, what shape are we trying to fill?",
+      seeIt: "No opponents. Replay: 8 drops next to the 6; 7 and 11 drop into the midfield line. Back four stays; 9 and 10 stay higher.",
+      interactionType: "multiple-choice",
+      players: [
+        { id: "our-1", team: "ours", number: 1, role: "Goalkeeper", x: 34, y: 96 },
+        { id: "our-2", team: "ours", number: 2, role: "Right back", x: 56, y: 74 },
+        { id: "our-4", team: "ours", number: 4, role: "Right center back", x: 42, y: 78 },
+        { id: "our-5", team: "ours", number: 5, role: "Left center back", x: 26, y: 78 },
+        { id: "our-3", team: "ours", number: 3, role: "Left back", x: 12, y: 74 },
+        { id: "our-6", team: "ours", number: 6, role: "Defensive midfielder", x: 30, y: 56 },
+        { id: "our-8", team: "ours", number: 8, role: "Central midfielder", x: 44, y: 40 },
+        { id: "our-10", team: "ours", number: 10, role: "Attacking midfielder", x: 34, y: 34 },
+        { id: "our-7", team: "ours", number: 7, role: "Right winger", x: 58, y: 30 },
+        { id: "our-9", team: "ours", number: 9, role: "Center forward", x: 28, y: 28 },
+        { id: "our-11", team: "ours", number: 11, role: "Left winger", x: 10, y: 30 }
+      ],
+      opponents: [],
+      ball: { x: 40, y: 44 },
+      options: [
+        {
+          id: "to-442",
+          label: "4-4-2 — 8 beside 6; 7 and 11 drop into a midfield four; 9 and 10 higher"
+        },
+        {
+          id: "stay-high",
+          label: "Stay in a high 4-3-3 and hope they don’t play through us"
+        },
+        {
+          id: "to-235",
+          label: "Push everyone into a 2-3-5 attacking shape"
+        },
+        {
+          id: "to-532",
+          label: "Drop a winger in as a third center back (5-3-2)"
+        }
+      ],
+      correctAnswer: "to-442",
+      hint: "Attacking occupation is 2-3-5. Defending occupation is the flip.",
+      explanation: "Out of possession we fill a 4-4-2: back four, flat midfield four (7-8-6-11), two higher. The 8 recovers beside the 6; the 7 and 11 drop to cover deep wide attackers.",
+      coachingCue: "Out of possession: 4-4-2.",
+      animationSteps: [
+        { type: "highlight", playerIds: ["our-8", "our-6", "our-7", "our-11"] },
+        {
+          type: "parallel",
+          duration: 700,
+          steps: [
+            { type: "move", playerId: "our-8", to: { x: 42, y: 56 }, duration: 700 },
+            { type: "move", playerId: "our-7", to: { x: 56, y: 54 }, duration: 700 },
+            { type: "move", playerId: "our-11", to: { x: 12, y: 54 }, duration: 700 },
+            { type: "move", playerId: "our-10", to: { x: 40, y: 38 }, duration: 700 },
+            { type: "move", playerId: "our-9", to: { x: 28, y: 36 }, duration: 700 }
+          ]
+        }
+      ],
+      challengeEligible: false
+    },
+
     {
       id: "attack-01",
       module: "attack",
@@ -575,8 +802,8 @@
       ],
       correctAnswer: "attack-now",
       hint: "Find the free forward option — not the hardest pass. Who is unmarked with space ahead?",
-      explanation: "Their midfield is disconnected and the 11 is free. Attack that lane now. Do not force a needle-thread ball into the 9 in a 1v2 — that is forward forced, not forward first.",
-      coachingCue: "Forward first, not forward forced.",
+      explanation: "Their midfield is disconnected and the 11 is free. Look to go long into that lane now. Do not force a needle-thread ball into the 9 in a 1v2 — if the long option isn’t clean, build wide instead.",
+      coachingCue: "Look to go long. If it’s not on — build wide.",
       rationalePrompt: "Why is the pass into the 11 stronger than forcing it to the 9?",
       rationaleOptions: [
         {
@@ -754,9 +981,9 @@
       },
       options: [],
       correctAnswer: "look,advantage,secure,expand",
-      hint: "Forward first means evaluate the forward option before you force it — then secure and expand if needed.",
+      hint: "Look to go long first — then build wide if it isn’t on.",
       explanation: "Scan for the immediate attack, judge whether an advantage exists, secure if it does not, then expand the field.",
-      coachingCue: "Forward first, not forward forced.",
+      coachingCue: "Look to go long. If it’s not on — build wide.",
       animationSteps: [
         {
           type: "pass",
@@ -2626,35 +2853,35 @@
       phase: "defending-established",
       concept: "defense",
       prompt: "Assign key responsibilities against a 4-3-3. Pair each of our players with the opponent she should primarily account for.",
-      seeIt: "Full 11v11. Fullbacks→wingers, wingers→their fullbacks, 10→their 6, 6→their 10, 8→their 8. Either CB (4 or 5) can take their 9 — that is plus-one.",
+      seeIt: "They are attacking in our half. Fullbacks→wingers, wingers→their fullbacks, 10→their 6, 6→their 10, 8→their 8. Both CBs (4 and 5) account for their 9 — that is plus-one (pressure + cover).",
       interactionType: "match-responsibilities",
       players: [
-        { id: "our-1", team: "ours", number: 1, role: "Goalkeeper", x: 34, y: 96 },
-        { id: "our-4", team: "ours", number: 4, role: "Right center back", x: 28, y: 74 },
-        { id: "our-5", team: "ours", number: 5, role: "Left center back", x: 42, y: 74 },
-        { id: "our-2", team: "ours", number: 2, role: "Right back", x: 56, y: 64 },
-        { id: "our-3", team: "ours", number: 3, role: "Left back", x: 12, y: 64 },
-        { id: "our-6", team: "ours", number: 6, role: "Defensive midfielder", x: 34, y: 56 },
-        { id: "our-8", team: "ours", number: 8, role: "Central midfielder", x: 44, y: 48 },
-        { id: "our-10", team: "ours", number: 10, role: "Attacking midfielder", x: 34, y: 40 },
-        { id: "our-7", team: "ours", number: 7, role: "Right winger", x: 58, y: 36 },
-        { id: "our-11", team: "ours", number: 11, role: "Left winger", x: 10, y: 36 },
-        { id: "our-9", team: "ours", number: 9, role: "Center forward", x: 34, y: 24 }
+        { id: "our-1", team: "ours", number: 1, role: "Goalkeeper", x: 34, y: 98 },
+        { id: "our-4", team: "ours", number: 4, role: "Right center back", x: 42, y: 90 },
+        { id: "our-5", team: "ours", number: 5, role: "Left center back", x: 26, y: 90 },
+        { id: "our-2", team: "ours", number: 2, role: "Right back", x: 58, y: 88 },
+        { id: "our-3", team: "ours", number: 3, role: "Left back", x: 10, y: 88 },
+        { id: "our-6", team: "ours", number: 6, role: "Defensive midfielder", x: 28, y: 80 },
+        { id: "our-8", team: "ours", number: 8, role: "Central midfielder", x: 48, y: 78 },
+        { id: "our-10", team: "ours", number: 10, role: "Attacking midfielder", x: 40, y: 72 },
+        { id: "our-7", team: "ours", number: 7, role: "Right winger", x: 60, y: 70 },
+        { id: "our-11", team: "ours", number: 11, role: "Left winger", x: 8, y: 70 },
+        { id: "our-9", team: "ours", number: 9, role: "Center forward", x: 22, y: 66 }
       ],
       opponents: [
-        { id: "opp-1", team: "opp", number: 1, role: "Goalkeeper", x: 34, y: 6 },
-        { id: "opp-4", team: "opp", number: 4, role: "Right center back", x: 28, y: 16 },
-        { id: "opp-5", team: "opp", number: 5, role: "Left center back", x: 40, y: 16 },
-        { id: "opp-2", team: "opp", number: 2, role: "Right back", x: 56, y: 22 },
-        { id: "opp-3", team: "opp", number: 3, role: "Left back", x: 12, y: 22 },
-        { id: "opp-6", team: "opp", number: 6, role: "Defensive midfielder", x: 34, y: 30 },
-        { id: "opp-8", team: "opp", number: 8, role: "Central midfielder", x: 44, y: 38 },
-        { id: "opp-10", team: "opp", number: 10, role: "Attacking midfielder", x: 34, y: 44 },
-        { id: "opp-7", team: "opp", number: 7, role: "Right winger", x: 14, y: 48 },
-        { id: "opp-11", team: "opp", number: 11, role: "Left winger", x: 54, y: 48 },
-        { id: "opp-9", team: "opp", number: 9, role: "Center forward", x: 34, y: 62 }
+        { id: "opp-1", team: "opp", number: 1, role: "Goalkeeper", x: 34, y: 54 },
+        { id: "opp-4", team: "opp", number: 4, role: "Right center back", x: 28, y: 58 },
+        { id: "opp-5", team: "opp", number: 5, role: "Left center back", x: 40, y: 58 },
+        { id: "opp-2", team: "opp", number: 2, role: "Right back", x: 56, y: 60 },
+        { id: "opp-3", team: "opp", number: 3, role: "Left back", x: 12, y: 60 },
+        { id: "opp-6", team: "opp", number: 6, role: "Defensive midfielder", x: 34, y: 64 },
+        { id: "opp-8", team: "opp", number: 8, role: "Central midfielder", x: 46, y: 68 },
+        { id: "opp-10", team: "opp", number: 10, role: "Attacking midfielder", x: 30, y: 72 },
+        { id: "opp-7", team: "opp", number: 7, role: "Right winger", x: 14, y: 78 },
+        { id: "opp-11", team: "opp", number: 11, role: "Left winger", x: 54, y: 78 },
+        { id: "opp-9", team: "opp", number: 9, role: "Center forward", x: 34, y: 84 }
       ],
-      ball: { x: 34, y: 30 },
+      ball: { x: 36, y: 70 },
       matchPairs: [
         { defenderId: "our-2", attackerId: "opp-11" },
         { defenderId: "our-3", attackerId: "opp-7" },
@@ -2663,12 +2890,13 @@
         { defenderId: "our-10", attackerId: "opp-6" },
         { defenderId: "our-6", attackerId: "opp-10" },
         { defenderId: "our-8", attackerId: "opp-8" },
-        // Plus-one on the 9: either CB is correct
-        { defenderIds: ["our-4", "our-5"], attackerId: "opp-9" }
+        // Plus-one on the 9: both CBs account for her
+        { defenderId: "our-4", attackerId: "opp-9" },
+        { defenderId: "our-5", attackerId: "opp-9" }
       ],
       correctAnswer: "match-433",
-      hint: "Fullbacks on wingers; wingers on their fullbacks; 10 on their 6; 6 on their 10; 8 on their 8. Either 4 or 5 can take their 9.",
-      explanation: "Vs 4-3-3: fullbacks↔wingers, wingers↔fullbacks, 10 on their 6, 6 on their advanced midfielder, 8 on the second central midfielder, and CBs keep plus-one on the 9 (4 or 5).",
+      hint: "Fullbacks on wingers; wingers on their fullbacks; 10 on their 6; 6 on their 10; 8 on their 8. Match BOTH 4 and 5 to their 9.",
+      explanation: "Vs 4-3-3: fullbacks↔wingers, wingers↔fullbacks, 10 on their 6, 6 on their advanced midfielder, 8 on the second central midfielder, and both CBs account for the 9 (plus-one = pressure + cover).",
       coachingCue: "Know your player; protect the shape.",
       animationSteps: [
         {
@@ -4039,6 +4267,199 @@
     },
 
     {
+      id: "corner-00",
+      module: "corner",
+      chapter: "corner-lock",
+      title: "Our Corner Play",
+      difficulty: 1,
+      phase: "corner-kick",
+      concept: "corners-lock",
+      prompt:
+        "Do you promise that you're a Brighton player and that you will not share this image or artwork with anyone who is not part of this program?",
+      seeIt:
+        "Brighton eyes only. Answer both locks to unlock the animations. Sequence: Malone raises her hand → watch Skittles run to the near-post 6 → after she arrives, Go Short or Go Long → Targets hold until the ball is in the air.",
+      interactionType: "multiple-choice",
+      persistProgress: false,
+      challengeEligible: false,
+      textPrompt: "Type the only of our 4 pillars that doesn't start with D",
+      correctText: "keppa",
+      textHint: "Four pillars. Three start with D. One doesn’t.",
+      textFail: "Not that pillar. Try again — case doesn’t matter.",
+      pitchView: { x: 0, y: 0, w: 68, h: 40 },
+      players: [
+        { id: "stockton", team: "ours", number: "S", role: "Stockton", x: 66, y: 1.5, label: "Stk" },
+        { id: "malone", team: "ours", number: "M", role: "Malone", x: 64.5, y: 3.2, label: "Mal" },
+        { id: "skittles", team: "ours", number: "Sk", role: "Skittles", x: 24, y: 10, label: "Skit" },
+        { id: "spot", team: "ours", number: "O", role: "Spot", x: 26, y: 11.5, label: "Spt" },
+        { id: "shield", team: "ours", number: "Sh", role: "Shield", x: 22.5, y: 12.5, label: "Shld" },
+        { id: "front", team: "ours", number: "F", role: "Front Target", x: 14, y: 5.5, label: "FT" },
+        { id: "back", team: "ours", number: "B", role: "Back Target", x: 13, y: 12, label: "BT" },
+        { id: "screen", team: "ours", number: "Sc", role: "Screen", x: 34, y: 5.5, label: "Scr" },
+        { id: "cd1", team: "ours", number: "·", role: "Corner defense", x: 28, y: 36, label: "CD" },
+        { id: "cd2", team: "ours", number: "·", role: "Corner defense", x: 42, y: 36, label: "CD" }
+      ],
+      opponents: [
+        { id: "gk", team: "opp", number: 1, role: "Goalkeeper", x: 34, y: 3 },
+        { id: "opp-1", team: "opp", number: 2, role: "Corner defender", x: 52, y: 14 },
+        { id: "opp-2", team: "opp", number: 3, role: "Corner defender", x: 50, y: 16 },
+        { id: "opp-a", team: "opp", number: 4, role: "Right center back", x: 36, y: 12 },
+        { id: "opp-b", team: "opp", number: 5, role: "Left center back", x: 28, y: 11 },
+        { id: "opp-c", team: "opp", number: 6, role: "Marker", x: 26, y: 11 },
+        { id: "opp-d", team: "opp", number: 8, role: "Marker", x: 32, y: 10 },
+        { id: "opp-e", team: "opp", number: 10, role: "Marker", x: 20, y: 8 }
+      ],
+      ball: { x: 66, y: 1.5 },
+      showTeachingZones: true,
+      zones: [
+        { id: "golden", label: "Golden Zone", x: 46, y: 12, w: 14, h: 10 }
+      ],
+      options: [
+        { id: "yes", label: "Yes — I promise" },
+        { id: "no", label: "No" }
+      ],
+      correctAnswer: "yes",
+      hint: "This artwork stays inside the program. If you’re a Brighton player, promise yes.",
+      explanation:
+        "Locked in. Sequence: (1) Malone raises her hand. (2) Everyone stares at Skittles — she runs to the near-post end-line corner of the 6. (3) Only after she arrives: Go Short or Go Long. (4) Front/Back Targets hold until the ball is in the air, then react. Replay both animations below.",
+      coachingCue: "Malone hand → Skittles to the near-post 6 → then short or long.",
+      // Primary animation: Go Long (two in the Golden Zone)
+      animationSteps: [
+        {
+          type: "highlight",
+          playerIds: ["malone"],
+          caption: "Malone raises her hand",
+          duration: 1600
+        },
+        {
+          type: "highlight",
+          playerIds: ["skittles"],
+          caption: "Everyone stares at Skittles…",
+          duration: 1500
+        },
+        {
+          type: "parallel",
+          duration: 1800,
+          caption: "Skittles runs to the near-post end-line corner of the 6",
+          steps: [
+            { type: "move", playerId: "skittles", to: { x: 42.5, y: 2 }, duration: 1800 },
+            { type: "move", playerId: "opp-c", to: { x: 38, y: 6 }, duration: 1800 }
+          ]
+        },
+        {
+          type: "highlight",
+          playerIds: ["skittles", "stockton", "malone"],
+          caption: "Skittles arrives — read the Golden Zone: two → Go Long",
+          duration: 1800
+        },
+        {
+          type: "highlight",
+          playerIds: ["front", "back"],
+          caption: "Targets still holding…",
+          duration: 1400
+        },
+        {
+          type: "parallel",
+          duration: 1800,
+          caption: "Ball in the air — NOW Targets react · Spot & Shield move",
+          steps: [
+            { type: "pass", from: { x: 66, y: 1.5 }, to: { x: 28, y: 7 }, duration: 1800 },
+            { type: "move", playerId: "spot", to: { x: 34, y: 12 }, duration: 1500 },
+            { type: "move", playerId: "shield", to: { x: 34, y: 20.5 }, duration: 1500 },
+            { type: "move", playerId: "front", to: { x: 30, y: 5 }, duration: 1500 },
+            { type: "move", playerId: "back", to: { x: 26, y: 8 }, duration: 1500 }
+          ]
+        },
+        {
+          type: "highlight",
+          playerIds: ["screen", "skittles", "spot", "shield", "front", "back"],
+          caption: "Screen on the keeper · Shield stops the counter · Targets attack the ball",
+          duration: 2000
+        }
+      ],
+      // Secondary animation: Go Short (one in the Golden Zone)
+      animationStepsAlt: [
+        {
+          type: "parallel",
+          duration: 400,
+          caption: "Setup: one defender in the Golden Zone",
+          steps: [
+            { type: "move", playerId: "opp-1", to: { x: 50, y: 14 }, duration: 400 },
+            { type: "move", playerId: "opp-2", to: { x: 36, y: 18 }, duration: 400 }
+          ]
+        },
+        {
+          type: "highlight",
+          playerIds: ["malone"],
+          caption: "Go Short — Malone raises her hand",
+          duration: 1600
+        },
+        {
+          type: "highlight",
+          playerIds: ["skittles"],
+          caption: "Everyone stares at Skittles…",
+          duration: 1400
+        },
+        {
+          type: "parallel",
+          duration: 1800,
+          caption: "Skittles runs to the near-post end-line corner of the 6",
+          steps: [
+            { type: "move", playerId: "skittles", to: { x: 42.5, y: 2 }, duration: 1800 }
+          ]
+        },
+        {
+          type: "highlight",
+          playerIds: ["skittles", "malone", "stockton", "opp-1"],
+          caption: "Skittles arrives — one in the Golden Zone → Go Short",
+          duration: 1800
+        },
+        {
+          type: "pass",
+          from: { x: 66, y: 1.5 },
+          to: { x: 64, y: 1.5 },
+          duration: 700,
+          caption: "Malone touches — preps the ball for Stockton"
+        },
+        {
+          type: "parallel",
+          duration: 1600,
+          caption: "Malone bends to the Golden Zone · Stockton drives the goal line",
+          steps: [
+            { type: "move", playerId: "malone", to: { x: 52, y: 15 }, duration: 1600 },
+            { type: "move", playerId: "stockton", to: { x: 54, y: 1.4 }, duration: 1600 },
+            { type: "pass", from: { x: 64, y: 1.5 }, to: { x: 54, y: 1.4 }, duration: 1600 }
+          ]
+        },
+        {
+          type: "move",
+          playerId: "opp-1",
+          to: { x: 52, y: 3 },
+          duration: 900,
+          caption: "The one defender steps to Stockton…"
+        },
+        {
+          type: "pass",
+          from: { x: 54, y: 1.4 },
+          to: { x: 50, y: 14 },
+          duration: 900,
+          caption: "Cutback to Malone — Targets still holding at the back post"
+        },
+        {
+          type: "pass",
+          from: { x: 50, y: 14 },
+          to: { x: 34, y: 2 },
+          duration: 900,
+          caption: "Malone finishes — shot on goal"
+        },
+        {
+          type: "highlight",
+          playerIds: ["malone", "stockton", "front", "back"],
+          caption: "Goal. Targets held until there was a ball to react to.",
+          duration: 2000
+        }
+      ]
+    },
+    {
       id: "corner-01",
       module: "corner",
       chapter: "short-corners",
@@ -4046,12 +4467,12 @@
       difficulty: 1,
       phase: "corner-kick",
       concept: "corners-short",
-      prompt: "Corner: zero defenders are near our corner pair. What is the first decision?",
-      seeIt: "Player 1 and Player 2 are free at the flag. No opponent is close enough to stop the short. Our other attackers are stacked at the back post to clear space.",
+      prompt: "Corner: zero defenders in the Golden Zone. What is the first decision?",
+      seeIt: "Malone and Stockton are free at the flag. No opponent is close enough to stop the short. Our other attackers are stacked at the back post to clear space.",
       interactionType: "multiple-choice",
       players: [
-        { id: "p1", team: "ours", number: "1", role: "Player 1", x: 66, y: 3.5, label: "P1" },
-        { id: "p2", team: "ours", number: "2", role: "Player 2", x: 63, y: 1.3, label: "P2" },
+        { id: "p1", team: "ours", number: "M", role: "Malone", x: 66, y: 3.5, label: "Mal" },
+        { id: "p2", team: "ours", number: "S", role: "Stockton", x: 63, y: 1.3, label: "Stk" },
         { id: "bp1", team: "ours", number: "·", role: "Back-post group", x: 24, y: 10, label: "BP" },
         { id: "bp2", team: "ours", number: "·", role: "Back-post group", x: 28, y: 12, label: "BP" },
         { id: "bp3", team: "ours", number: "·", role: "Back-post group", x: 22, y: 14, label: "BP" },
@@ -4066,15 +4487,15 @@
       ],
       ball: { x: 66, y: 1.3 },
       options: [
-        { id: "short", label: "Play short — run the 1–2 play into free space" },
-        { id: "serve", label: "Serve long into the crowded box anyway" },
+        { id: "short", label: "Go Short — Malone and Stockton run the play" },
+        { id: "long", label: "Go Long into the crowded box anyway" },
         { id: "wait", label: "Wait for two defenders to come out, then decide" },
         { id: "gk", label: "Pass back to our goalkeeper" }
       ],
       correctAnswer: "short",
-      hint: "Count defenders on the corner pair. Zero means the free space is at the flag — go short.",
-      explanation: "Zero near the pair → short. Clear the box by keeping others at the back post so 1 and 2 can run the play. We almost always get a shot from this.",
-      coachingCue: "Zero or one: short. Two: serve.",
+      hint: "Count defenders in the Golden Zone. Zero → Go Short.",
+      explanation: "Zero in the Golden Zone → Go Short. Clear the box by keeping others at the back post so Malone and Stockton can run the play. We almost always get a shot from this.",
+      coachingCue: "Zero or one in the Golden Zone: Go Short. Two: Go Long.",
       animationSteps: [
         { type: "pass", from: { x: 66, y: 1.3 }, to: { x: 63, y: 1.3 }, duration: 400 },
         { type: "highlight", playerIds: ["p1", "p2"] }
@@ -4089,12 +4510,12 @@
       difficulty: 1,
       phase: "corner-kick",
       concept: "corners-short",
-      prompt: "One defender has stepped to our corner pair. What is the first decision?",
-      seeIt: "One opponent is near Player 1 and Player 2 on the goal line. The rest of our attackers stay at the back post. We can create a 2v1 on the short.",
+      prompt: "One defender is in the Golden Zone. What is the first decision?",
+      seeIt: "One opponent is near Malone and Stockton on the goal line. The rest of our attackers stay at the back post. We can create a 2v1 on the short.",
       interactionType: "multiple-choice",
       players: [
-        { id: "p1", team: "ours", number: "1", role: "Player 1", x: 66, y: 3.5, label: "P1" },
-        { id: "p2", team: "ours", number: "2", role: "Player 2", x: 63, y: 1.3, label: "P2" },
+        { id: "p1", team: "ours", number: "M", role: "Malone", x: 66, y: 3.5, label: "Mal" },
+        { id: "p2", team: "ours", number: "S", role: "Stockton", x: 63, y: 1.3, label: "Stk" },
         { id: "bp1", team: "ours", number: "·", role: "Back-post group", x: 24, y: 10, label: "BP" },
         { id: "bp2", team: "ours", number: "·", role: "Back-post group", x: 28, y: 12, label: "BP" },
         { id: "bp3", team: "ours", number: "·", role: "Back-post group", x: 22, y: 14, label: "BP" },
@@ -4107,15 +4528,15 @@
       ],
       ball: { x: 66, y: 1.3 },
       options: [
-        { id: "short", label: "Play short and attack the 2v1 with our 1–2 play" },
-        { id: "serve", label: "Serve long because one defender ends the short" },
+        { id: "short", label: "Go Short and attack the 2v1 with Malone and Stockton" },
+        { id: "long", label: "Go Long because one defender ends the short" },
         { id: "chip", label: "Chip hopefully to the far post with no plan" },
         { id: "reset", label: "Cancel the corner and walk away" }
       ],
       correctAnswer: "short",
-      hint: "One defender on the pair still means short — we want the 2v1.",
-      explanation: "One near the pair → short. Run the 1–2 play and force that single defender to choose.",
-      coachingCue: "Zero or one: short. Two: serve.",
+      hint: "One in the Golden Zone still means Go Short — we want the 2v1.",
+      explanation: "One in the Golden Zone → Go Short. Run Malone and Stockton’s play and force that single defender to choose.",
+      coachingCue: "Zero or one in the Golden Zone: Go Short. Two: Go Long.",
       animationSteps: [
         { type: "pass", from: { x: 66, y: 1.3 }, to: { x: 63, y: 1.3 }, duration: 400 },
         { type: "move", playerId: "p1", to: { x: 52, y: 15 }, duration: 550 }
@@ -4130,13 +4551,13 @@
       difficulty: 2,
       phase: "corner-kick",
       concept: "corners-short",
-      prompt: "We have gone short. What does Player 1 do after the first touch?",
-      seeIt: "Ball is live on the short — still with Player 2 on the goal line at the corner, ready to dribble parallel to that line. Player 1 has touched it. Back-post group stays put to keep the near space open.",
+      prompt: "We have gone short. What does Malone do after the first touch?",
+      seeIt: "Ball is live on the short — still with Stockton on the goal line at the corner, ready to dribble parallel to that line. Malone has touched it. Back-post group stays put to keep the near space open.",
       interactionType: "multiple-choice",
       showTeachingZones: true,
       players: [
-        { id: "p1", team: "ours", number: "1", role: "Player 1", x: 64.5, y: 4, label: "P1" },
-        { id: "p2", team: "ours", number: "2", role: "Player 2", x: 64, y: 1.3, label: "P2" },
+        { id: "p1", team: "ours", number: "M", role: "Malone", x: 64.5, y: 4, label: "Mal" },
+        { id: "p2", team: "ours", number: "S", role: "Stockton", x: 64, y: 1.3, label: "Stk" },
         { id: "bp1", team: "ours", number: "·", role: "Back-post group", x: 24, y: 10, label: "BP" },
         { id: "bp2", team: "ours", number: "·", role: "Back-post group", x: 28, y: 12, label: "BP" },
         { id: "bp3", team: "ours", number: "·", role: "Back-post group", x: 22, y: 14, label: "BP" }
@@ -4146,18 +4567,18 @@
       ],
       ball: { x: 64, y: 1.3 },
       zones: [
-        { id: "near18", label: "Near-post corner of the 18", x: 46, y: 12, w: 12, h: 8 }
+        { id: "near18", label: "Golden Zone", x: 46, y: 12, w: 12, h: 8 }
       ],
       options: [
-        { id: "bend", label: "Make a high bending run toward the near-post corner of the 18" },
+        { id: "bend", label: "Make a high bending run into the Golden Zone" },
         { id: "stand", label: "Stand on the corner arc and watch" },
         { id: "box-crash", label: "Sprint straight into the six-yard box with the crowd" },
         { id: "retreat", label: "Drop all the way to midfield" }
       ],
       correctAnswer: "bend",
-      hint: "After the touch, Player 1’s job is the bending run into the near-post corner of the 18 — not a crash into traffic.",
-      explanation: "1 touches, then bends high toward the near-post corner of the 18. 2 keeps the ball on the goal line — that run is the cutback target once 2 draws the defender.",
-      coachingCue: "1 touches and bends; 2 dribbles the goal line.",
+      hint: "After the touch, Malone’s job is the bending run into the Golden Zone — not a crash into traffic.",
+      explanation: "Malone touches, then bends to the Golden Zone high toward the Golden Zone (near-post corner of the 18). Stockton keeps the ball on the goal line — that run is the cutback target once 2 draws the defender.",
+      coachingCue: "1 touches and bends; Stockton dribbles the goal line.",
       animationSteps: [
         { type: "highlight", playerIds: ["p1"] },
         { type: "move", playerId: "p1", to: { x: 52, y: 15 }, duration: 700 }
@@ -4172,13 +4593,13 @@
       difficulty: 2,
       phase: "corner-kick",
       concept: "corners-short",
-      prompt: "Player 2 still has the ball and is dribbling parallel to the goal line. The defender steps hard toward 2. What should 2 do?",
-      seeIt: "2 is on the goal line with the ball — between the corner and the near post — holding everyone onside. 1 is bending toward the near-post corner of the 18. The red defender has stepped onto the goal line toward 2.",
+      prompt: "Stockton still has the ball and is dribbling parallel to the goal line. The defender steps hard toward 2. What should Stockton do?",
+      seeIt: "2 is on the goal line with the ball — between the corner and the near post — holding everyone onside. Malone is bending toward the Golden Zone (near-post corner of the 18). The red defender has stepped onto the goal line toward 2.",
       interactionType: "multiple-choice",
       showTeachingZones: true,
       players: [
-        { id: "p1", team: "ours", number: "1", role: "Player 1", x: 50, y: 15, label: "P1" },
-        { id: "p2", team: "ours", number: "2", role: "Player 2", x: 56, y: 1.3, label: "P2" },
+        { id: "p1", team: "ours", number: "M", role: "Malone", x: 50, y: 15, label: "Mal" },
+        { id: "p2", team: "ours", number: "S", role: "Stockton", x: 56, y: 1.3, label: "Stk" },
         { id: "bp1", team: "ours", number: "·", role: "Back-post group", x: 24, y: 10, label: "BP" },
         { id: "bp2", team: "ours", number: "·", role: "Back-post group", x: 28, y: 12, label: "BP" }
       ],
@@ -4187,24 +4608,24 @@
       ],
       ball: { x: 56, y: 1.3 },
       zones: [
-        { id: "ahead1", label: "Cutback to/ahead of 1", x: 46, y: 11, w: 12, h: 8 }
+        { id: "ahead1", label: "Cutback to/ahead of Malone", x: 46, y: 11, w: 12, h: 8 }
       ],
       options: [
-        { id: "pass-1", label: "Cut back to or just ahead of Player 1’s bending run" },
+        { id: "pass-1", label: "Cut back to or just ahead of Malone’s run into the Golden Zone" },
         { id: "force-end", label: "Ignore the open 1 and shoot from the corner flag" },
         { id: "turn-back", label: "Turn back and cancel the corner" },
         { id: "chip-crowd", label: "Chip into the back-post crowd immediately" }
       ],
       correctAnswer: "pass-1",
       hint: "When the defender commits to 2 on the goal line, the cutback is on — and everyone is onside because 2 holds the line.",
-      explanation: "Defender overcommits to the goal-line dribble → 2 cutbacks to/ahead of 1. Staying on the goal line keeps receivers onside. If the defender stays, 2 can keep driving the goal line.",
+      explanation: "Defender overcommits to the goal-line dribble → Stockton cutbacks to/ahead of Malone. Staying on the goal line keeps receivers onside. If the defender stays, Stockton can keep driving the goal line.",
       coachingCue: "Goal-line dribble = onside cutback.",
       rationalePrompt: "Why does the cutback work from the goal line?",
       rationaleOptions: [
-        { id: "r1", label: "2 is on the goal line with the ball, so teammates receiving the cutback stay onside — and the defender stepped, freeing 1" },
+        { id: "r1", label: "2 is on the goal line with the ball, so teammates receiving the cutback stay onside — and the defender stepped, freeing Malone" },
         { id: "r2", label: "We never pass on short corners" },
         { id: "r3", label: "Because the back-post group called for it" },
-        { id: "r4", label: "Because Player 1 is automatically offside from any short corner" }
+        { id: "r4", label: "Because Malone is automatically offside from any short corner" }
       ],
       correctRationale: "r1",
       animationSteps: [
@@ -4222,12 +4643,12 @@
       difficulty: 2,
       phase: "corner-kick",
       concept: "corners-short",
-      prompt: "Zero defenders near the pair. Player 2 has the ball at the corner. What is 2’s first job?",
-      seeIt: "Nobody is close. 2 has the ball on the goal line at the corner. 1 is starting the bend. Empty grass along the goal line toward the near post. Back-post group still clearing the near space.",
+      prompt: "Zero defenders in the Golden Zone. Stockton has the ball at the corner. What is Stockton’s first job?",
+      seeIt: "Nobody is close. 2 has the ball on the goal line at the corner. Malone is starting the bend into the Golden Zone. Empty grass along the goal line toward the near post. Back-post group still clearing the near space.",
       interactionType: "multiple-choice",
       players: [
-        { id: "p1", team: "ours", number: "1", role: "Player 1", x: 58, y: 12, label: "P1" },
-        { id: "p2", team: "ours", number: "2", role: "Player 2", x: 65, y: 1.3, label: "P2" },
+        { id: "p1", team: "ours", number: "M", role: "Malone", x: 58, y: 12, label: "Mal" },
+        { id: "p2", team: "ours", number: "S", role: "Stockton", x: 65, y: 1.3, label: "Stk" },
         { id: "bp1", team: "ours", number: "·", role: "Back-post group", x: 24, y: 10, label: "BP" },
         { id: "bp2", team: "ours", number: "·", role: "Back-post group", x: 28, y: 12, label: "BP" }
       ],
@@ -4237,15 +4658,15 @@
       ],
       ball: { x: 65, y: 1.3 },
       options: [
-        { id: "drive", label: "Dribble parallel to the goal line until a defender overcommits, then cut back to/ahead of 1" },
+        { id: "drive", label: "Dribble parallel to the goal line until a defender overcommits, then cut back to/ahead of Malone" },
         { id: "early-cross", label: "Immediately float a cross from 25 yards out" },
         { id: "stop", label: "Stop and wait for instructions from the bench" },
         { id: "up-touch", label: "Dribble up the touchline away from goal, abandoning the goal-line run" }
       ],
       correctAnswer: "drive",
-      hint: "With zero pressure, 2 keeps the ball at the corner and drives the goal line — not up the touchline — until someone has to step.",
-      explanation: "Zero nearby → 2 dribbles parallel to the goal line. That holds everyone onside. Force an overcommit, then cut back to/ahead of 1. That is why we almost always get a shot.",
-      coachingCue: "2 dribbles the goal line — force the step.",
+      hint: "With zero pressure, Stockton keeps the ball at the corner and drives the goal line — not up the touchline — until someone has to step.",
+      explanation: "Zero nearby → Stockton dribbles parallel to the goal line. That holds everyone onside. Force an overcommit, then cut back to/ahead of Malone. That is why we almost always get a shot.",
+      coachingCue: "Stockton dribbles the goal line — force the step.",
       animationSteps: [
         { type: "move", playerId: "p2", to: { x: 52, y: 1.3 }, duration: 700 },
         { type: "move", playerId: "opp-a", to: { x: 50, y: 3 }, duration: 500 },
@@ -4262,11 +4683,11 @@
       phase: "corner-kick",
       concept: "corners-short",
       prompt: "What is wrong with this short-corner picture?",
-      seeIt: "We are trying to play short, but three attackers are standing in the near half-space right where 1 needs to bend and 2 needs to cut back from the goal line.",
+      seeIt: "We are trying to play short, but three attackers are standing in the near half-space right where Malone needs to bend and Stockton needs to cut back from the goal line.",
       interactionType: "formation-diagnosis",
       players: [
-        { id: "p1", team: "ours", number: "1", role: "Player 1", x: 66, y: 3.5, label: "P1" },
-        { id: "p2", team: "ours", number: "2", role: "Player 2", x: 64, y: 1.3, label: "P2" },
+        { id: "p1", team: "ours", number: "M", role: "Malone", x: 66, y: 3.5, label: "Mal" },
+        { id: "p2", team: "ours", number: "S", role: "Stockton", x: 64, y: 1.3, label: "Stk" },
         { id: "crowd1", team: "ours", number: "·", role: "Crowding near space", x: 52, y: 12 },
         { id: "crowd2", team: "ours", number: "·", role: "Crowding near space", x: 48, y: 14 },
         { id: "crowd3", team: "ours", number: "·", role: "Crowding near space", x: 54, y: 16 }
@@ -4282,7 +4703,7 @@
         { id: "too-deep", label: "Everyone is too deep in our own half" }
       ],
       correctAnswer: "crowd",
-      hint: "Short corners need empty grass for 1’s bend and 2’s goal-line cutback. That means the rest start at the back post.",
+      hint: "Short corners need empty grass for Malone’s Golden Zone run and Stockton’s goal-line cutback. That means the rest start at the back post.",
       explanation: "Back post clears space. If teammates stand in the near channel, the cutback from the goal line has nowhere to go.",
       coachingCue: "Back post clears space for the short.",
       animationSteps: [
@@ -4296,23 +4717,23 @@
       id: "corner-07",
       module: "corner",
       chapter: "long-corners",
-      title: "Part 2: Two Defenders — Serve Long",
+      title: "Part 2: Two in the Golden Zone — Go Long",
       difficulty: 1,
       phase: "corner-kick",
       concept: "corners-long",
-      prompt: "Two defenders are tight on our corner pair. What is the first decision?",
-      seeIt: "Pri and Sec both still at the flag. Skittles/Spot/Drop crowded near the back post. Front and Back Targets start further past the back post (Front nearer the goal line), ready to come into the back post on the serve.",
+      prompt: "Two defenders are in the Golden Zone. What is the first decision?",
+      seeIt: "Stockton and Malone both still at the flag. Skittles/Spot/Shield crowded near the back post. Front and Back Targets start further past the back post (Front nearer the goal line), ready to come into the back post on the delivery.",
       interactionType: "multiple-choice",
       players: [
-        { id: "primary", team: "ours", number: "P", role: "Primary", x: 66, y: 1.5, label: "Pri" },
-        { id: "secondary", team: "ours", number: "S", role: "Secondary", x: 64.5, y: 3.2, label: "Sec" },
+        { id: "primary", team: "ours", number: "S", role: "Stockton", x: 66, y: 1.5, label: "Stk" },
+        { id: "secondary", team: "ours", number: "M", role: "Malone", x: 64.5, y: 3.2, label: "Mal" },
         { id: "skittles", team: "ours", number: "Sk", role: "Skittles", x: 24, y: 10, label: "Skit" },
         { id: "spot", team: "ours", number: "O", role: "Spot", x: 26, y: 11.5, label: "Spt" },
-        { id: "drop", team: "ours", number: "D", role: "Drop", x: 22.5, y: 12.5, label: "Drp" },
+        { id: "shield", team: "ours", number: "Sh", role: "Shield", x: 22.5, y: 12.5, label: "Shld" },
         // Targets start further past the back post; Front closer to goal line than Back
         { id: "front", team: "ours", number: "F", role: "Front Target", x: 14, y: 5.5, label: "FT" },
         { id: "back", team: "ours", number: "B", role: "Back Target", x: 13, y: 12, label: "BT" },
-        { id: "block", team: "ours", number: "K", role: "Block", x: 34, y: 5.5, label: "Blk" },
+        { id: "screen", team: "ours", number: "Sc", role: "Screen", x: 34, y: 5.5, label: "Scr" },
         { id: "cd1", team: "ours", number: "·", role: "Corner defense", x: 30, y: 50, label: "CD" },
         { id: "cd2", team: "ours", number: "·", role: "Corner defense", x: 40, y: 52, label: "CD" }
       ],
@@ -4324,15 +4745,15 @@
       ],
       ball: { x: 66, y: 1.5 },
       options: [
-        { id: "serve", label: "Serve long — two defenders pulled from the box" },
+        { id: "long", label: "Go Long — two defenders in the Golden Zone" },
         { id: "short", label: "Still force the short into a 2v2" },
         { id: "wait", label: "Wait for a third defender to join them" },
         { id: "cancel", label: "Cancel and restart from midfield" }
       ],
-      correctAnswer: "serve",
-      hint: "Two out at the pair → long. Skittles curls across the middle first; then serve while Spot (penalty spot), Drop (the D), and Targets attack.",
-      explanation: "Long serve. Skittles curls across the middle of the box, then to the D for a rebound. Primary serves. While the ball is in the air: Spot → penalty spot, Drop → the D, Targets come in from past the back post.",
-      coachingCue: "Zero or one: short. Two: serve.",
+      correctAnswer: "long",
+      hint: "Two in the Golden Zone → Go Long. Skittles finishes her run first; then Stockton delivers while Spot (penalty spot), Shield (the D), and Targets attack.",
+      explanation: "Go Long. Skittles curls across the middle of the box, then to the D. Stockton delivers. While the ball is in the air: Spot → penalty spot, Shield → the D, Targets come in from past the back post.",
+      coachingCue: "Zero or one in the Golden Zone: Go Short. Two: Go Long.",
       animationSteps: [
         { type: "highlight", playerIds: ["skittles"] },
         // Skittles: across the middle → out right → curl back to the D
@@ -4353,12 +4774,12 @@
           steps: [
             { type: "pass", from: { x: 66, y: 1.5 }, to: { x: 28, y: 7 }, duration: 750 },
             { type: "move", playerId: "spot", to: { x: 34, y: 12 }, duration: 700 },
-            { type: "move", playerId: "drop", to: { x: 34, y: 20.5 }, duration: 700 },
+            { type: "move", playerId: "shield", to: { x: 34, y: 20.5 }, duration: 700 },
             { type: "move", playerId: "front", to: { x: 28, y: 5.5 }, duration: 700 },
             { type: "move", playerId: "back", to: { x: 26, y: 9 }, duration: 700 }
           ]
         },
-        { type: "highlight", playerIds: ["front", "back", "spot", "drop", "skittles"] }
+        { type: "highlight", playerIds: ["front", "back", "spot", "shield", "skittles"] }
       ],
       challengeEligible: true
     },
@@ -4371,17 +4792,17 @@
       phase: "corner-kick",
       concept: "corners-long",
       prompt: "On a long corner, what is Skittles’ first job?",
-      seeIt: "Pri and Sec at the flag. Skittles starts with Spot and Drop near the back post — ready to curl across the middle of the box, then circle back to the D for a rebound.",
+      seeIt: "Stockton and Malone at the flag. Skittles starts with Spot and Shield near the back post — ready to curl across the middle of the box, then circle back to the D for a rebound.",
       interactionType: "multiple-choice",
       players: [
-        { id: "primary", team: "ours", number: "P", role: "Primary", x: 66, y: 1.5, label: "Pri" },
-        { id: "secondary", team: "ours", number: "S", role: "Secondary", x: 64.5, y: 3.2, label: "Sec" },
+        { id: "primary", team: "ours", number: "S", role: "Stockton", x: 66, y: 1.5, label: "Stk" },
+        { id: "secondary", team: "ours", number: "M", role: "Malone", x: 64.5, y: 3.2, label: "Mal" },
         { id: "skittles", team: "ours", number: "Sk", role: "Skittles", x: 24, y: 10, label: "Skit" },
         { id: "spot", team: "ours", number: "O", role: "Spot", x: 26, y: 11.5, label: "Spt" },
-        { id: "drop", team: "ours", number: "D", role: "Drop", x: 22.5, y: 12.5, label: "Drp" },
+        { id: "shield", team: "ours", number: "Sh", role: "Shield", x: 22.5, y: 12.5, label: "Shld" },
         { id: "front", team: "ours", number: "F", role: "Front Target", x: 14, y: 5.5, label: "FT" },
         { id: "back", team: "ours", number: "B", role: "Back Target", x: 13, y: 12, label: "BT" },
-        { id: "block", team: "ours", number: "K", role: "Block", x: 34, y: 5.5, label: "Blk" }
+        { id: "screen", team: "ours", number: "Sc", role: "Screen", x: 34, y: 5.5, label: "Scr" }
       ],
       opponents: [
         { id: "opp-1", team: "opp", number: 2, role: "Corner defender", x: 62, y: 3 },
@@ -4393,7 +4814,7 @@
       options: [
         { id: "start", label: "Curl across the middle of the box (drag a defender), then circle back to the D for a rebound" },
         { id: "stand-six", label: "Stand still on the six-yard line blocking our own targets" },
-        { id: "take-corner", label: "Take the corner instead of the Primary" },
+        { id: "take-corner", label: "Take the corner instead of Stockton" },
         { id: "leave", label: "Jog to midfield before the ball is struck" }
       ],
       correctAnswer: "start",
@@ -4419,22 +4840,22 @@
       id: "corner-09",
       module: "corner",
       chapter: "long-corners",
-      title: "Long: Primary’s Serve",
+      title: "Long: Stockton’s Delivery",
       difficulty: 2,
       phase: "corner-kick",
       concept: "corners-long",
-      prompt: "Skittles has curled across the middle and circled to the D. What should the Primary do — and when do Spot, Drop, and the Targets move?",
-      seeIt: "Skittles has finished at the D. Spot and Drop are still near the back-post start. Front and Back Targets are still further past the back post (Front nearer the goal line) — they come into the back post with the ball in the air.",
+      prompt: "Skittles has curled across the middle and circled to the D. What should Stockton do — and when do Spot, Shield, and the Targets move?",
+      seeIt: "Skittles has finished at the D. Spot and Shield are still near the back-post start. Front and Back Targets are still further past the back post (Front nearer the goal line) — they come into the back post with the ball in the air.",
       interactionType: "multiple-choice",
       players: [
-        { id: "primary", team: "ours", number: "P", role: "Primary", x: 66, y: 1.5, label: "Pri" },
-        { id: "secondary", team: "ours", number: "S", role: "Secondary", x: 64.5, y: 3.2, label: "Sec" },
+        { id: "primary", team: "ours", number: "S", role: "Stockton", x: 66, y: 1.5, label: "Stk" },
+        { id: "secondary", team: "ours", number: "M", role: "Malone", x: 64.5, y: 3.2, label: "Mal" },
         { id: "skittles", team: "ours", number: "Sk", role: "Skittles", x: 34, y: 20, label: "Skit" },
         { id: "front", team: "ours", number: "F", role: "Front Target", x: 14, y: 5.5, label: "FT" },
         { id: "back", team: "ours", number: "B", role: "Back Target", x: 13, y: 12, label: "BT" },
-        { id: "block", team: "ours", number: "K", role: "Block", x: 34, y: 5.5, label: "Blk" },
+        { id: "screen", team: "ours", number: "Sc", role: "Screen", x: 34, y: 5.5, label: "Scr" },
         { id: "spot", team: "ours", number: "O", role: "Spot", x: 26, y: 11.5, label: "Spt" },
-        { id: "drop", team: "ours", number: "D", role: "Drop", x: 22.5, y: 12.5, label: "Drp" }
+        { id: "shield", team: "ours", number: "Sh", role: "Shield", x: 22.5, y: 12.5, label: "Shld" }
       ],
       opponents: [
         { id: "opp-1", team: "opp", number: 2, role: "Corner defender", x: 62, y: 3 },
@@ -4443,15 +4864,15 @@
       ],
       ball: { x: 66, y: 1.5 },
       options: [
-        { id: "face", label: "Serve across the face — while the ball is in the air, Spot→penalty spot, Drop→the D, Targets come into the back post" },
+        { id: "face", label: "Go Long across the face — while the ball is in the air, Spot→penalty spot, Shield→the D, Targets come into the back post" },
         { id: "soft", label: "Roll a soft ball that dies at the near cone" },
         { id: "short-now", label: "Ignore Skittles and play short into the two defenders" },
         { id: "midfield", label: "Pass backward to Corner Defense on purpose" }
       ],
       correctAnswer: "face",
-      hint: "With the ball in the air: Spot to the penalty spot, Drop to the D (not deep), Targets crash in from past the back post.",
-      explanation: "Primary serves. While the ball flies: Spot hits the penalty spot, Drop holds the D, and Front/Back Targets come in from beyond the back post (Front nearer the goal line).",
-      coachingCue: "Serve — Spot to the spot, Drop to the D, Targets in.",
+      hint: "With the ball in the air: Spot to the penalty spot, Shield to the D (not deep), Targets crash in from past the back post.",
+      explanation: "Stockton delivers. While the ball flies: Spot hits the penalty spot, Shield holds the D, and Front/Back Targets come in from beyond the back post (Front nearer the goal line).",
+      coachingCue: "Go Long — Spot to the spot, Shield to the D, Targets in.",
       animationSteps: [
         {
           type: "parallel",
@@ -4459,7 +4880,7 @@
           steps: [
             { type: "pass", from: { x: 66, y: 1.5 }, to: { x: 28, y: 7 }, duration: 750 },
             { type: "move", playerId: "spot", to: { x: 34, y: 12 }, duration: 700 },
-            { type: "move", playerId: "drop", to: { x: 34, y: 20.5 }, duration: 700 },
+            { type: "move", playerId: "shield", to: { x: 34, y: 20.5 }, duration: 700 },
             { type: "move", playerId: "front", to: { x: 28, y: 5.5 }, duration: 700 },
             { type: "move", playerId: "back", to: { x: 26, y: 9 }, duration: 700 }
           ]
@@ -4471,20 +4892,20 @@
       id: "corner-10",
       module: "corner",
       chapter: "long-corners",
-      title: "Long Roles: Block, Spot, Drop, Defense",
+      title: "Long Roles: Screen, Spot, Shield, Defense",
       difficulty: 3,
       phase: "corner-kick",
       concept: "corners-long",
       prompt: "Match the long-corner job to the correct role.",
-      seeIt: "Pri/Sec at the corner. Skittles/Spot/Drop start near the back post. Targets start further past the back post (Front nearer the goal line). On the serve: Spot → penalty spot, Drop → the D, Targets come into the back post.",
+      seeIt: "Stockton/Malone at the corner. Skittles/Spot/Shield start near the back post. Targets start further past the back post (Front nearer the goal line). On the delivery: Spot → penalty spot, Shield → the D, Targets come into the back post.",
       interactionType: "multiple-choice",
       players: [
-        { id: "primary", team: "ours", number: "P", role: "Primary", x: 66, y: 1.5, label: "Pri" },
-        { id: "secondary", team: "ours", number: "S", role: "Secondary", x: 64.5, y: 3.2, label: "Sec" },
+        { id: "primary", team: "ours", number: "S", role: "Stockton", x: 66, y: 1.5, label: "Stk" },
+        { id: "secondary", team: "ours", number: "M", role: "Malone", x: 64.5, y: 3.2, label: "Mal" },
         { id: "skittles", team: "ours", number: "Sk", role: "Skittles", x: 24, y: 10, label: "Skit" },
         { id: "spot", team: "ours", number: "O", role: "Spot", x: 26, y: 11.5, label: "Spt" },
-        { id: "drop", team: "ours", number: "D", role: "Drop", x: 22.5, y: 12.5, label: "Drp" },
-        { id: "block", team: "ours", number: "K", role: "Block", x: 34, y: 5.5, label: "Blk" },
+        { id: "shield", team: "ours", number: "Sh", role: "Shield", x: 22.5, y: 12.5, label: "Shld" },
+        { id: "screen", team: "ours", number: "Sc", role: "Screen", x: 34, y: 5.5, label: "Scr" },
         { id: "cd1", team: "ours", number: "·", role: "Corner defense", x: 30, y: 52, label: "CD" },
         { id: "cd2", team: "ours", number: "·", role: "Corner defense", x: 42, y: 52, label: "CD" },
         { id: "front", team: "ours", number: "F", role: "Front Target", x: 14, y: 5.5, label: "FT" },
@@ -4497,17 +4918,17 @@
       ],
       ball: { x: 66, y: 1.5 },
       options: [
-        { id: "correct-set", label: "Block screens the keeper; Spot cleans the penalty spot; Drop holds the D; Corner Defense keeps +1 behind" },
+        { id: "correct-set", label: "Screen screens the keeper; Spot cleans the penalty spot; Shield holds the D; Corner Defense keeps +1 behind" },
         { id: "all-crash", label: "Everyone including Corner Defense crashes the six-yard box" },
         { id: "no-block", label: "Nobody screens the keeper — leave her free to claim everything" },
-        { id: "drop-posts", label: "The Drop and Spot both stand on the goal line" }
+        { id: "drop-posts", label: "Shield and Spot both stand on the goal line" }
       ],
       correctAnswer: "correct-set",
-      hint: "Spot = the penalty spot (not deep). Drop = the D (not halfway to midfield). Targets start past the back post and come in.",
-      explanation: "Block screens the keeper. Spot hits the penalty spot. Drop holds the D. Corner Defense keeps +1. Targets start further past the back post and crash in on the serve.",
+      hint: "Spot = the penalty spot (not deep). Shield = the D (not halfway to midfield). Targets start past the back post and come in.",
+      explanation: "Screen screens the keeper. Spot hits the penalty spot. Shield holds the D. Corner Defense keeps +1. Targets start further past the back post and crash in on the delivery.",
       coachingCue: "Know the job — not just a shirt number.",
       animationSteps: [
-        { type: "highlight", playerIds: ["skittles", "block", "spot", "drop", "front", "back", "cd1", "cd2"] },
+        { type: "highlight", playerIds: ["skittles", "screen", "spot", "shield", "front", "back", "cd1", "cd2"] },
         { type: "move", playerId: "skittles", to: { x: 36, y: 9 }, duration: 500 },
         { type: "move", playerId: "skittles", to: { x: 50, y: 13 }, duration: 400 },
         { type: "move", playerId: "skittles", to: { x: 34, y: 20 }, duration: 450 },
@@ -4517,7 +4938,7 @@
           steps: [
             { type: "pass", from: { x: 66, y: 1.5 }, to: { x: 28, y: 7 }, duration: 700 },
             { type: "move", playerId: "spot", to: { x: 34, y: 12 }, duration: 650 },
-            { type: "move", playerId: "drop", to: { x: 34, y: 20.5 }, duration: 650 },
+            { type: "move", playerId: "shield", to: { x: 34, y: 20.5 }, duration: 650 },
             { type: "move", playerId: "front", to: { x: 28, y: 5.5 }, duration: 650 },
             { type: "move", playerId: "back", to: { x: 26, y: 9 }, duration: 650 }
           ]

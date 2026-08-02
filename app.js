@@ -62,7 +62,7 @@
   }
 
   function moduleStats(moduleId) {
-    const list = moduleScenarios(moduleId);
+    const list = moduleScenarios(moduleId).filter((s) => s.persistProgress !== false);
     const total = list.length;
     let completed = 0;
     let decisionHits = 0;
@@ -314,7 +314,7 @@
   function tokenMarkup(p, hideLabels) {
     const isOpp = p.team === "opp";
     const cls = isOpp ? "player-token opp" : "player-token";
-    const role = hideLabels ? "" : tokenAbbrev(p);
+    const role = hideLabels || p.hideLabel ? "" : tokenAbbrev(p);
     const roleText = role
       ? `<text class="token-role" x="0" y="3.15">${escapeHtml(role)}</text>`
       : "";
@@ -324,10 +324,12 @@
       : `<polygon class="token-disk" points="0,-1.55 -1.45,1.15 1.45,1.15" />`; // ▲
     const numY = isOpp ? "-0.15" : "0.45";
     const fullRole = roleFullName(p);
+    const numStr = String(p.number);
+    const numClass = numStr.length > 2 ? "token-num token-num-sm" : "token-num";
     return `
-      <g class="${cls}" data-player-id="${escapeHtml(p.id)}" data-role="${escapeHtml(fullRole)}" data-number="${escapeHtml(String(p.number))}" data-x="${p.x}" data-y="${p.y}" transform="translate(${p.x},${p.y})">
+      <g class="${cls}" data-player-id="${escapeHtml(p.id)}" data-role="${escapeHtml(fullRole)}" data-number="${escapeHtml(numStr)}" data-x="${p.x}" data-y="${p.y}" transform="translate(${p.x},${p.y})">
         ${shape}
-        <text class="token-num" x="0" y="${numY}">${escapeHtml(String(p.number))}</text>
+        <text class="${numClass}" x="0" y="${numY}">${escapeHtml(numStr)}</text>
         ${roleText}
       </g>
     `;
@@ -412,11 +414,15 @@
       "Wide defender": "WD",
       "Far-side wide": "Far",
       Skittles: "Skit",
-      Primary: "Pri",
-      Secondary: "Sec",
+      Stockton: "Stk",
+      Malone: "Mal",
       Spot: "Spt",
-      Drop: "Drp",
-      Block: "Blk",
+      Shield: "Shld",
+      Screen: "Scr",
+      Primary: "Stk",
+      Secondary: "Mal",
+      Drop: "Shld",
+      Block: "Scr",
       "Near-post run": "Near",
       "Far-post run": "Far",
       "Cutback run": "Cut",
@@ -444,6 +450,7 @@
       rationaleCorrect: null,
       selected: null,
       selectedRationale: null,
+      revealUnlocked: false,
       options,
       rationaleOptions,
       matchSelections: [],
@@ -589,7 +596,9 @@
         const p = getScenarioProgress(s.id);
         let status = "Not started";
         let cls = "";
-        if (p.completed && p.decisionCorrect) {
+        if (s.persistProgress === false) {
+          status = "Unlock each visit";
+        } else if (p.completed && p.decisionCorrect) {
           status = "Complete";
           cls = "is-complete";
         } else if (p.needsReview || (p.attempts > 0 && !p.decisionCorrect)) {
@@ -599,15 +608,17 @@
           status = "In progress";
         }
         const chapterLabel = ({
-          "demo-walkthrough": "Demo walkthrough",
+          "basics-numbers": "Numbers & codes",
+          "basics-shapes": "Shape shifts",
           "attack-the-moment": "Attack the moment",
           "create-2-3-5": "Create the 2-3-5",
           "wide-attack": "Wide attack patterns",
           "supporting-runs": "Supporting runs",
           "defensive-responsibilities": "Part 1 · Matchups",
           "defend-4-4-2": "Part 2 · 4-4-2",
-          "short-corners": "Part 1 · Short",
-          "long-corners": "Part 2 · Long",
+          "corner-lock": "Locked play",
+          "short-corners": "Part 1 · Go Short",
+          "long-corners": "Part 2 · Go Long",
         })[s.chapter] || s.chapter || "";
         return `
           <a class="scenario-row ${cls}" href="#${escapeHtml(s.id)}">
@@ -774,11 +785,7 @@
         </div>
         <div class="coach-banner">Coach mode — answers and targets visible. Scenario ID: <code>${escapeHtml(s.id)}</code></div>
         <div class="coach-controls">
-          <div class="coach-meta">correct: ${escapeHtml(
-            Array.isArray(s.correctAnswers) && s.correctAnswers.length
-              ? s.correctAnswers.join(" | ")
-              : String(s.correctAnswer)
-          )} | cue: ${escapeHtml(s.coachingCue || "")}</div>
+          <div class="coach-meta">correct: ${escapeHtml(String(s.correctAnswer))} | cue: ${escapeHtml(s.coachingCue || "")}</div>
           <label class="muted">Module filter
             <select id="coach-module-filter">
               <option value="">All</option>
@@ -792,13 +799,20 @@
 
         <div class="pitch-column">
           ${s.seeIt && !session.challengeMode ? `<div class="see-it"><span class="label">See it</span><p>${escapeHtml(s.seeIt)}</p></div>` : ""}
+          <p class="anim-caption" id="anim-caption" hidden></p>
           <div class="pitch-wrap" id="pitch-wrap">${pitchMarkup(scenarioForPitch, { hideLabels })}</div>
         </div>
 
         <div class="panel-column">
           <div class="prompt-block">
             <p class="phase">${escapeHtml(s.phase || "")}</p>
-            <h2>${escapeHtml(session.stage === "rationale" ? s.rationalePrompt || "Why?" : s.prompt)}</h2>
+            <h2>${escapeHtml(
+              session.stage === "rationale"
+                ? s.rationalePrompt || "Why?"
+                : session.stage === "text-gate"
+                  ? s.textPrompt || "Enter the code"
+                  : s.prompt
+            )}</h2>
           </div>
           <div class="interaction-panel" id="interaction-panel"></div>
           <div id="feedback-slot"></div>
@@ -858,6 +872,7 @@
     const g = $(`[data-player-id="${playerId}"]`, wrap);
     if (!g || !svg) return;
 
+    g.classList.add("is-draggable");
     let dragging = false;
 
     const getPoint = (evt) => {
@@ -874,6 +889,7 @@
     const onDown = (evt) => {
       if (state.session.locked || state.session.stage !== "decision") return;
       dragging = true;
+      wrap.classList.add("is-dragging");
       g.classList.add("is-dragging");
       evt.preventDefault();
     };
@@ -888,6 +904,7 @@
     const onUp = () => {
       if (!dragging) return;
       dragging = false;
+      wrap.classList.remove("is-dragging");
       g.classList.remove("is-dragging");
       const x = parseFloat(g.dataset.x || scenario.players.find((p) => p.id === playerId).x);
       const y = parseFloat(g.dataset.y || scenario.players.find((p) => p.id === playerId).y);
@@ -964,6 +981,27 @@
       `;
       $$("[data-rationale]", panel).forEach((btn) => {
         btn.addEventListener("click", () => selectRationale(btn.getAttribute("data-rationale")));
+      });
+      return;
+    }
+
+    if (session.stage === "text-gate") {
+      panel.innerHTML = `
+        <p class="step-label"><strong>Step 2 — Pillar lock</strong></p>
+        <p class="muted">${escapeHtml(s.textHint || "Type the answer, then submit.")}</p>
+        <div class="text-gate">
+          <input type="text" id="text-gate-input" class="text-gate-input" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Type here" />
+          <button type="button" class="btn btn-primary" id="text-gate-submit">Unlock</button>
+        </div>
+      `;
+      const input = $("#text-gate-input");
+      input?.focus();
+      $("#text-gate-submit")?.addEventListener("click", submitTextGate);
+      input?.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          submitTextGate();
+        }
       });
       return;
     }
@@ -1171,9 +1209,16 @@
   }
 
   function isPlayerMatched(playerId) {
-    return state.session.matchSelections.some(
-      (m) => m.defenderId === playerId || m.attackerId === playerId
-    );
+    const selections = state.session.matchSelections;
+    if (selections.some((m) => m.defenderId === playerId)) return true;
+    const neededSlots = (state.session.scenario.matchPairs || []).filter(
+      (n) => n.attackerId === playerId
+    ).length;
+    if (neededSlots > 0) {
+      const filled = selections.filter((m) => m.attackerId === playerId).length;
+      return filled >= neededSlots;
+    }
+    return false;
   }
 
   function paintMatchTokens() {
@@ -1251,9 +1296,9 @@
         return;
       }
 
-      // Correct: gray out both; only one CB needed on the 9
+      // Correct: gray out defender; attacker grays when all her slots are filled
       session.matchSelections = session.matchSelections.filter(
-        (m) => m.defenderId !== defenderId && m.attackerId !== attackerId
+        (m) => m.defenderId !== defenderId
       );
       session.matchSelections.push({ defenderId, attackerId });
       session._matchPick = null;
@@ -1311,17 +1356,10 @@
     commitDecision(JSON.stringify(got), ok);
   }
 
-  function isCorrectDecision(scenario, answerId) {
-    if (Array.isArray(scenario.correctAnswers) && scenario.correctAnswers.length) {
-      return scenario.correctAnswers.includes(answerId);
-    }
-    return answerId === scenario.correctAnswer;
-  }
-
   function selectDecision(answerId) {
     if (state.session.locked || state.session.stage !== "decision") return;
     const s = state.session.scenario;
-    const ok = isCorrectDecision(s, answerId);
+    const ok = answerId === s.correctAnswer;
     commitDecision(answerId, ok);
   }
 
@@ -1333,9 +1371,10 @@
     session.decisionCorrect = ok;
 
     const allowHint = !session.challengeMode;
-    const reveal = ok || session.attempts >= 2 || session.challengeMode;
+    const gateLock = !!s.textPrompt && s.persistProgress === false;
+    const reveal = ok || (!gateLock && (session.attempts >= 2 || session.challengeMode));
 
-    if (!ok && session.attempts === 1 && allowHint) {
+    if (!ok && allowHint && (session.attempts === 1 || gateLock)) {
       session.locked = false;
       paintOptionStates();
       showFeedback("hint", s.hint || "Look again at the picture — who occupies which space?");
@@ -1345,6 +1384,17 @@
 
     session.locked = true;
     paintOptionStates();
+
+    if (ok && s.textPrompt) {
+      session.stage = "text-gate";
+      session.locked = false;
+      showFeedback("correct", "Promise locked. One more lock before the play is revealed.");
+      const h2 = $(".prompt-block h2");
+      if (h2) h2.textContent = s.textPrompt;
+      renderInteraction();
+      renderScenarioActions();
+      return;
+    }
 
     if (ok && s.rationaleOptions && s.rationaleOptions.length) {
       session.stage = "rationale";
@@ -1360,6 +1410,23 @@
     }
 
     finishScenario(ok, reveal);
+  }
+
+  function submitTextGate() {
+    const session = state.session;
+    if (!session || session.stage !== "text-gate") return;
+    const s = session.scenario;
+    const input = $("#text-gate-input");
+    const raw = (input?.value || "").trim();
+    const expected = String(s.correctText || "").trim().toLowerCase();
+    const ok = raw.toLowerCase() === expected;
+    if (!ok) {
+      showFeedback("hint", s.textFail || s.textHint || "Try again.");
+      input?.focus();
+      return;
+    }
+    session.revealUnlocked = true;
+    finishScenario(true, true, true);
   }
 
   function selectRationale(id) {
@@ -1379,8 +1446,8 @@
     session.stage = "complete";
     session.locked = true;
 
-    // Progress
-    if (!session.challengeMode) {
+    // Progress (skip ephemeral / session-only scenarios like the corner lock)
+    if (!session.challengeMode && s.persistProgress !== false) {
       const prev = getScenarioProgress(s.id);
       const first =
         prev.firstAttemptCorrect === null
@@ -1427,7 +1494,7 @@
       $$(".option-btn").forEach((btn) => {
         const id = btn.getAttribute("data-option") || btn.getAttribute("data-rationale");
         if (!id) return;
-        if (isCorrectDecision(s, id) || id === s.correctRationale) btn.classList.add("is-correct");
+        if (id === s.correctAnswer || id === s.correctRationale) btn.classList.add("is-correct");
         if (
           (btn.getAttribute("data-option") === session.selected && !decisionOk) ||
           (btn.getAttribute("data-rationale") === session.selectedRationale && rationaleOk === false)
@@ -1491,9 +1558,17 @@
 
     const bits = [];
     if (session.stage === "complete") {
+      const hasAlt = !!(s.animationStepsAlt && s.animationStepsAlt.length);
       bits.push(
-        `<button type="button" class="btn btn-ghost" id="replay-anim">Replay animation</button>`
+        `<button type="button" class="btn btn-ghost" id="replay-anim">${
+          hasAlt ? "Replay Go Long" : "Replay animation"
+        }</button>`
       );
+      if (hasAlt) {
+        bits.push(
+          `<button type="button" class="btn btn-ghost" id="replay-anim-alt">Replay Go Short</button>`
+        );
+      }
       if (next) bits.push(`<a class="btn btn-primary" href="#${escapeHtml(next.id)}">Next scenario</a>`);
       else bits.push(`<a class="btn btn-primary" href="#${escapeHtml(findModule(s.module).hash)}">Module complete</a>`);
       bits.push(`<a class="btn btn-secondary" href="#${escapeHtml(findModule(s.module).hash)}">Back to module</a>`);
@@ -1502,17 +1577,47 @@
     }
     el.innerHTML = bits.join("");
     $("#replay-anim")?.addEventListener("click", () => playAnimation(s.animationSteps || []));
+    $("#replay-anim-alt")?.addEventListener("click", () => playAnimation(s.animationStepsAlt || []));
+  }
+
+  function resetPitchToScenario(scenario) {
+    const all = [].concat(scenario.players || [], scenario.opponents || []);
+    all.forEach((p) => {
+      const g = $(`[data-player-id="${p.id}"]`);
+      if (g) {
+        setTokenPos(g, p.x, p.y);
+        g.classList.remove("is-highlight", "is-matched", "is-selected", "is-wrong");
+      }
+    });
+    const ball = $("#pitch-ball");
+    if (ball && scenario.ball) setBallPos(ball, scenario.ball.x, scenario.ball.y);
+    const animLayer = $("#pitch-anim");
+    if (animLayer) animLayer.innerHTML = "";
   }
 
   /* ---------- Animation ---------- */
   function playAnimation(steps) {
     if (!steps.length) return;
+    const scenario = state.session?.scenario;
+    if (scenario) resetPitchToScenario(scenario);
     const animLayer = $("#pitch-anim");
     if (!animLayer) return;
     animLayer.innerHTML = "";
+    $$(".player-token").forEach((g) => g.classList.remove("is-highlight"));
+    const captionEl = $("#anim-caption");
+    if (captionEl) {
+      captionEl.hidden = false;
+      captionEl.textContent = "";
+    }
+
+    const setCaption = (step) => {
+      if (!captionEl || !step.caption) return;
+      captionEl.textContent = step.caption;
+    };
 
     const flatten = (list) => {
       list.forEach((step) => {
+        setCaption(step);
         if (step.type === "parallel") (step.steps || []).forEach((s) => applyAnimStep(s, true));
         else applyAnimStep(step, true);
       });
@@ -1527,6 +1632,7 @@
     const run = () => {
       if (i >= steps.length) return;
       const step = steps[i];
+      setCaption(step);
       if (step.type === "parallel") {
         (step.steps || []).forEach((s) => applyAnimStep(s, false));
         i += 1;

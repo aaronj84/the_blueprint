@@ -12,9 +12,8 @@ Vanilla HTML, CSS, and JavaScript. No build step. Opens from `index.html` and de
 
 Works in any modern browser on phone or laptop. Progress is saved on that device only (no login).
 
-- Start with **Demo** in the top nav for a quick walkthrough.
-- Coach teaching from the front: add `?coach=1` —  
-  [https://aaronj84.github.io/the_blueprint/?coach=1](https://aaronj84.github.io/the_blueprint/?coach=1)
+Coach teaching from the front: add `?coach=1` —  
+[https://aaronj84.github.io/the_blueprint/?coach=1](https://aaronj84.github.io/the_blueprint/?coach=1)
 
 ## Run locally
 
@@ -54,6 +53,7 @@ Coach mode shows scenario IDs, correct answers, target areas, cues, prev/next co
 | Hash | Opens |
 |------|--------|
 | `#home` | Home |
+| `#basics` | Basic 4-3-3 |
 | `#attack` | Attack module |
 | `#wide` | Wide attack (half-space run & rotation) |
 | `#defense` | Defense module |
@@ -116,7 +116,7 @@ Edit `CORNER_ROLES` in `scenarios.js` for display labels, and update corner scen
 
 Decision rule taught in content:
 
-> **Zero or one: short. Two: serve.**
+> **Zero or one in the Golden Zone: Go Short. Two: Go Long.**
 
 ## Reset saved progress
 
@@ -136,7 +136,7 @@ Each of Attack, Wide, Defense, and Corners opens with an **optional overview** o
 2. **Wide Attack** — half-space run after the switch, then rotation when tracked (8)  
    *(Patterns 3–4 — inverted rotation / third man — not yet in the first version.)*
 3. **Defensive Responsibilities** — Part 1 matchups / plus-one / press-recover; Part 2 out-of-possession **4-4-2** (8 next to 6; 7 & 11 cover deep wide)
-4. **Corner Decision Lab** — Part 1 short 1–2 play (0/1 defenders); Part 2 long-corner roles (2 defenders / serve)
+4. **Corner Decision Lab** — Unlock the play → Golden Zone read (Go Short / Go Long) → Malone/Stockton short + Skittles/Screen/Shield long roles
 5. **Mixed Challenge** — 10 randomized unlabeled questions; results by concept
 
 ## Notes for coaches
