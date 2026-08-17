@@ -41,14 +41,14 @@
 
   const VARSITY_ROSTER = [
     { number: 1, name: "Lilah Sligting" },
-    { number: 2, name: "Madeline Nate" },
+    { number: 2, name: "Madeline Nate", short: "Maddie" },
     { number: 5, name: "Kate Coccimiglio" },
     { number: 8, name: "Addison Despain" },
     { number: 9, name: "Georgia Mikell" },
     { number: 11, name: "Tae Hansen" },
     { number: 13, name: "Kailee Deeds" },
     { number: 15, name: "Saige Thurgood" },
-    { number: 17, name: "Jaqueline Scott" },
+    { number: 17, name: "Jaqueline Scott", short: "Jackie" },
     { number: 18, name: "Stella Bollinger" },
     { number: 19, name: "Jane Thackeray" },
     { number: 20, name: "Shai Farrer" },
@@ -56,8 +56,8 @@
     { number: 25, name: "Grace Slagle" },
     { number: 26, name: "Charlotte Jacobsen" },
     { number: 27, name: "Natalia Shepherd" },
-    { number: 29, name: "Abigail Platz" },
-    { number: 32, name: "Ariana Mlikota" },
+    { number: 29, name: "Abigail Platz", short: "Abby" },
+    { number: 32, name: "Ariana Mlikota", short: "Ari" },
     { number: 33, name: "Finley Thomas" }
   ];
 

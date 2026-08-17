@@ -123,6 +123,7 @@
       mode: "idle",
       pending: null,
       showGrid: true,
+      period: 1,
     },
   };
 
@@ -172,6 +173,7 @@
     if (raw === "glossary") return { view: "glossary" };
     if (raw === "challenge") return { view: "challenge" };
     if (raw === "shots") return { view: "shots" };
+    if (raw === "shots-map") return { view: "shots-map" };
 
     const mod = MODULES.find((m) => m.hash === raw || m.id === raw);
     if (mod) {
@@ -478,12 +480,14 @@
     state.moduleId = route.moduleId || null;
     state.scenarioId = route.scenarioId || null;
     setNavCurrent(state.view, state.moduleId);
-    document.body.classList.toggle("tracker-view", state.view === "shots");
+    document.body.classList.toggle("tracker-view", state.view === "shots" || state.view === "shots-map");
+    document.body.classList.toggle("shot-map-view", state.view === "shots-map");
 
     if (state.view === "home") renderHome();
     else if (state.view === "glossary") renderGlossary();
     else if (state.view === "challenge") renderChallenge();
     else if (state.view === "shots") renderShotTracker();
+    else if (state.view === "shots-map") renderShotMap();
     else if (state.view === "module") renderModule(state.moduleId);
     else if (state.view === "scenario") renderScenario(state.scenarioId);
     else renderHome();
@@ -1980,7 +1984,40 @@
     );
   }
 
+  const TRACKER_UI_KEY = "brighton-varsity-shot-tracker-ui";
+
+  function loadTrackerUi() {
+    try {
+      const raw = localStorage.getItem(TRACKER_UI_KEY);
+      if (!raw) return {};
+      return JSON.parse(raw) || {};
+    } catch {
+      return {};
+    }
+  }
+
+  function saveTrackerUi() {
+    localStorage.setItem(
+      TRACKER_UI_KEY,
+      JSON.stringify({
+        period: state.tracker.period,
+        opponent: state.tracker.opponent || "",
+      })
+    );
+  }
+
+  function eventPeriod(ev) {
+    return ev && ev.period === 2 ? 2 : 1;
+  }
+
+  function periodLabel(period) {
+    return period === 2 ? "2nd Half" : "1st Half";
+  }
+
   let trackerEvents = loadShots();
+  const savedUi = loadTrackerUi();
+  state.tracker.period = savedUi.period === 2 ? 2 : 1;
+  state.tracker.opponent = savedUi.opponent || "";
   const shotModal = $("#shot-event-modal");
   const shotModalDraft = {
     step: "first",
@@ -2045,11 +2082,31 @@
   }
 
   function playerLabel(p) {
-    return `#${p.number} ${firstName(p.name)}`;
+    return `${playerDisplayName(p)}`;
+  }
+
+  function playerDisplayName(p) {
+    if (p?.short) return p.short;
+    return firstName(p?.name || p);
   }
 
   function firstName(full) {
-    return String(full || "").trim().split(/\s+/)[0] || full;
+    const raw = String(full || "").trim().split(/\s+/)[0] || full;
+    const nick = {
+      Madeline: "Maddie",
+      Abigail: "Abby",
+      Jaqueline: "Jackie",
+      Ariana: "Ari",
+    };
+    const fromRoster = VARSITY_ROSTER.find((p) => p.name === full);
+    if (fromRoster?.short) return fromRoster.short;
+    return nick[raw] || raw;
+  }
+
+  function rosterForPicker() {
+    return VARSITY_ROSTER.slice().sort((a, b) =>
+      playerDisplayName(a).localeCompare(playerDisplayName(b), undefined, { sensitivity: "base" })
+    );
   }
 
   function csvEscape(value) {
@@ -2064,6 +2121,7 @@
       return;
     }
     const headers = [
+      "half",
       "time",
       "player_number",
       "player_name",
@@ -2084,6 +2142,7 @@
     trackerEvents.forEach((ev) => {
       lines.push(
         [
+          eventPeriod(ev),
           ev.createdAt,
           ev.shooterNumber,
           csvEscape(ev.shooterName),
@@ -2184,6 +2243,7 @@
     }
 
     const markers = events
+      .filter((ev) => eventPeriod(ev) === (opts.period || state.tracker.period || 1))
       .map((ev) => {
         let html = "";
         if (ev.assist) {
@@ -2321,13 +2381,15 @@
     if (playerHeading) playerHeading.hidden = true;
     playerGrid.hidden = false;
     actionGrid.hidden = true;
-    playerGrid.innerHTML = VARSITY_ROSTER.map(
-      (p) => `
+    playerGrid.innerHTML = rosterForPicker()
+      .map(
+        (p) => `
         <button type="button" class="shot-player-btn" data-player-number="${p.number}">
+          <span class="name">${escapeHtml(playerDisplayName(p))}</span>
           <span class="num">${p.number}</span>
-          <span class="name">${escapeHtml(firstName(p.name))}</span>
         </button>`
-    ).join("");
+      )
+      .join("");
   }
 
   function completeShotModal() {
@@ -2361,6 +2423,7 @@
     const event = {
       id: `shot-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
       createdAt: new Date().toISOString(),
+      period: state.tracker.period === 2 ? 2 : 1,
       shooterNumber: shooter.number,
       shooterName: shooter.name,
       result,
@@ -2460,20 +2523,198 @@
   function trackerSummary(events) {
     const n = (result) => events.filter((e) => e.result === result).length;
     const assists = events.filter((e) => e.assist).length;
-    return { goals: n("goal"), onTarget: n("on-target"), blocked: n("blocked"), missed: n("missed"), assists };
+    return { goals: n("goal"), onTarget: n("on-target"), blocked: n("blocked"), missed: n("missed"), assists, total: events.length };
+  }
+
+  function shotTableRows(events) {
+    if (!events.length) {
+      return `<tr><td colspan="9" class="empty-state" style="padding:1.25rem">No plays yet.</td></tr>`;
+    }
+    return events
+      .map((ev) => {
+        const assistBy = ev.assist ? `#${ev.assist.number} ${escapeHtml(firstName(ev.assist.name))}` : "—";
+        const assistType = ev.assist ? ASSIST_TYPE_LABELS[ev.assist.type] || ev.assist.type : "—";
+        const assistCell = ev.assist
+          ? `${escapeHtml(formatLoc(ev.assist))}<br /><span class="muted">${escapeHtml(formatXY(ev.assist))}</span>`
+          : "—";
+        return `
+          <tr>
+            <td>${escapeHtml(formatShotTime(ev.createdAt))}</td>
+            <td>#${ev.shooterNumber} ${escapeHtml(firstName(ev.shooterName))}</td>
+            <td><span class="shot-result-pill ${escapeHtml(ev.result)}">${escapeHtml(SHOT_RESULT_LABELS[ev.result] || ev.result)}</span></td>
+            <td>${assistBy}</td>
+            <td>${escapeHtml(assistType)}</td>
+            <td class="tracker-coord-cell">${escapeHtml(formatLoc(ev.shot))}<br /><span class="muted">${escapeHtml(formatXY(ev.shot))}</span></td>
+            <td class="tracker-coord-cell">${assistCell}</td>
+            <td><button type="button" class="icon-btn tracker-delete" data-delete-shot="${escapeHtml(ev.id)}" aria-label="Delete shot">×</button></td>
+          </tr>`;
+      })
+      .join("");
+  }
+
+  function shotTableMarkup(title, events) {
+    return `
+      <h3 class="tracker-half-heading">${escapeHtml(title)}</h3>
+      <div class="tracker-summary">
+        ${summaryPills(trackerSummary(events))}
+      </div>
+      <div class="tracker-table-wrap">
+        <table class="tracker-table">
+          <thead>
+            <tr>
+              <th>Time</th>
+              <th>Player</th>
+              <th>Result</th>
+              <th>Assisted by</th>
+              <th>Assist type</th>
+              <th>Shot location</th>
+              <th>Assist location</th>
+              <th><span class="sr-only">Delete</span></th>
+            </tr>
+          </thead>
+          <tbody>${shotTableRows(events)}</tbody>
+        </table>
+      </div>`;
+  }
+
+  function summaryPills(sum) {
+    return `
+      <span class="pill">Plays <strong>${sum.total}</strong></span>
+      <span class="pill">Goals <strong>${sum.goals}</strong></span>
+      <span class="pill">On target <strong>${sum.onTarget}</strong></span>
+      <span class="pill">Blocked <strong>${sum.blocked}</strong></span>
+      <span class="pill">Missed <strong>${sum.missed}</strong></span>
+      <span class="pill">Assists <strong>${sum.assists}</strong></span>`;
+  }
+
+  function toFullFieldPoint(loc, period) {
+    const x = Number(loc.x);
+    const y = Number(loc.y);
+    if (period === 2) return { fx: y, fy: PW - x };
+    return { fx: PL - y, fy: x };
+  }
+
+  function resultFill(result) {
+    if (result === "goal") return "#f0c14b";
+    if (result === "on-target") return "#ffffff";
+    if (result === "blocked") return "#e07a3d";
+    return "rgba(11,31,51,0.45)";
+  }
+
+  function fullFieldMarkup(events) {
+    const line = "#f2f6f3";
+    const goalW = 7.32;
+    const goalY = (PW - goalW) / 2;
+    const penW = 40.32;
+    const penH = 16.5;
+    const sixW = 18.32;
+    const sixH = 5.5;
+    const penY = (PW - penW) / 2;
+    const sixY = (PW - sixW) / 2;
+    const arcR = 9.15;
+    const spotInset = 11;
+    const dx = Math.sqrt(arcR * arcR - (penH - spotInset) * (penH - spotInset));
+    const stripes = [];
+    for (let i = 0; i < 6; i += 1) {
+      stripes.push(
+        `<rect fill="${i % 2 ? "#277047" : "#2d7a4a"}" x="${i * (PL / 6)}" y="0" width="${PL / 6}" height="${PW}" />`
+      );
+    }
+
+    const markers = events
+      .map((ev) => {
+        const period = eventPeriod(ev);
+        const shot = toFullFieldPoint(ev.shot, period);
+        let html = "";
+        if (ev.assist) {
+          const a = toFullFieldPoint(ev.assist, period);
+          html += `<line x1="${a.fx}" y1="${a.fy}" x2="${shot.fx}" y2="${shot.fy}" stroke="rgba(255,255,255,0.85)" stroke-width="0.28" stroke-dasharray="1.1 0.7" fill="none" />`;
+          html += `<circle cx="${a.fx}" cy="${a.fy}" r="0.85" fill="#7ec8e3" stroke="#0b1f33" stroke-width="0.2" />`;
+        }
+        html += `<circle cx="${shot.fx}" cy="${shot.fy}" r="1.65" fill="${resultFill(ev.result)}" stroke="${ev.result === "missed" ? "#ffffff" : "#0b1f33"}" stroke-width="0.28" />`;
+        html += `<text x="${shot.fx}" y="${shot.fy}" fill="${ev.result === "missed" ? "#ffffff" : "#0b1f33"}" font-size="1.25" font-weight="700" text-anchor="middle" dominant-baseline="central">${escapeHtml(String(ev.shooterNumber))}</text>`;
+        return html;
+      })
+      .join("");
+
+    return `
+      <svg id="shot-map-svg" class="shot-map-svg" viewBox="-3.2 -3.2 111.4 74.4" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Full-field shot map. 1st half attacks right, 2nd half attacks left.">
+        ${stripes.join("")}
+        <rect x="0" y="0" width="${PL}" height="${PW}" fill="none" stroke="${line}" stroke-width="0.45" />
+        <line x1="${HALF_L}" y1="0" x2="${HALF_L}" y2="${PW}" stroke="${line}" stroke-width="0.4" />
+        <circle cx="${HALF_L}" cy="${PW / 2}" r="9.15" fill="none" stroke="${line}" stroke-width="0.35" />
+        <circle cx="${HALF_L}" cy="${PW / 2}" r="0.45" fill="${line}" />
+        <rect x="-1.4" y="${goalY}" width="1.4" height="${goalW}" fill="none" stroke="${line}" stroke-width="0.45" />
+        <rect x="${PL}" y="${goalY}" width="1.4" height="${goalW}" fill="none" stroke="${line}" stroke-width="0.45" />
+        <rect x="0" y="${penY}" width="${penH}" height="${penW}" fill="none" stroke="${line}" stroke-width="0.35" />
+        <rect x="${PL - penH}" y="${penY}" width="${penH}" height="${penW}" fill="none" stroke="${line}" stroke-width="0.35" />
+        <rect x="0" y="${sixY}" width="${sixH}" height="${sixW}" fill="none" stroke="${line}" stroke-width="0.35" />
+        <rect x="${PL - sixH}" y="${sixY}" width="${sixH}" height="${sixW}" fill="none" stroke="${line}" stroke-width="0.35" />
+        <circle cx="${spotInset}" cy="${PW / 2}" r="0.45" fill="${line}" />
+        <circle cx="${PL - spotInset}" cy="${PW / 2}" r="0.45" fill="${line}" />
+        <path d="M ${penH} ${PW / 2 - dx} A ${arcR} ${arcR} 0 0 1 ${penH} ${PW / 2 + dx}" fill="none" stroke="${line}" stroke-width="0.35" />
+        <path d="M ${PL - penH} ${PW / 2 - dx} A ${arcR} ${arcR} 0 0 0 ${PL - penH} ${PW / 2 + dx}" fill="none" stroke="${line}" stroke-width="0.35" />
+        <text x="12" y="-1.15" fill="${line}" font-size="2.3" font-weight="750" text-anchor="middle">2nd HALF</text>
+        <text x="${PL - 12}" y="-1.15" fill="${line}" font-size="2.3" font-weight="750" text-anchor="middle">1st HALF</text>
+        ${markers}
+      </svg>`;
+  }
+
+  function downloadSummaryImage() {
+    const svg = $("#shot-map-svg");
+    if (!svg) return;
+    const clone = svg.cloneNode(true);
+    clone.setAttribute("width", "1600");
+    clone.setAttribute("height", String(Math.round(1600 * (74.4 / 111.4))));
+    const xml = new XMLSerializer().serializeToString(clone);
+    const blob = new Blob([xml], { type: "image/svg+xml;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      canvas.width = 1600;
+      canvas.height = Math.round(1600 * (74.4 / 111.4));
+      const ctx = canvas.getContext("2d");
+      ctx.fillStyle = "#2d7a4a";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      URL.revokeObjectURL(url);
+      canvas.toBlob((png) => {
+        if (!png) {
+          showToast("Could not save image");
+          return;
+        }
+        const pngUrl = URL.createObjectURL(png);
+        const a = document.createElement("a");
+        a.href = pngUrl;
+        a.download = `bengals-shot-map-${new Date().toISOString().slice(0, 10)}.png`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(pngUrl), 1500);
+        showToast("Shot map saved");
+      }, "image/png");
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      showToast("Could not save image");
+    };
+    img.src = url;
   }
 
   function renderShotTracker(opts = {}) {
     bindShotModal();
     const scrollY = window.scrollY;
     const events = trackerEvents;
-    const sum = trackerSummary(events);
+    const period = state.tracker.period === 2 ? 2 : 1;
+    const firstHalf = events.filter((e) => eventPeriod(e) === 1);
+    const secondHalf = events.filter((e) => eventPeriod(e) === 2);
     const recording =
       state.tracker.mode === "awaiting-location" ||
       state.tracker.mode === "awaiting-shot-location";
-    let status = "Record Shot, then tap. Goal is on the right.";
+    let status = `Add Play, then tap. ${periodLabel(period)} · goal on the right.`;
     if (state.tracker.mode === "awaiting-location") {
-      status = "Tap the pass or shot location.";
+      status = `Tap the pass or shot location · ${periodLabel(period)}.`;
     } else if (state.tracker.mode === "awaiting-shot-location") {
       const a = state.tracker.pending?.assist;
       status = a
@@ -2481,71 +2722,31 @@
         : "Tap where the shot was taken.";
     }
 
-    const rows = events.length
-      ? events
-          .map((ev) => {
-            const assistBy = ev.assist ? `#${ev.assist.number} ${escapeHtml(firstName(ev.assist.name))}` : "—";
-            const assistType = ev.assist ? ASSIST_TYPE_LABELS[ev.assist.type] || ev.assist.type : "—";
-            const assistCell = ev.assist
-              ? `${escapeHtml(formatLoc(ev.assist))}<br /><span class="muted">${escapeHtml(formatXY(ev.assist))}</span>`
-              : "—";
-            return `
-              <tr>
-                <td>${escapeHtml(formatShotTime(ev.createdAt))}</td>
-                <td>#${ev.shooterNumber} ${escapeHtml(firstName(ev.shooterName))}</td>
-                <td><span class="shot-result-pill ${escapeHtml(ev.result)}">${escapeHtml(SHOT_RESULT_LABELS[ev.result] || ev.result)}</span></td>
-                <td>${assistBy}</td>
-                <td>${escapeHtml(assistType)}</td>
-                <td class="tracker-coord-cell">${escapeHtml(formatLoc(ev.shot))}<br /><span class="muted">${escapeHtml(formatXY(ev.shot))}</span></td>
-                <td class="tracker-coord-cell">${assistCell}</td>
-                <td><button type="button" class="icon-btn tracker-delete" data-delete-shot="${escapeHtml(ev.id)}" aria-label="Delete shot">×</button></td>
-              </tr>`;
-          })
-          .join("")
-      : `<tr><td colspan="8" class="empty-state" style="padding:1.25rem">No shots recorded yet.</td></tr>`;
-
     root.innerHTML = `
       <div class="tracker-page">
         <section class="tracker-stage">
+          <div class="half-toggle" role="tablist" aria-label="Match half">
+            <button type="button" class="half-toggle-btn ${period === 1 ? "is-on" : ""}" data-set-period="1">1st Half</button>
+            <button type="button" class="half-toggle-btn ${period === 2 ? "is-on" : ""}" data-set-period="2">2nd Half</button>
+          </div>
           <div class="tracker-toolbar">
             ${
               recording
                 ? `<button type="button" class="btn btn-secondary" id="tracker-cancel-record">Cancel</button>`
-                : `<button type="button" class="btn btn-primary" id="tracker-record">Record Shot</button>`
+                : `<button type="button" class="btn btn-primary" id="tracker-record">Add Play</button>`
             }
-            <button type="button" class="btn btn-ghost" id="tracker-export" ${events.length ? "" : "disabled"}>Export CSV</button>
+            <button type="button" class="btn btn-ghost" id="tracker-export" ${events.length ? "" : "disabled"}>CSV</button>
+            <a class="btn btn-ghost" href="#shots-map">Game map</a>
             <button type="button" class="btn btn-ghost" id="tracker-toggle-grid">${state.tracker.showGrid ? "Hide zones" : "Zones"}</button>
           </div>
           <p class="tracker-status ${recording ? "is-live" : ""}" id="tracker-status">${escapeHtml(status)}</p>
-          <div class="pitch-wrap tracker-pitch-wrap" id="tracker-pitch-wrap">${halfPitchMarkup(events, { showGrid: state.tracker.showGrid })}</div>
+          <div class="pitch-wrap tracker-pitch-wrap" id="tracker-pitch-wrap">${halfPitchMarkup(events, { showGrid: state.tracker.showGrid, period })}</div>
         </section>
 
         <section class="tracker-log" id="tracker-log">
-          <h2>Recorded shots</h2>
-          <div class="tracker-summary">
-            <span class="pill">Goals <strong>${sum.goals}</strong></span>
-            <span class="pill">On target <strong>${sum.onTarget}</strong></span>
-            <span class="pill">Blocked <strong>${sum.blocked}</strong></span>
-            <span class="pill">Missed <strong>${sum.missed}</strong></span>
-            <span class="pill">Assists <strong>${sum.assists}</strong></span>
-          </div>
-          <div class="tracker-table-wrap">
-            <table class="tracker-table">
-              <thead>
-                <tr>
-                  <th>Time</th>
-                  <th>Player</th>
-                  <th>Result</th>
-                  <th>Assisted by</th>
-                  <th>Assist type</th>
-                  <th>Shot location</th>
-                  <th>Assist location</th>
-                  <th><span class="sr-only">Delete</span></th>
-                </tr>
-              </thead>
-              <tbody>${rows}</tbody>
-            </table>
-          </div>
+          <h2>Recorded plays</h2>
+          ${shotTableMarkup("1st Half", firstHalf)}
+          ${shotTableMarkup("2nd Half", secondHalf)}
           ${
             events.length
               ? `<button type="button" class="btn btn-ghost" id="tracker-clear">Clear results</button>`
@@ -2564,6 +2765,17 @@
       closeShotModal();
       resetTrackerDraft();
       renderShotTracker();
+    });
+    $$("[data-set-period]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const next = btn.getAttribute("data-set-period") === "2" ? 2 : 1;
+        if (next === state.tracker.period) return;
+        state.tracker.period = next;
+        saveTrackerUi();
+        resetTrackerDraft();
+        closeShotModal();
+        renderShotTracker({ keepScroll: true });
+      });
     });
     $("#tracker-toggle-grid")?.addEventListener("click", () => {
       state.tracker.showGrid = !state.tracker.showGrid;
@@ -2592,6 +2804,55 @@
     });
     bindTrackerPitch();
     if (opts.keepScroll) window.scrollTo(0, scrollY);
+  }
+
+  function renderShotMap() {
+    const events = trackerEvents;
+    const firstHalf = events.filter((e) => eventPeriod(e) === 1);
+    const secondHalf = events.filter((e) => eventPeriod(e) === 2);
+    const vs = state.tracker.opponent || "";
+    const dateLabel = new Date().toLocaleDateString([], { weekday: "short", month: "short", day: "numeric", year: "numeric" });
+    root.innerHTML = `
+      <div class="shot-map-page">
+        <div class="shot-map-actions no-print">
+          <a class="btn btn-ghost" href="#shots">Back</a>
+          <button type="button" class="btn btn-primary" id="shot-map-print">Print / PDF</button>
+          <button type="button" class="btn btn-ghost" id="shot-map-save" ${events.length ? "" : "disabled"}>Save image</button>
+        </div>
+        <div class="shot-map-print" id="shot-map-print-root">
+          <header class="shot-map-header">
+            <h1>Brighton Bengals</h1>
+            <p>
+              <label class="no-print">vs
+                <input type="text" id="shot-map-opponent" value="${escapeHtml(vs)}" placeholder="Opponent" />
+              </label>
+              <span class="shot-map-vs-print">${vs ? `vs ${escapeHtml(vs)}` : ""}</span>
+              <span class="muted"> · ${escapeHtml(dateLabel)}</span>
+            </p>
+          </header>
+          <div class="shot-map-pitch">${fullFieldMarkup(events)}</div>
+          <p class="shot-map-caption">1st half attacks the right goal · 2nd half attacks the left (sides switched). Gold = goal · White = on target · Orange = blocked · Hollow = missed · Blue dot = assist.</p>
+          <div class="shot-map-stats">
+            <div>
+              <h2>1st Half</h2>
+              <div class="tracker-summary">${summaryPills(trackerSummary(firstHalf))}</div>
+            </div>
+            <div>
+              <h2>2nd Half</h2>
+              <div class="tracker-summary">${summaryPills(trackerSummary(secondHalf))}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+    $("#shot-map-print")?.addEventListener("click", () => window.print());
+    $("#shot-map-save")?.addEventListener("click", () => downloadSummaryImage());
+    $("#shot-map-opponent")?.addEventListener("change", (e) => {
+      state.tracker.opponent = e.target.value.trim();
+      saveTrackerUi();
+      const printVs = $(".shot-map-vs-print");
+      if (printVs) printVs.textContent = state.tracker.opponent ? `vs ${state.tracker.opponent}` : "";
+    });
   }
 
   /* ---------- Chrome: drawer, settings ---------- */

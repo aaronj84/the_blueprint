@@ -340,6 +340,10 @@ body.tracker-view .app-main {
   padding: 0.35rem 0.55rem calc(1.25rem + var(--safe-bottom));
 }
 
+body.shot-map-view .app-main {
+  max-width: 42rem;
+}
+
 body.tracker-view .brand-sub {
   display: none;
 }
@@ -1524,6 +1528,32 @@ body.coach-mode .coach-controls {
   align-items: center;
 }
 
+.half-toggle {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.35rem;
+}
+
+.half-toggle-btn {
+  min-height: 42px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-soft);
+  font-weight: 750;
+  font-size: 0.92rem;
+}
+
+.half-toggle-btn.is-on {
+  background: var(--brand);
+  border-color: var(--brand);
+  color: #fff;
+}
+
+.tracker-half-heading {
+  margin: 1.15rem 0 0.45rem;
+  font-size: 1rem;
+}
+
 .tracker-toolbar .btn {
   min-height: 44px;
   padding: 0.5rem 0.75rem;
@@ -1820,9 +1850,10 @@ body.coach-mode .coach-controls {
 
 .shot-player-btn .num {
   flex: none;
-  color: var(--brand);
-  font-weight: 750;
-  font-size: 1rem;
+  color: var(--text-dim);
+  font-weight: 500;
+  font-size: 0.68rem;
+  letter-spacing: 0.02em;
 }
 
 .shot-player-btn .name {
@@ -1830,6 +1861,8 @@ body.coach-mode .coach-controls {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  font-weight: 750;
+  font-size: 0.95rem;
 }
 
 .shot-player-btn.is-selected {
@@ -1839,7 +1872,7 @@ body.coach-mode .coach-controls {
 }
 
 .shot-player-btn.is-selected .num {
-  color: #fff;
+  color: rgba(255, 255, 255, 0.62);
 }
 
 .shot-action-grid {
@@ -1912,6 +1945,71 @@ body.coach-mode .coach-controls {
   margin-top: 0.75rem;
 }
 
+.shot-map-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 0.85rem;
+}
+
+.shot-map-header h1 {
+  margin: 0 0 0.25rem;
+  font-size: 1.35rem;
+}
+
+.shot-map-header p {
+  margin: 0 0 0.75rem;
+  color: var(--text-muted);
+}
+
+.shot-map-header input {
+  width: 10rem;
+  margin-left: 0.25rem;
+  padding: 0.35rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-panel);
+}
+
+.shot-map-vs-print {
+  display: none;
+}
+
+.shot-map-pitch {
+  background: #24633c;
+  border-radius: var(--radius);
+  padding: 0.35rem;
+}
+
+.shot-map-svg {
+  width: 100%;
+  height: auto;
+  display: block;
+  border-radius: 8px;
+}
+
+.shot-map-caption {
+  margin: 0.65rem 0 1rem;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.shot-map-stats {
+  display: grid;
+  gap: 1rem;
+}
+
+.shot-map-stats h2 {
+  margin: 0 0 0.4rem;
+  font-size: 1rem;
+}
+
+@media (min-width: 640px) {
+  .shot-map-stats {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
 @media (max-height: 700px) {
   .shot-modal-panel h2 {
     font-size: 1.15rem;
@@ -1923,12 +2021,44 @@ body.coach-mode .coach-controls {
   }
 
   .shot-player-btn .num {
+    font-size: 0.62rem;
+  }
+
+  .shot-player-btn .name {
     font-size: 0.82rem;
   }
 
   .shot-action-btn {
     min-height: 48px;
     font-size: 0.95rem;
+  }
+}
+
+@media print {
+  body {
+    background: #fff;
+  }
+
+  .app-header,
+  .no-print {
+    display: none !important;
+  }
+
+  .shot-map-vs-print {
+    display: inline;
+  }
+
+  .app-main,
+  body.shot-map-view .app-main {
+    max-width: none;
+    padding: 0;
+    width: 100%;
+  }
+
+  .shot-map-pitch {
+    background: #24633c;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
   }
 }
 
