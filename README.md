@@ -117,6 +117,8 @@ Edit `CORNER_ROLES` in `scenarios.js` for display labels, and update corner scen
 Decision rule taught in content:
 
 > **Zero or one in the Golden Zone: Go Short. Two: Go Long.**
+> **Zero or one high → go immediately** (Stockton runs; Malone feeds). **One tight → deliberate short** after Skittles.
+> **Go Long:** non-striker curls before the ball is hit (rebound).
 
 ## Reset saved progress
 

@@ -35,8 +35,31 @@
       developing: 80,
       ready: 90
     },
-    challengeCount: 10
+    challengeCount: 10,
+    shotsStorageKey: "brighton-varsity-shot-tracker"
   };
+
+  const VARSITY_ROSTER = [
+    { number: 1, name: "Lilah Sligting" },
+    { number: 2, name: "Madeline Nate" },
+    { number: 5, name: "Kate Coccimiglio" },
+    { number: 8, name: "Addison Despain" },
+    { number: 9, name: "Georgia Mikell" },
+    { number: 11, name: "Tae Hansen" },
+    { number: 13, name: "Kailee Deeds" },
+    { number: 15, name: "Saige Thurgood" },
+    { number: 17, name: "Jaqueline Scott" },
+    { number: 18, name: "Stella Bollinger" },
+    { number: 19, name: "Jane Thackeray" },
+    { number: 20, name: "Shai Farrer" },
+    { number: 24, name: "Savanna Zenger" },
+    { number: 25, name: "Grace Slagle" },
+    { number: 26, name: "Charlotte Jacobsen" },
+    { number: 27, name: "Natalia Shepherd" },
+    { number: 29, name: "Abigail Platz" },
+    { number: 32, name: "Ariana Mlikota" },
+    { number: 33, name: "Finley Thomas" }
+  ];
 
   const GLOSSARY = [
     {
@@ -137,27 +160,27 @@
     },
     {
       term: "Go Short",
-      definition: "Zero or one defender in the Golden Zone (near-post corner of the 18). Malone touches to prep the ball for Stockton, then runs to the Golden Zone; Stockton dribbles the goal line and looks for the cutback."
+      definition: "Zero or one defender in the Golden Zone (near-post corner of the 18). If zero — or one who is high — go immediately: Stockton starts running the goal line and Malone feeds her on the move. If one is tight on the short, wait for Skittles, then Malone touches and bends while Stockton dribbles the cutback 2v1."
     },
     {
       term: "Go Long",
-      definition: "Two defenders in the Golden Zone. After Skittles finishes her run, Stockton delivers across the face. Spot, Shield, Targets, and Screen make their moves while the ball is in the air."
+      definition: "Two defenders in the Golden Zone. After Skittles finishes her run, the taker delivers across the face — but the partner who isn’t striking curls early (before the ball is hit) for a rebound. Spot, Shield, Targets, and Screen move while the ball is in the air."
     },
     {
       term: "Golden Zone",
-      definition: "The area around the near-post corner of the 18 that we keep open. The read lives here: zero or one defender → Go Short; two → Go Long."
+      definition: "The area around the near-post corner of the 18 that we keep open. The read lives here: zero or one defender → Go Short; two → Go Long. Zero or one high → go immediately; one tight → deliberate short 2v1."
     },
     {
       term: "Malone",
-      definition: "Touches the ball first to prep it for Stockton, then runs to the Golden Zone. Raises her hand to start the sequence."
+      definition: "On immediate short: feeds Stockton as Stockton runs the goal line. On deliberate short: touches first to prep the ball, then bends to the Golden Zone. On long: if she isn’t striking, she curls before the ball is hit for a rebound."
     },
     {
       term: "Stockton",
-      definition: "Takes the ball after Malone’s touch. On short: dribbles down the goal line. On long: delivers across the face after Skittles arrives."
+      definition: "On immediate short: starts running the goal line and receives Malone’s feed on the move. On deliberate short: takes Malone’s touch and dribbles the goal line. On long: usually delivers across the face after Skittles arrives (partner curls early)."
     },
     {
       term: "Skittles",
-      definition: "Visible, colorful distraction — we hope the defense fixates on her. Starts near the back post, makes her run first; only after she arrives do we Go Short or Go Long."
+      definition: "Visible, colorful distraction — we hope the defense fixates on her. Starts near the back post and runs first when we are waiting on the read (deliberate short or Go Long). Skip her wait on immediate short (zero or one high)."
     },
     {
       term: "Screen",
@@ -174,9 +197,9 @@
   ];
 
   const CORNER_ROLES = {
-    malone: "Malone — touches first to prep for Stockton, then runs to the Golden Zone",
-    stockton: "Stockton — on short, dribbles the goal line; on long, delivers across the face after Skittles arrives",
-    skittles: "Skittles — colorful distraction; makes her run first; we wait until she arrives before short or long",
+    malone: "Malone — on immediate short, feeds Stockton on the run; on deliberate short, touches then bends; on long, curls early if she isn’t striking",
+    stockton: "Stockton — on short, runs/dribbles the goal line; on long, delivers across the face after Skittles (partner curls early)",
+    skittles: "Skittles — colorful distraction; runs first when we wait (deliberate short or Go Long); skip her on immediate short",
     frontTarget: "Front Target — holds, then reacts to the ball (long delivery or Stockton chip)",
     backTarget: "Back Target — holds, then reacts to the ball (long delivery or Stockton chip)",
     screen: "Screen — screens the keeper so she can’t see the ball; then cleans rebounds",
@@ -412,23 +435,23 @@
       group: "set-pieces-group",
       overview: {
         headline: "Read the Golden Zone → Go Short or Go Long",
-        intro: "First unlock our corner play (Brighton eyes only). Then learn the read: defenders in the Golden Zone decide short vs long. Malone and Stockton run the short; Skittles starts the long sequence.",
+        intro: "First unlock our corner play (Brighton eyes only). Then learn the read: defenders in the Golden Zone decide short vs long — and whether the short is immediate or deliberate. Malone and Stockton run the short; Skittles starts the wait sequence when we aren’t going now.",
         principles: [
           {
             title: "The Golden Zone read",
-            body: "The Golden Zone is the near-post corner of the 18 — we keep it open. Zero or one defender there → Go Short. Two defenders there → Go Long."
+            body: "The Golden Zone is the near-post corner of the 18 — we keep it open. Zero or one defender there → Go Short. Two defenders there → Go Long. Extra short read: zero, or one who is high → go immediately. One tight on the short → deliberate 2v1 after Skittles."
           },
           {
-            title: "Sequence before the ball moves",
-            body: "Malone raises her hand. Everyone stares at Skittles while she makes her run. Only after Skittles arrives do we Go Short or Go Long. Targets hold until they can react to the ball."
+            title: "Immediate short — go now",
+            body: "Zero defenders in the corner, or one defender who is high: do not wait for Skittles. Stockton starts running along the goal line; Malone feeds her as she’s running. Quick attack before the defense can reset."
           },
           {
-            title: "Go Short — Malone & Stockton",
-            body: "Malone touches the ball to prep it for Stockton, then runs to the Golden Zone. Stockton dribbles parallel to the goal line (holds everyone onside) and looks for the cutback. Others start at the back post to keep the Golden Zone empty."
+            title: "Deliberate short — wait, then 2v1",
+            body: "One defender tight on the short: Malone raises her hand, everyone stares at Skittles, then after Skittles arrives we go short. Malone touches and bends to the Golden Zone; Stockton dribbles the goal line and looks for the cutback. Others start at the back post to keep the Golden Zone empty."
           },
           {
-            title: "Go Long — roles",
-            body: "After Skittles arrives: Stockton delivers across the face. Screen blocks the keeper’s view. Spot hits the penalty spot. Shield drops to stop counters. Front/Back Targets hold, then attack the ball. Corner Defense keeps +1 behind."
+            title: "Go Long — curl early, then deliver",
+            body: "After Skittles arrives: whoever isn’t striking the ball curls before it is hit — so she can arrive for a rebound off the long serve. Then Stockton delivers across the face. Screen blocks the keeper’s view. Spot hits the penalty spot. Shield drops to stop counters. Front/Back Targets hold, then attack the ball. Corner Defense keeps +1 behind."
           },
           {
             title: "Roles are jobs, not fixed numbers",
@@ -437,9 +460,9 @@
         ],
         cues: [
           "Zero or one in the Golden Zone: Go Short. Two: Go Long.",
-          "Malone raises her hand — then watch Skittles.",
-          "Skittles arrives → then short or long.",
-          "Malone touches; Stockton dribbles the goal line.",
+          "Zero or one high → go now. Stockton runs; Malone feeds.",
+          "One tight → wait for Skittles, then 2v1.",
+          "Go Long: non-striker curls before the ball is hit.",
           "Targets hold — then react to the ball."
         ]
       }
@@ -4131,7 +4154,7 @@
       prompt:
         "Do you promise that you're a Brighton player and that you will not share this image or artwork with anyone who is not part of this program?",
       seeIt:
-        "Brighton eyes only. Answer both locks to unlock the animations. Sequence: Malone raises her hand → watch Skittles run to the near-post 6 → after she arrives, Go Short or Go Long → Targets hold until the ball is in the air.",
+        "Brighton eyes only. Answer both locks to unlock the animations. Immediate short: zero or one high → Stockton runs, Malone feeds now. Deliberate / long: Malone raises her hand → watch Skittles → after she arrives, Go Short (one tight) or Go Long (two; non-striker curls early) → Targets hold until the ball is in the air.",
       interactionType: "multiple-choice",
       persistProgress: false,
       challengeEligible: false,
@@ -4174,9 +4197,9 @@
       correctAnswer: "yes",
       hint: "This artwork stays inside the program. If you’re a Brighton player, promise yes.",
       explanation:
-        "Locked in. You just watched Go Long. Next: tap Watch Go Short below to see the one-defender version (Malone → Stockton → cutback → finish).",
+        "Locked in. You just watched Go Long (non-striker curls early). Next: tap Watch Go Short below to see the immediate short — zero defenders, Stockton runs, Malone feeds on the move.",
       coachingCue: "Watch Go Long, then Watch Go Short.",
-      // Primary animation: Go Long (two in the Golden Zone)
+      // Primary animation: Go Long (two in the Golden Zone) — non-striker curls before delivery
       animationSteps: [
         {
           type: "highlight",
@@ -4206,10 +4229,24 @@
           duration: 1800
         },
         {
+          type: "move",
+          playerId: "malone",
+          to: { x: 48, y: 12 },
+          duration: 900,
+          caption: "Malone (not striking) curls early — ready for a rebound"
+        },
+        {
+          type: "move",
+          playerId: "malone",
+          to: { x: 38, y: 16 },
+          duration: 700,
+          caption: "Curl continues — don’t wait at the corner flag"
+        },
+        {
           type: "highlight",
           playerIds: ["front", "back"],
           caption: "Targets still holding…",
-          duration: 1400
+          duration: 1200
         },
         {
           type: "parallel",
@@ -4220,80 +4257,56 @@
             { type: "move", playerId: "spot", to: { x: 34, y: 12 }, duration: 1500 },
             { type: "move", playerId: "shield", to: { x: 34, y: 20.5 }, duration: 1500 },
             { type: "move", playerId: "front", to: { x: 30, y: 5 }, duration: 1500 },
-            { type: "move", playerId: "back", to: { x: 26, y: 8 }, duration: 1500 }
+            { type: "move", playerId: "back", to: { x: 26, y: 8 }, duration: 1500 },
+            { type: "move", playerId: "malone", to: { x: 34, y: 14 }, duration: 1500 }
           ]
         },
         {
           type: "highlight",
-          playerIds: ["screen", "skittles", "spot", "shield", "front", "back"],
-          caption: "Screen on the keeper · Shield stops the counter · Targets attack the ball",
+          playerIds: ["screen", "skittles", "spot", "shield", "front", "back", "malone"],
+          caption: "Screen on the keeper · Shield stops the counter · Targets attack · Malone poised for rebound",
           duration: 2000
         }
       ],
-      // Secondary animation: Go Short (one in the Golden Zone)
+      // Secondary animation: Immediate Go Short (zero in the corner)
       animationStepsAlt: [
         {
           type: "parallel",
           duration: 400,
-          caption: "Setup: one defender in the Golden Zone",
+          caption: "Setup: zero defenders in the corner — go immediately",
           steps: [
-            { type: "move", playerId: "opp-1", to: { x: 50, y: 14 }, duration: 400 },
-            { type: "move", playerId: "opp-2", to: { x: 36, y: 18 }, duration: 400 }
+            { type: "move", playerId: "opp-1", to: { x: 36, y: 18 }, duration: 400 },
+            { type: "move", playerId: "opp-2", to: { x: 28, y: 16 }, duration: 400 }
           ]
         },
         {
           type: "highlight",
-          playerIds: ["malone"],
-          caption: "Go Short — Malone raises her hand",
+          playerIds: ["stockton", "malone"],
+          caption: "Zero in the corner → go now — no waiting for Skittles",
           duration: 1600
         },
         {
-          type: "highlight",
-          playerIds: ["skittles"],
-          caption: "Everyone stares at Skittles…",
-          duration: 1400
-        },
-        {
           type: "parallel",
-          duration: 1800,
-          caption: "Skittles runs to the near-post end-line corner of the 6",
+          duration: 1400,
+          caption: "Stockton starts running the goal line · Malone feeds her on the move",
           steps: [
-            { type: "move", playerId: "skittles", to: { x: 42.5, y: 2 }, duration: 1800 }
+            { type: "move", playerId: "stockton", to: { x: 54, y: 1.4 }, duration: 1400 },
+            { type: "pass", from: { x: 66, y: 1.5 }, to: { x: 56, y: 1.4 }, duration: 1100 }
           ]
         },
         {
-          type: "highlight",
-          playerIds: ["skittles", "malone", "stockton", "opp-1"],
-          caption: "Skittles arrives — one in the Golden Zone → Go Short",
-          duration: 1800
-        },
-        {
-          type: "pass",
-          from: { x: 66, y: 1.5 },
-          to: { x: 64, y: 1.5 },
-          duration: 700,
-          caption: "Malone touches — preps the ball for Stockton"
-        },
-        {
           type: "parallel",
-          duration: 1600,
-          caption: "Malone bends to the Golden Zone · Stockton drives the goal line",
+          duration: 1200,
+          caption: "Malone bends toward the Golden Zone · Stockton keeps driving",
           steps: [
-            { type: "move", playerId: "malone", to: { x: 52, y: 15 }, duration: 1600 },
-            { type: "move", playerId: "stockton", to: { x: 54, y: 1.4 }, duration: 1600 },
-            { type: "pass", from: { x: 64, y: 1.5 }, to: { x: 54, y: 1.4 }, duration: 1600 }
+            { type: "move", playerId: "malone", to: { x: 52, y: 15 }, duration: 1200 },
+            { type: "move", playerId: "stockton", to: { x: 48, y: 1.4 }, duration: 1200 },
+            { type: "pass", from: { x: 56, y: 1.4 }, to: { x: 48, y: 1.4 }, duration: 1200 }
           ]
         },
         {
-          type: "move",
-          playerId: "opp-1",
-          to: { x: 52, y: 3 },
-          duration: 900,
-          caption: "The one defender steps to Stockton…"
-        },
-        {
           type: "pass",
-          from: { x: 54, y: 1.4 },
+          from: { x: 48, y: 1.4 },
           to: { x: 50, y: 14 },
           duration: 900,
           caption: "Cutback to Malone — Targets still holding at the back post"
@@ -4308,7 +4321,7 @@
         {
           type: "highlight",
           playerIds: ["malone", "stockton", "front", "back"],
-          caption: "Goal. Targets held until there was a ball to react to.",
+          caption: "Goal. Immediate short — Stockton ran; Malone fed on the move.",
           duration: 2000
         }
       ]
@@ -4317,12 +4330,12 @@
       id: "corner-01",
       module: "corner",
       chapter: "short-corners",
-      title: "Part 1: Zero Defenders — Go Short",
+      title: "Part 1: Zero Defenders — Go Now",
       difficulty: 1,
       phase: "corner-kick",
       concept: "corners-short",
-      prompt: "Corner: zero defenders in the Golden Zone. What is the first decision?",
-      seeIt: "Malone and Stockton are free at the flag. No opponent is close enough to stop the short. Our other attackers are stacked at the back post to clear space.",
+      prompt: "Corner: zero defenders in the corner. What do Malone and Stockton do?",
+      seeIt: "Malone and Stockton are free at the flag. No opponent is close. Our other attackers are stacked at the back post to clear space. Do not wait for Skittles.",
       interactionType: "multiple-choice",
       players: [
         { id: "p1", team: "ours", number: "M", role: "Malone", x: 66, y: 3.5, label: "Mal" },
@@ -4341,18 +4354,76 @@
       ],
       ball: { x: 66, y: 1.3 },
       options: [
-        { id: "short", label: "Go Short — Malone and Stockton run the play" },
+        { id: "now", label: "Go immediately — Stockton runs the goal line; Malone feeds her on the move" },
+        { id: "wait-skit", label: "Wait for Skittles to finish her run before anyone moves" },
         { id: "long", label: "Go Long into the crowded box anyway" },
-        { id: "wait", label: "Wait for two defenders to come out, then decide" },
         { id: "gk", label: "Pass back to our goalkeeper" }
       ],
-      correctAnswer: "short",
-      hint: "Count defenders in the Golden Zone. Zero → Go Short.",
-      explanation: "Zero in the Golden Zone → Go Short. Clear the box by keeping others at the back post so Malone and Stockton can run the play. We almost always get a shot from this.",
-      coachingCue: "Zero or one in the Golden Zone: Go Short. Two: Go Long.",
+      correctAnswer: "now",
+      hint: "Zero in the corner → go now. Stockton starts running; Malone feeds on the move. No Skittles wait.",
+      explanation: "Zero in the corner → go immediately. Stockton starts running along the goal line; Malone feeds her as she’s running. Quick attack before the defense can reset. Others stay at the back post clearing space.",
+      coachingCue: "Zero or one high → go now. Stockton runs; Malone feeds.",
       animationSteps: [
-        { type: "pass", from: { x: 66, y: 1.3 }, to: { x: 63, y: 1.3 }, duration: 400 },
+        {
+          type: "parallel",
+          duration: 900,
+          steps: [
+            { type: "move", playerId: "p2", to: { x: 54, y: 1.3 }, duration: 900 },
+            { type: "pass", from: { x: 66, y: 1.3 }, to: { x: 56, y: 1.3 }, duration: 700 }
+          ]
+        },
         { type: "highlight", playerIds: ["p1", "p2"] }
+      ],
+      challengeEligible: true
+    },
+    {
+      id: "corner-01b",
+      module: "corner",
+      chapter: "short-corners",
+      title: "Part 1: One High — Go Now",
+      difficulty: 1,
+      phase: "corner-kick",
+      concept: "corners-short",
+      prompt: "One defender is high — not tight on the short. What is the first decision?",
+      seeIt: "One opponent sits high toward the Golden Zone / half-space. Nobody is tight on Malone and Stockton at the flag. Goal-line grass is open.",
+      interactionType: "multiple-choice",
+      showTeachingZones: true,
+      players: [
+        { id: "p1", team: "ours", number: "M", role: "Malone", x: 66, y: 3.5, label: "Mal" },
+        { id: "p2", team: "ours", number: "S", role: "Stockton", x: 63, y: 1.3, label: "Stk" },
+        { id: "bp1", team: "ours", number: "·", role: "Back-post group", x: 24, y: 10, label: "BP" },
+        { id: "bp2", team: "ours", number: "·", role: "Back-post group", x: 28, y: 12, label: "BP" },
+        { id: "bp3", team: "ours", number: "·", role: "Back-post group", x: 22, y: 14, label: "BP" }
+      ],
+      opponents: [
+        { id: "opp-high", team: "opp", number: 3, role: "High defender", x: 52, y: 16 },
+        { id: "opp-a", team: "opp", number: 4, role: "Right center back", x: 30, y: 12 },
+        { id: "opp-b", team: "opp", number: 5, role: "Left center back", x: 24, y: 14 }
+      ],
+      ball: { x: 66, y: 1.3 },
+      zones: [
+        { id: "golden", label: "Golden Zone", x: 46, y: 12, w: 12, h: 8 }
+      ],
+      options: [
+        { id: "now", label: "Go immediately — Stockton runs the goal line; Malone feeds on the move" },
+        { id: "wait-skit", label: "Wait for Skittles because any defender means delay" },
+        { id: "long", label: "Go Long — one defender cancels the short" },
+        { id: "reset", label: "Cancel the corner and walk away" }
+      ],
+      correctAnswer: "now",
+      hint: "One high = same as zero. The short is free along the goal line — go now.",
+      explanation: "One high (not tight) → go immediately, just like zero. Stockton starts running the goal line; Malone feeds her as she’s running. Don’t wait for Skittles when the goal line is open.",
+      coachingCue: "Zero or one high → go now. Stockton runs; Malone feeds.",
+      animationSteps: [
+        {
+          type: "parallel",
+          duration: 900,
+          steps: [
+            { type: "move", playerId: "p2", to: { x: 54, y: 1.3 }, duration: 900 },
+            { type: "pass", from: { x: 66, y: 1.3 }, to: { x: 56, y: 1.3 }, duration: 700 }
+          ]
+        },
+        { type: "highlight", playerIds: ["p1", "p2", "opp-high"] }
       ],
       challengeEligible: true
     },
@@ -4360,19 +4431,19 @@
       id: "corner-02",
       module: "corner",
       chapter: "short-corners",
-      title: "Part 1: One Defender — Short 2v1",
+      title: "Part 1: One Tight — Deliberate Short",
       difficulty: 1,
       phase: "corner-kick",
       concept: "corners-short",
-      prompt: "One defender is in the Golden Zone. What is the first decision?",
-      seeIt: "One opponent is near Malone and Stockton on the goal line. The rest of our attackers stay at the back post. We can create a 2v1 on the short.",
+      prompt: "One defender is tight on the short. What is the first decision?",
+      seeIt: "One opponent is near Malone and Stockton on the goal line — tight enough to contest the short. The rest of our attackers stay at the back post. This is a deliberate 2v1, not an immediate feed-and-run.",
       interactionType: "multiple-choice",
       players: [
         { id: "p1", team: "ours", number: "M", role: "Malone", x: 66, y: 3.5, label: "Mal" },
         { id: "p2", team: "ours", number: "S", role: "Stockton", x: 63, y: 1.3, label: "Stk" },
-        { id: "bp1", team: "ours", number: "·", role: "Back-post group", x: 24, y: 10, label: "BP" },
-        { id: "bp2", team: "ours", number: "·", role: "Back-post group", x: 28, y: 12, label: "BP" },
-        { id: "bp3", team: "ours", number: "·", role: "Back-post group", x: 22, y: 14, label: "BP" },
+        { id: "skittles", team: "ours", number: "Sk", role: "Skittles", x: 24, y: 10, label: "Skit" },
+        { id: "bp1", team: "ours", number: "·", role: "Back-post group", x: 28, y: 12, label: "BP" },
+        { id: "bp2", team: "ours", number: "·", role: "Back-post group", x: 22, y: 14, label: "BP" },
         { id: "cd1", team: "ours", number: "·", role: "Corner defense", x: 32, y: 48, label: "CD" }
       ],
       opponents: [
@@ -4382,16 +4453,18 @@
       ],
       ball: { x: 66, y: 1.3 },
       options: [
-        { id: "short", label: "Go Short and attack the 2v1 with Malone and Stockton" },
+        { id: "short", label: "Deliberate Go Short — wait for Skittles, then attack the 2v1 with Malone and Stockton" },
+        { id: "now", label: "Ignore the tight defender and feed Stockton instantly anyway" },
         { id: "long", label: "Go Long because one defender ends the short" },
-        { id: "chip", label: "Chip hopefully to the far post with no plan" },
         { id: "reset", label: "Cancel the corner and walk away" }
       ],
       correctAnswer: "short",
-      hint: "One in the Golden Zone still means Go Short — we want the 2v1.",
-      explanation: "One in the Golden Zone → Go Short. Run Malone and Stockton’s play and force that single defender to choose.",
-      coachingCue: "Zero or one in the Golden Zone: Go Short. Two: Go Long.",
+      hint: "One tight → still Go Short, but wait for Skittles first. Then Malone/Stockton run the 2v1.",
+      explanation: "One tight on the short → deliberate Go Short. Malone raises her hand, Skittles runs, then after she arrives we attack the 2v1. Not the same as zero / one high (those go immediately).",
+      coachingCue: "One tight → wait for Skittles, then 2v1.",
       animationSteps: [
+        { type: "highlight", playerIds: ["skittles"] },
+        { type: "move", playerId: "skittles", to: { x: 42.5, y: 2 }, duration: 800 },
         { type: "pass", from: { x: 66, y: 1.3 }, to: { x: 63, y: 1.3 }, duration: 400 },
         { type: "move", playerId: "p1", to: { x: 52, y: 15 }, duration: 550 }
       ],
@@ -4405,7 +4478,7 @@
       difficulty: 2,
       phase: "corner-kick",
       concept: "corners-short",
-      prompt: "We have gone short. What does Malone do after the first touch?",
+      prompt: "We have gone short (deliberate 2v1). What does Malone do after the first touch?",
       seeIt: "Ball is live on the short — still with Stockton on the goal line at the corner, ready to dribble parallel to that line. Malone has touched it. Back-post group stays put to keep the near space open.",
       interactionType: "multiple-choice",
       showTeachingZones: true,
@@ -4431,7 +4504,7 @@
       ],
       correctAnswer: "bend",
       hint: "After the touch, Malone’s job is the bending run into the Golden Zone — not a crash into traffic.",
-      explanation: "Malone touches, then bends to the Golden Zone high toward the Golden Zone (near-post corner of the 18). Stockton keeps the ball on the goal line — that run is the cutback target once 2 draws the defender.",
+      explanation: "On the deliberate short: Malone touches, then bends into the Golden Zone (near-post corner of the 18). Stockton keeps the ball on the goal line — that run is the cutback target once 2 draws the defender.",
       coachingCue: "1 touches and bends; Stockton dribbles the goal line.",
       animationSteps: [
         { type: "highlight", playerIds: ["p1"] },
@@ -4493,16 +4566,16 @@
       id: "corner-05",
       module: "corner",
       chapter: "short-corners",
-      title: "Zero Defenders: Drive the Goal Line",
+      title: "Immediate Short: Feed on the Run",
       difficulty: 2,
       phase: "corner-kick",
       concept: "corners-short",
-      prompt: "Zero defenders in the Golden Zone. Stockton has the ball at the corner. What is Stockton’s first job?",
-      seeIt: "Nobody is close. 2 has the ball on the goal line at the corner. Malone is starting the bend into the Golden Zone. Empty grass along the goal line toward the near post. Back-post group still clearing the near space.",
+      prompt: "Zero defenders — we are going immediately. What is Stockton’s first job?",
+      seeIt: "Nobody is close. Stockton is at the flag ready to start. Malone has the ball / is set to feed. Empty grass along the goal line toward the near post. Back-post group still clearing the near space. Skittles is not in the wait sequence.",
       interactionType: "multiple-choice",
       players: [
-        { id: "p1", team: "ours", number: "M", role: "Malone", x: 58, y: 12, label: "Mal" },
-        { id: "p2", team: "ours", number: "S", role: "Stockton", x: 65, y: 1.3, label: "Stk" },
+        { id: "p1", team: "ours", number: "M", role: "Malone", x: 66, y: 3.5, label: "Mal" },
+        { id: "p2", team: "ours", number: "S", role: "Stockton", x: 64, y: 1.3, label: "Stk" },
         { id: "bp1", team: "ours", number: "·", role: "Back-post group", x: 24, y: 10, label: "BP" },
         { id: "bp2", team: "ours", number: "·", role: "Back-post group", x: 28, y: 12, label: "BP" }
       ],
@@ -4510,20 +4583,28 @@
         { id: "opp-a", team: "opp", number: 4, role: "Right center back", x: 30, y: 16 },
         { id: "opp-b", team: "opp", number: 5, role: "Left center back", x: 36, y: 18 }
       ],
-      ball: { x: 65, y: 1.3 },
+      ball: { x: 66, y: 3.2 },
       options: [
-        { id: "drive", label: "Dribble parallel to the goal line until a defender overcommits, then cut back to/ahead of Malone" },
+        { id: "run-feed", label: "Start running the goal line now — receive Malone’s feed while moving, then keep driving until a cutback is on" },
+        { id: "wait-touch", label: "Stand still at the flag until Malone’s touch is perfect, then start" },
         { id: "early-cross", label: "Immediately float a cross from 25 yards out" },
-        { id: "stop", label: "Stop and wait for instructions from the bench" },
         { id: "up-touch", label: "Dribble up the touchline away from goal, abandoning the goal-line run" }
       ],
-      correctAnswer: "drive",
-      hint: "With zero pressure, Stockton keeps the ball at the corner and drives the goal line — not up the touchline — until someone has to step.",
-      explanation: "Zero nearby → Stockton dribbles parallel to the goal line. That holds everyone onside. Force an overcommit, then cut back to/ahead of Malone. That is why we almost always get a shot.",
-      coachingCue: "Stockton dribbles the goal line — force the step.",
+      correctAnswer: "run-feed",
+      hint: "Immediate short = Stockton is already running when Malone feeds. Don’t wait flat-footed at the flag.",
+      explanation: "Zero (or one high) → Stockton starts running along the goal line immediately. Malone feeds her as she’s running. Keep driving until a defender overcommits, then cut back. That timing is why we attack so quickly.",
+      coachingCue: "Stockton runs; Malone feeds on the move.",
       animationSteps: [
-        { type: "move", playerId: "p2", to: { x: 52, y: 1.3 }, duration: 700 },
-        { type: "move", playerId: "opp-a", to: { x: 50, y: 3 }, duration: 500 },
+        {
+          type: "parallel",
+          duration: 900,
+          steps: [
+            { type: "move", playerId: "p2", to: { x: 52, y: 1.3 }, duration: 900 },
+            { type: "pass", from: { x: 66, y: 3.2 }, to: { x: 54, y: 1.3 }, duration: 700 }
+          ]
+        },
+        { type: "move", playerId: "p1", to: { x: 52, y: 14 }, duration: 500 },
+        { type: "move", playerId: "opp-a", to: { x: 50, y: 3 }, duration: 400 },
         { type: "pass", from: { x: 52, y: 1.3 }, to: { x: 52, y: 14 }, duration: 400 }
       ],
       challengeEligible: true
@@ -4605,9 +4686,9 @@
         { id: "cancel", label: "Cancel and restart from midfield" }
       ],
       correctAnswer: "long",
-      hint: "Two in the Golden Zone → Go Long. Skittles finishes her run first; then Stockton delivers while Spot (penalty spot), Shield (the D), and Targets attack.",
-      explanation: "Go Long. Skittles curls across the middle of the box, then to the D. Stockton delivers. While the ball is in the air: Spot → penalty spot, Shield → the D, Targets come in from past the back post.",
-      coachingCue: "Zero or one in the Golden Zone: Go Short. Two: Go Long.",
+      hint: "Two in the Golden Zone → Go Long. Skittles finishes her run first; non-striker curls before the ball is hit; then Stockton delivers.",
+      explanation: "Go Long. Skittles curls across the middle of the box, then to the D. Malone (not striking) curls early for a rebound — before the ball is struck. Stockton delivers. While the ball is in the air: Spot → penalty spot, Shield → the D, Targets come in from past the back post.",
+      coachingCue: "Go Long: non-striker curls before the ball is hit.",
       animationSteps: [
         { type: "highlight", playerIds: ["skittles"] },
         // Skittles: across the middle → out right → curl back to the D
@@ -4621,6 +4702,9 @@
         },
         { type: "move", playerId: "skittles", to: { x: 50, y: 13 }, duration: 420 },
         { type: "move", playerId: "skittles", to: { x: 34, y: 20 }, duration: 480 },
+        // Non-striker curls BEFORE the ball is struck
+        { type: "move", playerId: "secondary", to: { x: 48, y: 12 }, duration: 500 },
+        { type: "move", playerId: "secondary", to: { x: 38, y: 16 }, duration: 450 },
         // Ball in air: Spot → penalty spot, Drop → D, Targets → into back post
         {
           type: "parallel",
@@ -4630,10 +4714,11 @@
             { type: "move", playerId: "spot", to: { x: 34, y: 12 }, duration: 700 },
             { type: "move", playerId: "shield", to: { x: 34, y: 20.5 }, duration: 700 },
             { type: "move", playerId: "front", to: { x: 28, y: 5.5 }, duration: 700 },
-            { type: "move", playerId: "back", to: { x: 26, y: 9 }, duration: 700 }
+            { type: "move", playerId: "back", to: { x: 26, y: 9 }, duration: 700 },
+            { type: "move", playerId: "secondary", to: { x: 34, y: 14 }, duration: 700 }
           ]
         },
-        { type: "highlight", playerIds: ["front", "back", "spot", "shield", "skittles"] }
+        { type: "highlight", playerIds: ["front", "back", "spot", "shield", "skittles", "secondary"] }
       ],
       challengeEligible: true
     },
@@ -4691,6 +4776,66 @@
       challengeEligible: true
     },
     {
+      id: "corner-08b",
+      module: "corner",
+      chapter: "long-corners",
+      title: "Long: Non-Striker Curls Early",
+      difficulty: 2,
+      phase: "corner-kick",
+      concept: "corners-long",
+      prompt: "We are going long. Stockton is striking. What should Malone do — and when?",
+      seeIt: "Skittles has finished her run. Stockton is set to deliver from the flag. Malone is still at the corner — she is not the striker. The long serve will bounce out somewhere toward the edge of the box.",
+      interactionType: "multiple-choice",
+      players: [
+        { id: "primary", team: "ours", number: "S", role: "Stockton", x: 66, y: 1.5, label: "Stk" },
+        { id: "secondary", team: "ours", number: "M", role: "Malone", x: 64.5, y: 3.2, label: "Mal" },
+        { id: "skittles", team: "ours", number: "Sk", role: "Skittles", x: 34, y: 20, label: "Skit" },
+        { id: "spot", team: "ours", number: "O", role: "Spot", x: 26, y: 11.5, label: "Spt" },
+        { id: "shield", team: "ours", number: "Sh", role: "Shield", x: 22.5, y: 12.5, label: "Shld" },
+        { id: "front", team: "ours", number: "F", role: "Front Target", x: 14, y: 5.5, label: "FT" },
+        { id: "back", team: "ours", number: "B", role: "Back Target", x: 13, y: 12, label: "BT" },
+        { id: "screen", team: "ours", number: "Sc", role: "Screen", x: 34, y: 5.5, label: "Scr" }
+      ],
+      opponents: [
+        { id: "opp-1", team: "opp", number: 2, role: "Corner defender", x: 62, y: 3 },
+        { id: "opp-2", team: "opp", number: 3, role: "Corner defender", x: 61, y: 5.5 },
+        { id: "gk", team: "opp", number: 1, role: "Goalkeeper", x: 34, y: 3 }
+      ],
+      ball: { x: 66, y: 1.5 },
+      options: [
+        { id: "curl-early", label: "Curl toward the box for a rebound — start the run before Stockton strikes" },
+        { id: "wait-flag", label: "Stay at the corner flag until the ball is struck, then jog" },
+        { id: "stand-arc", label: "Stand on the corner arc and watch the delivery" },
+        { id: "crash-six", label: "Sprint straight onto the six-yard line with the targets" }
+      ],
+      correctAnswer: "curl-early",
+      hint: "Whoever isn’t hitting it curls before the ball is struck — so she’s already arriving when a rebound comes off the long serve.",
+      explanation: "On Go Long, the partner who isn’t striking doesn’t wait at the flag. She curls before the ball is hit so she can arrive for a rebound off the long serve. Same rule if roles flip: Stockton would curl if Malone is striking.",
+      coachingCue: "Go Long: non-striker curls before the ball is hit.",
+      rationalePrompt: "Why curl before the ball is struck?",
+      rationaleOptions: [
+        { id: "r1", label: "So she can get in position for a rebound off the long serve — waiting at the flag is too late" },
+        { id: "r2", label: "So the referee can count both attackers at the flag" },
+        { id: "r3", label: "Because Targets are not allowed to move" },
+        { id: "r4", label: "So Skittles has someone to pass to at the corner" }
+      ],
+      correctRationale: "r1",
+      animationSteps: [
+        { type: "highlight", playerIds: ["secondary"] },
+        { type: "move", playerId: "secondary", to: { x: 48, y: 12 }, duration: 550 },
+        { type: "move", playerId: "secondary", to: { x: 38, y: 16 }, duration: 500 },
+        {
+          type: "parallel",
+          duration: 750,
+          steps: [
+            { type: "pass", from: { x: 66, y: 1.5 }, to: { x: 28, y: 7 }, duration: 750 },
+            { type: "move", playerId: "secondary", to: { x: 34, y: 14 }, duration: 700 }
+          ]
+        }
+      ],
+      challengeEligible: true
+    },
+    {
       id: "corner-09",
       module: "corner",
       chapter: "long-corners",
@@ -4698,12 +4843,12 @@
       difficulty: 2,
       phase: "corner-kick",
       concept: "corners-long",
-      prompt: "Skittles has curled across the middle and circled to the D. What should Stockton do — and when do Spot, Shield, and the Targets move?",
-      seeIt: "Skittles has finished at the D. Spot and Shield are still near the back-post start. Front and Back Targets are still further past the back post (Front nearer the goal line) — they come into the back post with the ball in the air.",
+      prompt: "Skittles has curled across the middle and circled to the D. Malone has already started her early curl. What should Stockton do — and when do Spot, Shield, and the Targets move?",
+      seeIt: "Skittles has finished at the D. Malone is already curling in from the flag (she wasn’t waiting). Spot and Shield are still near the back-post start. Front and Back Targets are still further past the back post — they come into the back post with the ball in the air.",
       interactionType: "multiple-choice",
       players: [
         { id: "primary", team: "ours", number: "S", role: "Stockton", x: 66, y: 1.5, label: "Stk" },
-        { id: "secondary", team: "ours", number: "M", role: "Malone", x: 64.5, y: 3.2, label: "Mal" },
+        { id: "secondary", team: "ours", number: "M", role: "Malone", x: 40, y: 15, label: "Mal" },
         { id: "skittles", team: "ours", number: "Sk", role: "Skittles", x: 34, y: 20, label: "Skit" },
         { id: "front", team: "ours", number: "F", role: "Front Target", x: 14, y: 5.5, label: "FT" },
         { id: "back", team: "ours", number: "B", role: "Back Target", x: 13, y: 12, label: "BT" },
@@ -4724,8 +4869,8 @@
         { id: "midfield", label: "Pass backward to Corner Defense on purpose" }
       ],
       correctAnswer: "face",
-      hint: "With the ball in the air: Spot to the penalty spot, Shield to the D (not deep), Targets crash in from past the back post.",
-      explanation: "Stockton delivers. While the ball flies: Spot hits the penalty spot, Shield holds the D, and Front/Back Targets come in from beyond the back post (Front nearer the goal line).",
+      hint: "With the ball in the air: Spot to the penalty spot, Shield to the D (not deep), Targets crash in from past the back post. Malone should already be curling — not still at the flag.",
+      explanation: "Stockton delivers. Malone has already curled early for a rebound. While the ball flies: Spot hits the penalty spot, Shield holds the D, and Front/Back Targets come in from beyond the back post (Front nearer the goal line).",
       coachingCue: "Go Long — Spot to the spot, Shield to the D, Targets in.",
       animationSteps: [
         {
@@ -4736,7 +4881,8 @@
             { type: "move", playerId: "spot", to: { x: 34, y: 12 }, duration: 700 },
             { type: "move", playerId: "shield", to: { x: 34, y: 20.5 }, duration: 700 },
             { type: "move", playerId: "front", to: { x: 28, y: 5.5 }, duration: 700 },
-            { type: "move", playerId: "back", to: { x: 26, y: 9 }, duration: 700 }
+            { type: "move", playerId: "back", to: { x: 26, y: 9 }, duration: 700 },
+            { type: "move", playerId: "secondary", to: { x: 34, y: 14 }, duration: 700 }
           ]
         }
       ],
@@ -4751,7 +4897,7 @@
       phase: "corner-kick",
       concept: "corners-long",
       prompt: "Match the long-corner job to the correct role.",
-      seeIt: "Stockton/Malone at the corner. Skittles/Spot/Shield start near the back post. Targets start further past the back post (Front nearer the goal line). On the delivery: Spot → penalty spot, Shield → the D, Targets come into the back post.",
+      seeIt: "Stockton/Malone at the corner — but the non-striker will curl early. Skittles/Spot/Shield start near the back post. Targets start further past the back post (Front nearer the goal line). On the delivery: Spot → penalty spot, Shield → the D, Targets come into the back post.",
       interactionType: "multiple-choice",
       players: [
         { id: "primary", team: "ours", number: "S", role: "Stockton", x: 66, y: 1.5, label: "Stk" },
@@ -4778,14 +4924,16 @@
         { id: "drop-posts", label: "Shield and Spot both stand on the goal line" }
       ],
       correctAnswer: "correct-set",
-      hint: "Spot = the penalty spot (not deep). Shield = the D (not halfway to midfield). Targets start past the back post and come in.",
-      explanation: "Screen screens the keeper. Spot hits the penalty spot. Shield holds the D. Corner Defense keeps +1. Targets start further past the back post and crash in on the delivery.",
+      hint: "Spot = the penalty spot (not deep). Shield = the D (not halfway to midfield). Targets start past the back post and come in. Non-striker curls early for rebound.",
+      explanation: "Screen screens the keeper. Spot hits the penalty spot. Shield holds the D. Corner Defense keeps +1. Targets start further past the back post and crash in on the delivery. Non-striker curls before the ball is hit.",
       coachingCue: "Know the job — not just a shirt number.",
       animationSteps: [
         { type: "highlight", playerIds: ["skittles", "screen", "spot", "shield", "front", "back", "cd1", "cd2"] },
         { type: "move", playerId: "skittles", to: { x: 36, y: 9 }, duration: 500 },
         { type: "move", playerId: "skittles", to: { x: 50, y: 13 }, duration: 400 },
         { type: "move", playerId: "skittles", to: { x: 34, y: 20 }, duration: 450 },
+        { type: "move", playerId: "secondary", to: { x: 48, y: 12 }, duration: 450 },
+        { type: "move", playerId: "secondary", to: { x: 38, y: 16 }, duration: 400 },
         {
           type: "parallel",
           duration: 700,
@@ -4794,7 +4942,8 @@
             { type: "move", playerId: "spot", to: { x: 34, y: 12 }, duration: 650 },
             { type: "move", playerId: "shield", to: { x: 34, y: 20.5 }, duration: 650 },
             { type: "move", playerId: "front", to: { x: 28, y: 5.5 }, duration: 650 },
-            { type: "move", playerId: "back", to: { x: 26, y: 9 }, duration: 650 }
+            { type: "move", playerId: "back", to: { x: 26, y: 9 }, duration: 650 },
+            { type: "move", playerId: "secondary", to: { x: 34, y: 14 }, duration: 650 }
           ]
         }
       ],
@@ -4810,6 +4959,7 @@
     CORNER_ROLES,
     NAV_GROUPS,
     MODULES,
-    SCENARIOS
+    SCENARIOS,
+    VARSITY_ROSTER
   });
 })();

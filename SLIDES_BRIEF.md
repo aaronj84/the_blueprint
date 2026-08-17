@@ -152,21 +152,21 @@ B back to the corner                  Switch to the other side
 
 **Read (Golden Zone):** 0–1 defenders in the near-post corner of the 18 → **Go Short**. 2 defenders → **Go Long**.
 
-**Sequence before the ball**
-- Malone raises her hand.
-- Everyone stares at Skittles — she makes the run.
-- Only after Skittles arrives: Go Short or Go Long from the read.
-- Targets hold until they can react to the ball.
+**Short timing read**
+- **0 defenders, or 1 who is high → go immediately.** Do not wait for Skittles. Stockton starts running along the goal line; Malone feeds her as she’s running. Quick attack.
+- **1 defender tight on the short → deliberate short.** Malone raises her hand → everyone stares at Skittles → after Skittles arrives, Go Short as a 2v1.
 
-**Go Short**
+**Deliberate Go Short (after Skittles)**
 - Malone touches, then bends to the Golden Zone.
 - Stockton keeps the ball and dribbles **parallel to the goal line** (holds onside for cutbacks).
 - Others start at back post to clear near space.
 
 **Go Long**
 - Skittles clears first (back post → across → D).
+- Whoever isn’t striking curls **before** the ball is hit — so she can arrive for a rebound off the long serve.
 - Stockton delivers across the face.
 - While ball is in air: Spot → penalty spot, Shield → D, Front/Back Targets attack, Screen screens keeper, Corner Defense +1 behind.
+- Targets hold until they can react to the ball.
 
 **Cue:** Roles are jobs, not fixed jersey numbers. Supporting-run idea (near/far/spot) still applies on deliveries.
 
@@ -197,6 +197,8 @@ B back to the corner                  Switch to the other side
 - Near. Far. Cutback.
 - Out of possession: 4-4-2.
 - Zero or one in the Golden Zone: Go Short. Two: Go Long.
+- Zero or one high → go now. Stockton runs; Malone feeds.
+- Go Long: non-striker curls before the ball is hit.
 
 ---
 
