@@ -1976,8 +1976,10 @@
   const shotModal = $("#shot-event-modal");
   const shotModalDraft = {
     step: "first",
+    phase: "action",
     location: null,
     player: null,
+    action: null,
   };
 
   function locatePitchPoint(rawX, rawY) {
@@ -2208,13 +2210,17 @@
     state.tracker.mode = "idle";
     state.tracker.pending = null;
     shotModalDraft.step = "first";
+    shotModalDraft.phase = "action";
     shotModalDraft.location = null;
     shotModalDraft.player = null;
+    shotModalDraft.action = null;
   }
 
   function closeShotModal() {
     if (shotModal) shotModal.hidden = true;
     shotModalDraft.player = null;
+    shotModalDraft.action = null;
+    shotModalDraft.phase = "action";
     shotModalDraft.location = null;
   }
 
@@ -2225,19 +2231,83 @@
 
   function fillShotModal(step, location) {
     shotModalDraft.step = step;
+    shotModalDraft.phase = "action";
     shotModalDraft.location = location;
     shotModalDraft.player = null;
+    shotModalDraft.action = null;
+    renderShotModal();
+    shotModal.dataset.openedAt = String(Date.now());
+    shotModal.hidden = false;
+  }
+
+  function actionShortLabel(action) {
+    if (!action) return "";
+    if (action.kind === "assist") return ASSIST_TYPE_LABELS[action.type] || action.type;
+    if (action.result === "on-target") return "On Goal";
+    if (action.result === "blocked") return "Blocked";
+    if (action.result === "missed") return "Missed";
+    if (action.result === "goal") return "Goal";
+    return action.label || "";
+  }
+
+  function renderShotModal() {
     const title = $("#shot-modal-title");
     const locEl = $("#shot-modal-location");
     const actionLabel = $("#shot-action-label");
+    const playerHeading = $(".shot-modal-heading");
     const playerGrid = $("#shot-player-grid");
     const actionGrid = $("#shot-action-grid");
+    const backBtn = $("#shot-modal-back");
+    const panel = $(".shot-modal-panel");
     if (!shotModal || !playerGrid || !actionGrid) return;
 
-    title.textContent = step === "shot" ? "Who shot?" : "What happened?";
-    locEl.textContent = `${formatLoc(location)}  ·  (${formatXY(location)})`;
+    const step = shotModalDraft.step;
+    const phase = shotModalDraft.phase;
+    const loc = shotModalDraft.location;
+    const locText = loc ? `${formatLoc(loc)}  ·  (${formatXY(loc)})` : "";
     if (actionLabel) actionLabel.hidden = true;
 
+    if (panel) panel.classList.toggle("is-player-phase", phase === "player");
+    if (backBtn) backBtn.hidden = phase !== "player";
+
+    if (phase === "action") {
+      title.textContent = step === "shot" ? "Shot result?" : "What happened?";
+      locEl.textContent = locText;
+      if (playerHeading) playerHeading.hidden = true;
+      playerGrid.hidden = true;
+      actionGrid.hidden = false;
+
+      const shotBtns = TRACKER_SHOT_ACTIONS.map(
+        (a) =>
+          `<button type="button" class="shot-action-btn is-${a.result}" data-action-id="${escapeHtml(a.id)}">${escapeHtml(actionShortLabel(a))}</button>`
+      ).join("");
+      if (step === "shot") {
+        actionGrid.innerHTML = `<div class="shot-action-row shot-action-row-fill">${shotBtns}</div>`;
+      } else {
+        const assistBtns = TRACKER_FIRST_ACTIONS.filter((a) => a.kind === "assist")
+          .map(
+            (a) =>
+              `<button type="button" class="shot-action-btn is-assist" data-action-id="${escapeHtml(a.id)}">${escapeHtml(ASSIST_TYPE_LABELS[a.type])}</button>`
+          )
+          .join("");
+        actionGrid.innerHTML = `
+          <p class="shot-action-heading">Assist</p>
+          <div class="shot-action-row shot-action-row-3">${assistBtns}</div>
+          <p class="shot-action-heading">Shot</p>
+          <div class="shot-action-row shot-action-row-fill">${shotBtns}</div>`;
+      }
+      return;
+    }
+
+    const chosen = shotModalDraft.action;
+    const whoTitle = chosen?.kind === "assist" ? "Who assisted?" : "Who shot?";
+    title.textContent = whoTitle;
+    locEl.textContent = chosen
+      ? `${actionShortLabel(chosen)}${chosen.kind === "assist" ? " assist" : ""}  ·  ${locText}`
+      : locText;
+    if (playerHeading) playerHeading.hidden = true;
+    playerGrid.hidden = false;
+    actionGrid.hidden = true;
     playerGrid.innerHTML = VARSITY_ROSTER.map(
       (p) => `
         <button type="button" class="shot-player-btn" data-player-number="${p.number}">
@@ -2245,29 +2315,31 @@
           <span class="name">${escapeHtml(firstName(p.name))}</span>
         </button>`
     ).join("");
+  }
 
-    const shotBtns = TRACKER_SHOT_ACTIONS.map(
-      (a) =>
-        `<button type="button" class="shot-action-btn is-${a.result}" data-action-id="${escapeHtml(a.id)}">${escapeHtml(a.result === "on-target" ? "On Goal" : a.result === "blocked" ? "Blocked" : a.result === "missed" ? "Missed" : "Goal")}</button>`
-    ).join("");
-    if (step === "shot") {
-      actionGrid.innerHTML = `<div class="shot-action-row">${shotBtns}</div>`;
-    } else {
-      const assistBtns = TRACKER_FIRST_ACTIONS.filter((a) => a.kind === "assist")
-        .map(
-          (a) =>
-            `<button type="button" class="shot-action-btn is-assist" data-action-id="${escapeHtml(a.id)}">${escapeHtml(ASSIST_TYPE_LABELS[a.type])}</button>`
-        )
-        .join("");
-      actionGrid.innerHTML = `
-        <p class="shot-action-heading">Assist</p>
-        <div class="shot-action-row shot-action-row-3">${assistBtns}</div>
-        <p class="shot-action-heading">Shot</p>
-        <div class="shot-action-row">${shotBtns}</div>`;
+  function completeShotModal() {
+    const action = shotModalDraft.action;
+    const player = shotModalDraft.player;
+    if (!action || !player) return;
+    if (shotModalDraft.step === "first" && action.kind === "assist") {
+      state.tracker.pending = {
+        assist: {
+          player,
+          type: action.type,
+          location: shotModalDraft.location,
+        },
+      };
+      state.tracker.mode = "awaiting-shot-location";
+      closeShotModal();
+      shotModalDraft.location = null;
+      renderShotTracker();
+      showToast("Tap where the shot was taken");
+      return;
     }
-
-    shotModal.dataset.openedAt = String(Date.now());
-    shotModal.hidden = false;
+    if (action.kind === "shot") {
+      const assist = shotModalDraft.step === "shot" ? state.tracker.pending?.assist : null;
+      commitShotEvent(action.result, player, assist || null);
+    }
   }
 
   function commitShotEvent(result, shooter, assist) {
@@ -2302,34 +2374,6 @@
     showToast(`${SHOT_RESULT_LABELS[result]} — ${playerLabel(shooter)}${extra}`);
   }
 
-  function handleTrackerAction(actionId) {
-    const action = TRACKER_FIRST_ACTIONS.find((a) => a.id === actionId);
-    if (!action) return;
-    if (!shotModalDraft.player) {
-      showToast("Pick a player first");
-      return;
-    }
-    if (shotModalDraft.step === "first" && action.kind === "assist") {
-      state.tracker.pending = {
-        assist: {
-          player: shotModalDraft.player,
-          type: action.type,
-          location: shotModalDraft.location,
-        },
-      };
-      state.tracker.mode = "awaiting-shot-location";
-      closeShotModal();
-      shotModalDraft.location = null;
-      renderShotTracker();
-      showToast("Tap where the shot was taken");
-      return;
-    }
-    if (action.kind === "shot") {
-      const assist = shotModalDraft.step === "shot" ? state.tracker.pending?.assist : null;
-      commitShotEvent(action.result, shotModalDraft.player, assist || null);
-    }
-  }
-
   function bindShotModal() {
     if (!shotModal || shotModal.dataset.bound === "1") return;
     shotModal.dataset.bound = "1";
@@ -2340,15 +2384,25 @@
           VARSITY_ROSTER.find(
             (p) => String(p.number) === playerBtn.getAttribute("data-player-number")
           ) || null;
-        $$(".shot-player-btn", shotModal).forEach((btn) =>
-          btn.classList.toggle("is-selected", btn === playerBtn)
-        );
+        completeShotModal();
         return;
       }
       const actionBtn = e.target.closest("[data-action-id]");
       if (actionBtn) {
-        handleTrackerAction(actionBtn.getAttribute("data-action-id"));
+        const action = TRACKER_FIRST_ACTIONS.find(
+          (a) => a.id === actionBtn.getAttribute("data-action-id")
+        );
+        if (!action) return;
+        shotModalDraft.action = action;
+        shotModalDraft.phase = "player";
+        renderShotModal();
       }
+    });
+    $("#shot-modal-back")?.addEventListener("click", () => {
+      shotModalDraft.phase = "action";
+      shotModalDraft.player = null;
+      shotModalDraft.action = null;
+      renderShotModal();
     });
     $$("[data-close-shot-modal]").forEach((el) =>
       el.addEventListener("click", () => {
