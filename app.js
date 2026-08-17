@@ -478,6 +478,7 @@
     state.moduleId = route.moduleId || null;
     state.scenarioId = route.scenarioId || null;
     setNavCurrent(state.view, state.moduleId);
+    document.body.classList.toggle("tracker-view", state.view === "shots");
 
     if (state.view === "home") renderHome();
     else if (state.view === "glossary") renderGlossary();
@@ -2027,7 +2028,77 @@
   }
 
   function playerLabel(p) {
-    return `#${p.number} ${p.name}`;
+    return `#${p.number} ${firstName(p.name)}`;
+  }
+
+  function firstName(full) {
+    return String(full || "").trim().split(/\s+/)[0] || full;
+  }
+
+  function csvEscape(value) {
+    const s = String(value ?? "");
+    if (/[",\n\r]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
+    return s;
+  }
+
+  function exportShotsCsv() {
+    if (!trackerEvents.length) {
+      showToast("No shots to export");
+      return;
+    }
+    const headers = [
+      "time",
+      "player_number",
+      "player_name",
+      "result",
+      "shot_cell",
+      "shot_zone",
+      "shot_x",
+      "shot_y",
+      "assisted_by_number",
+      "assisted_by_name",
+      "assist_type",
+      "assist_cell",
+      "assist_zone",
+      "assist_x",
+      "assist_y",
+    ];
+    const lines = [headers.join(",")];
+    trackerEvents.forEach((ev) => {
+      lines.push(
+        [
+          ev.createdAt,
+          ev.shooterNumber,
+          csvEscape(ev.shooterName),
+          csvEscape(SHOT_RESULT_LABELS[ev.result] || ev.result),
+          ev.shot?.cell ?? "",
+          csvEscape(ev.shot?.zoneLabel || ""),
+          ev.shot?.x ?? "",
+          ev.shot?.y ?? "",
+          ev.assist?.number ?? "",
+          csvEscape(ev.assist?.name || ""),
+          ev.assist ? ASSIST_TYPE_LABELS[ev.assist.type] || ev.assist.type : "",
+          ev.assist?.cell ?? "",
+          csvEscape(ev.assist?.zoneLabel || ""),
+          ev.assist?.x ?? "",
+          ev.assist?.y ?? "",
+        ].join(",")
+      );
+    });
+    const blob = new Blob([`\uFEFF${lines.join("\n")}`], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `bengals-shots-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1500);
+    showToast("CSV exported");
+  }
+
+  function pitchFromSvgPoint(sx, sy) {
+    return { x: sy, y: HALF_L - sx };
   }
 
   function svgEventPoint(svg, evt) {
@@ -2071,7 +2142,7 @@
           }
           const cx = (ch.x0 + ch.x1) / 2;
           const cy = (d.y0 + d.y1) / 2;
-          grid += `<text class="tracker-cell-num" x="${cx}" y="${cy}">${j * 6 + i + 1}</text>`;
+          grid += `<text class="tracker-cell-num" x="${cx}" y="${cy}" transform="rotate(-90 ${cx} ${cy})">${j * 6 + i + 1}</text>`;
         });
       });
       TRACKER_CHANNELS.slice(1).forEach((ch) => {
@@ -2105,28 +2176,30 @@
           html += `<circle class="tracker-assist-dot" cx="${ev.assist.x}" cy="${ev.assist.y}" r="0.9" />`;
         }
         html += `<circle class="tracker-shot-dot ${escapeHtml(ev.result)}" cx="${ev.shot.x}" cy="${ev.shot.y}" r="1.7" />`;
-        html += `<text class="tracker-shot-num" x="${ev.shot.x}" y="${ev.shot.y}">${escapeHtml(String(ev.shooterNumber))}</text>`;
+        html += `<text class="tracker-shot-num" x="${ev.shot.x}" y="${ev.shot.y}" transform="rotate(-90 ${ev.shot.x} ${ev.shot.y})">${escapeHtml(String(ev.shooterNumber))}</text>`;
         return `<g class="tracker-event" data-event-id="${escapeHtml(ev.id)}">${html}</g>`;
       })
       .join("");
 
     return `
-      <svg class="pitch-svg tracker-pitch-svg" viewBox="-1 -2.6 70 56.6" role="application" aria-label="Attacking half, goal at the top. Tap to mark a location.">
-        ${stripes.join("")}
-        <g class="tracker-grid">${grid}</g>
-        <rect x="0" y="0" width="${PW}" height="${HALF_L}" fill="none" stroke="${line}" stroke-width="0.45" />
-        <line x1="0" y1="${HALF_L}" x2="${PW}" y2="${HALF_L}" stroke="${line}" stroke-width="0.4" />
-        <circle cx="${PW / 2}" cy="${HALF_L}" r="9.15" fill="none" stroke="${line}" stroke-width="0.35" />
-        <circle cx="${PW / 2}" cy="${HALF_L}" r="0.45" fill="${line}" />
-        <rect x="${goalX}" y="-1.35" width="${goalW}" height="1.35" fill="none" stroke="${line}" stroke-width="0.45" />
-        <rect x="${penX}" y="0" width="${penW}" height="${penH}" fill="none" stroke="${line}" stroke-width="0.35" />
-        <rect x="${sixX}" y="0" width="${sixW}" height="${sixH}" fill="none" stroke="${line}" stroke-width="0.35" />
-        <circle cx="${spotX}" cy="${spotY}" r="0.45" fill="${line}" />
-        <path d="M ${spotX - dx} ${penH} A ${arcR} ${arcR} 0 0 1 ${spotX + dx} ${penH}" fill="none" stroke="${line}" stroke-width="0.35" />
-        <path d="M 0 1 A 1 1 0 0 0 1 0" fill="none" stroke="${line}" stroke-width="0.3" />
-        <path d="M ${PW} 1 A 1 1 0 0 1 ${PW - 1} 0" fill="none" stroke="${line}" stroke-width="0.3" />
-        <text class="tracker-goal-label" x="${PW / 2}" y="-1.85">GOAL</text>
-        <g class="tracker-markers">${markers}${pendingDots.join("")}</g>
+      <svg class="pitch-svg tracker-pitch-svg" viewBox="-1.6 -1 57.8 70" role="application" aria-label="Attacking half, goal on the right. Tap to mark a location.">
+        <g transform="translate(${HALF_L},0) rotate(90)">
+          ${stripes.join("")}
+          <g class="tracker-grid">${grid}</g>
+          <rect x="0" y="0" width="${PW}" height="${HALF_L}" fill="none" stroke="${line}" stroke-width="0.45" />
+          <line x1="0" y1="${HALF_L}" x2="${PW}" y2="${HALF_L}" stroke="${line}" stroke-width="0.4" />
+          <circle cx="${PW / 2}" cy="${HALF_L}" r="9.15" fill="none" stroke="${line}" stroke-width="0.35" />
+          <circle cx="${PW / 2}" cy="${HALF_L}" r="0.45" fill="${line}" />
+          <rect x="${goalX}" y="-1.35" width="${goalW}" height="1.35" fill="none" stroke="${line}" stroke-width="0.45" />
+          <rect x="${penX}" y="0" width="${penW}" height="${penH}" fill="none" stroke="${line}" stroke-width="0.35" />
+          <rect x="${sixX}" y="0" width="${sixW}" height="${sixH}" fill="none" stroke="${line}" stroke-width="0.35" />
+          <circle cx="${spotX}" cy="${spotY}" r="0.45" fill="${line}" />
+          <path d="M ${spotX - dx} ${penH} A ${arcR} ${arcR} 0 0 1 ${spotX + dx} ${penH}" fill="none" stroke="${line}" stroke-width="0.35" />
+          <path d="M 0 1 A 1 1 0 0 0 1 0" fill="none" stroke="${line}" stroke-width="0.3" />
+          <path d="M ${PW} 1 A 1 1 0 0 1 ${PW - 1} 0" fill="none" stroke="${line}" stroke-width="0.3" />
+          <text class="tracker-goal-label" x="${PW / 2}" y="-1.85" transform="rotate(-90 ${PW / 2} -1.85)">GOAL</text>
+          <g class="tracker-markers">${markers}${pendingDots.join("")}</g>
+        </g>
       </svg>
     `;
   }
@@ -2161,25 +2234,37 @@
     const actionGrid = $("#shot-action-grid");
     if (!shotModal || !playerGrid || !actionGrid) return;
 
-    title.textContent = step === "shot" ? "Who took the shot?" : "What happened?";
+    title.textContent = step === "shot" ? "Who shot?" : "What happened?";
     locEl.textContent = `${formatLoc(location)}  ·  (${formatXY(location)})`;
-    actionLabel.textContent = step === "shot" ? "Shot result" : "What happened?";
+    if (actionLabel) actionLabel.hidden = true;
 
     playerGrid.innerHTML = VARSITY_ROSTER.map(
       (p) => `
         <button type="button" class="shot-player-btn" data-player-number="${p.number}">
           <span class="num">${p.number}</span>
-          <span class="name">${escapeHtml(p.name)}</span>
+          <span class="name">${escapeHtml(firstName(p.name))}</span>
         </button>`
     ).join("");
 
-    const actions = step === "shot" ? TRACKER_SHOT_ACTIONS : TRACKER_FIRST_ACTIONS;
-    actionGrid.innerHTML = actions
-      .map(
-        (a) =>
-          `<button type="button" class="shot-action-btn ${a.kind === "assist" ? "is-assist" : `is-${a.result || ""}`}" data-action-id="${escapeHtml(a.id)}">${escapeHtml(a.label)}</button>`
-      )
-      .join("");
+    const shotBtns = TRACKER_SHOT_ACTIONS.map(
+      (a) =>
+        `<button type="button" class="shot-action-btn is-${a.result}" data-action-id="${escapeHtml(a.id)}">${escapeHtml(a.result === "on-target" ? "On Goal" : a.result === "blocked" ? "Blocked" : a.result === "missed" ? "Missed" : "Goal")}</button>`
+    ).join("");
+    if (step === "shot") {
+      actionGrid.innerHTML = `<div class="shot-action-row">${shotBtns}</div>`;
+    } else {
+      const assistBtns = TRACKER_FIRST_ACTIONS.filter((a) => a.kind === "assist")
+        .map(
+          (a) =>
+            `<button type="button" class="shot-action-btn is-assist" data-action-id="${escapeHtml(a.id)}">${escapeHtml(ASSIST_TYPE_LABELS[a.type])}</button>`
+        )
+        .join("");
+      actionGrid.innerHTML = `
+        <p class="shot-action-heading">Assist</p>
+        <div class="shot-action-row shot-action-row-3">${assistBtns}</div>
+        <p class="shot-action-heading">Shot</p>
+        <div class="shot-action-row">${shotBtns}</div>`;
+    }
 
     shotModal.dataset.openedAt = String(Date.now());
     shotModal.hidden = false;
@@ -2211,13 +2296,9 @@
     trackerEvents = [event, ...trackerEvents];
     saveShots(trackerEvents);
     closeShotModal();
-    state.tracker.pending = null;
-    shotModalDraft.step = "first";
-    shotModalDraft.location = null;
-    shotModalDraft.player = null;
-    state.tracker.mode = "awaiting-location";
+    resetTrackerDraft();
     renderShotTracker();
-    const extra = event.assist ? ` (assist: ${event.assist.name})` : "";
+    const extra = event.assist ? ` (assist: ${firstName(event.assist.name)})` : "";
     showToast(`${SHOT_RESULT_LABELS[result]} — ${playerLabel(shooter)}${extra}`);
   }
 
@@ -2297,13 +2378,14 @@
       evt.preventDefault();
       evt.stopPropagation();
       const p = svgEventPoint(svg, evt);
-      const loc = locatePitchPoint(p.x, p.y);
+      const pitch = pitchFromSvgPoint(p.x, p.y);
+      const loc = locatePitchPoint(pitch.x, pitch.y);
       if (state.tracker.mode === "awaiting-location") {
         fillShotModal("first", loc);
-        renderShotTracker();
+        renderShotTracker({ keepScroll: true });
       } else if (state.tracker.mode === "awaiting-shot-location") {
         fillShotModal("shot", loc);
-        renderShotTracker();
+        renderShotTracker({ keepScroll: true });
       }
     };
     svg.addEventListener("pointerup", onTap);
@@ -2315,27 +2397,28 @@
     return { goals: n("goal"), onTarget: n("on-target"), blocked: n("blocked"), missed: n("missed"), assists };
   }
 
-  function renderShotTracker() {
+  function renderShotTracker(opts = {}) {
     bindShotModal();
+    const scrollY = window.scrollY;
     const events = trackerEvents;
     const sum = trackerSummary(events);
     const recording =
       state.tracker.mode === "awaiting-location" ||
       state.tracker.mode === "awaiting-shot-location";
-    let status = "Press Record Shot, then tap a pass or shot location. Goal is at the top.";
+    let status = "Record Shot, then tap. Goal is on the right.";
     if (state.tracker.mode === "awaiting-location") {
-      status = "Tap the pitch — that spot is the shot, or the origin of the assist.";
+      status = "Tap the pass or shot location.";
     } else if (state.tracker.mode === "awaiting-shot-location") {
       const a = state.tracker.pending?.assist;
       status = a
-        ? `Assist: ${playerLabel(a.player)} (${ASSIST_TYPE_LABELS[a.type]}). Now tap where the shot was taken.`
+        ? `Assist: ${playerLabel(a.player)} (${ASSIST_TYPE_LABELS[a.type]}). Tap the shot.`
         : "Tap where the shot was taken.";
     }
 
     const rows = events.length
       ? events
           .map((ev) => {
-            const assistBy = ev.assist ? `#${ev.assist.number} ${escapeHtml(ev.assist.name)}` : "—";
+            const assistBy = ev.assist ? `#${ev.assist.number} ${escapeHtml(firstName(ev.assist.name))}` : "—";
             const assistType = ev.assist ? ASSIST_TYPE_LABELS[ev.assist.type] || ev.assist.type : "—";
             const assistCell = ev.assist
               ? `${escapeHtml(formatLoc(ev.assist))}<br /><span class="muted">${escapeHtml(formatXY(ev.assist))}</span>`
@@ -2343,7 +2426,7 @@
             return `
               <tr>
                 <td>${escapeHtml(formatShotTime(ev.createdAt))}</td>
-                <td>#${ev.shooterNumber} ${escapeHtml(ev.shooterName)}</td>
+                <td>#${ev.shooterNumber} ${escapeHtml(firstName(ev.shooterName))}</td>
                 <td><span class="shot-result-pill ${escapeHtml(ev.result)}">${escapeHtml(SHOT_RESULT_LABELS[ev.result] || ev.result)}</span></td>
                 <td>${assistBy}</td>
                 <td>${escapeHtml(assistType)}</td>
@@ -2356,31 +2439,23 @@
       : `<tr><td colspan="8" class="empty-state" style="padding:1.25rem">No shots recorded yet.</td></tr>`;
 
     root.innerHTML = `
-      <section class="section-header">
-        <div>
-          <p class="step-label">Varsity · hidden module</p>
-          <h1>Shot tracker</h1>
-          <p>Brighton Bengals · Varsity Girls' Soccer 2026. Record shots, goals, and assists on the attacking half.</p>
-        </div>
-        <div class="tracker-toolbar">
-          ${
-            recording
-              ? `<button type="button" class="btn btn-secondary" id="tracker-cancel-record">Cancel</button>`
-              : `<button type="button" class="btn btn-primary" id="tracker-record">Record Shot</button>`
-          }
-          <button type="button" class="btn btn-ghost" id="tracker-toggle-grid">${state.tracker.showGrid ? "Hide zones" : "Show zones"}</button>
-          <a class="btn btn-ghost" href="#home">Home</a>
-        </div>
-      </section>
-      <p class="tracker-status ${recording ? "is-live" : ""}" id="tracker-status">${escapeHtml(status)}</p>
-      <div class="tracker-layout">
-        <div class="tracker-pitch-col">
+      <div class="tracker-page">
+        <section class="tracker-stage">
+          <div class="tracker-toolbar">
+            ${
+              recording
+                ? `<button type="button" class="btn btn-secondary" id="tracker-cancel-record">Cancel</button>`
+                : `<button type="button" class="btn btn-primary" id="tracker-record">Record Shot</button>`
+            }
+            <button type="button" class="btn btn-ghost" id="tracker-export" ${events.length ? "" : "disabled"}>Export CSV</button>
+            <button type="button" class="btn btn-ghost" id="tracker-toggle-grid">${state.tracker.showGrid ? "Hide zones" : "Zones"}</button>
+          </div>
+          <p class="tracker-status ${recording ? "is-live" : ""}" id="tracker-status">${escapeHtml(status)}</p>
           <div class="pitch-wrap tracker-pitch-wrap" id="tracker-pitch-wrap">${halfPitchMarkup(events, { showGrid: state.tracker.showGrid })}</div>
-          <p class="muted tracker-legend">
-            Goal at the top. 36-cell map (6 channels × 6 depths). Coordinates are meters: x 0–68 (left–right), y 0–52.5 (goal → halfway). Gold = goal · White = on target · Orange = blocked · Hollow = missed · Dashed line = assist.
-          </p>
-        </div>
-        <div class="tracker-table-col">
+        </section>
+
+        <section class="tracker-log" id="tracker-log">
+          <h2>Recorded shots</h2>
           <div class="tracker-summary">
             <span class="pill">Goals <strong>${sum.goals}</strong></span>
             <span class="pill">On target <strong>${sum.onTarget}</strong></span>
@@ -2407,10 +2482,10 @@
           </div>
           ${
             events.length
-              ? `<button type="button" class="btn btn-ghost" id="tracker-clear">Clear all shots</button>`
+              ? `<button type="button" class="btn btn-ghost" id="tracker-clear">Clear results</button>`
               : ""
           }
-        </div>
+        </section>
       </div>
     `;
 
@@ -2426,24 +2501,31 @@
     });
     $("#tracker-toggle-grid")?.addEventListener("click", () => {
       state.tracker.showGrid = !state.tracker.showGrid;
-      renderShotTracker();
+      renderShotTracker({ keepScroll: true });
     });
+    $("#tracker-export")?.addEventListener("click", () => exportShotsCsv());
     $("#tracker-clear")?.addEventListener("click", () => {
-      if (!confirm("Clear all recorded shots on this device?")) return;
+      if (!confirm("Clear all recorded shots on this device? This cannot be undone.")) return;
       trackerEvents = [];
       saveShots(trackerEvents);
-      renderShotTracker();
+      renderShotTracker({ keepScroll: true });
       showToast("Shots cleared");
     });
     $$("[data-delete-shot]").forEach((btn) => {
       btn.addEventListener("click", () => {
         const id = btn.getAttribute("data-delete-shot");
+        const ev = trackerEvents.find((e) => e.id === id);
+        const label = ev
+          ? `${SHOT_RESULT_LABELS[ev.result] || ev.result} by #${ev.shooterNumber} ${firstName(ev.shooterName)}`
+          : "this recording";
+        if (!confirm(`Delete ${label}?`)) return;
         trackerEvents = trackerEvents.filter((e) => e.id !== id);
         saveShots(trackerEvents);
-        renderShotTracker();
+        renderShotTracker({ keepScroll: true });
       });
     });
     bindTrackerPitch();
+    if (opts.keepScroll) window.scrollTo(0, scrollY);
   }
 
   /* ---------- Chrome: drawer, settings ---------- */

@@ -334,6 +334,16 @@ a {
   padding: 1.25rem 1rem calc(2.5rem + var(--safe-bottom));
 }
 
+body.tracker-view .app-main {
+  width: 100%;
+  max-width: 28rem;
+  padding: 0.35rem 0.55rem calc(1.25rem + var(--safe-bottom));
+}
+
+body.tracker-view .brand-sub {
+  display: none;
+}
+
 .view[hidden] {
   display: none !important;
 }
@@ -913,6 +923,11 @@ body.coach-mode .coach-banner {
     width: 86%;
     max-width: 360px;
   }
+
+  body.tracker-view .tracker-pitch-wrap {
+    width: 100%;
+    max-width: none;
+  }
 }
 
 .player-token .token-disk {
@@ -1489,16 +1504,41 @@ body.coach-mode .coach-controls {
 }
 
 /* Shot tracker (settings-only module) */
+.tracker-page {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.tracker-stage {
+  min-height: calc(100dvh - var(--header-h) - 0.35rem);
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
 .tracker-toolbar {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem;
+  gap: 0.4rem;
   align-items: center;
 }
 
+.tracker-toolbar .btn {
+  min-height: 44px;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.88rem;
+}
+
+#tracker-record,
+#tracker-cancel-record {
+  flex: 1 1 8rem;
+}
+
 .tracker-status {
-  margin: -0.5rem 0 1.1rem;
+  margin: 0;
   font-weight: 650;
+  font-size: 0.88rem;
   color: var(--text-muted);
 }
 
@@ -1506,26 +1546,29 @@ body.coach-mode .coach-controls {
   color: var(--brand);
 }
 
-.tracker-layout {
-  display: grid;
-  gap: 1.5rem;
-}
-
 .tracker-pitch-wrap {
-  max-width: 680px;
+  flex: 1 1 auto;
   width: 100%;
+  max-width: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
 }
 
 .tracker-pitch-wrap.is-recording {
   touch-action: none;
   cursor: crosshair;
   outline: 3px solid var(--brand);
-  outline-offset: 4px;
-  border-radius: calc(var(--radius) + 4px);
+  outline-offset: 3px;
+  border-radius: calc(var(--radius) + 3px);
 }
 
 .tracker-pitch-svg {
   cursor: inherit;
+  width: 100%;
+  height: auto;
+  max-height: calc(100dvh - var(--header-h) - 6.75rem);
 }
 
 .tracker-cell {
@@ -1615,10 +1658,14 @@ body.coach-mode .coach-controls {
   pointer-events: none;
 }
 
-.tracker-legend {
-  margin: 0.65rem 0 0;
-  font-size: 0.82rem;
-  text-align: center;
+.tracker-log {
+  margin-top: 1.75rem;
+  padding-top: 0.25rem;
+}
+
+.tracker-log h2 {
+  margin: 0 0 0.65rem;
+  font-size: 1.15rem;
 }
 
 .tracker-summary {
@@ -1630,6 +1677,7 @@ body.coach-mode .coach-controls {
 
 .tracker-table-wrap {
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
   background: var(--bg-panel);
   border: 1px solid var(--border);
   border-radius: var(--radius);
@@ -1673,9 +1721,9 @@ body.coach-mode .coach-controls {
 }
 
 .tracker-delete {
-  min-width: 36px;
-  min-height: 36px;
-  font-size: 1.25rem;
+  min-width: 44px;
+  min-height: 44px;
+  font-size: 1.35rem;
   line-height: 1;
   color: var(--text-dim);
 }
@@ -1713,41 +1761,73 @@ body.coach-mode .coach-controls {
   color: var(--text-muted);
 }
 
+#shot-event-modal {
+  padding: 0.3rem;
+  place-items: stretch;
+}
+
 .shot-modal-panel {
-  width: min(540px, 100%);
-  max-height: min(90vh, 760px);
+  width: 100%;
+  max-height: 100%;
+  overflow: hidden;
+  padding: 0.7rem 0.7rem calc(0.7rem + var(--safe-bottom));
+  display: flex;
+  flex-direction: column;
+}
+
+.shot-modal-panel h2 {
+  margin: 0 0 0.15rem;
+  font-size: 1.05rem;
 }
 
 .shot-modal-location {
-  margin: -0.35rem 0 0.85rem;
-  font-size: 0.88rem;
+  margin: 0 0 0.45rem;
+  font-size: 0.72rem;
+  line-height: 1.3;
+}
+
+.shot-modal-heading {
+  margin: 0 0 0.3rem;
+  font-size: 0.68rem;
 }
 
 .shot-player-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0.4rem;
-  margin-bottom: 1rem;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.28rem;
+  margin-bottom: 0.45rem;
 }
 
 .shot-player-btn {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 0.4rem;
-  min-height: 42px;
-  padding: 0.4rem 0.55rem;
-  text-align: left;
+  justify-content: center;
+  gap: 0;
+  min-height: 0;
+  min-width: 0;
+  padding: 0.22rem 0.12rem;
+  text-align: center;
   border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
+  border-radius: 7px;
   background: var(--bg-soft);
-  font-size: 0.82rem;
-  font-weight: 600;
+  font-size: 0.68rem;
+  font-weight: 650;
+  line-height: 1.15;
 }
 
 .shot-player-btn .num {
-  flex: 0 0 1.6rem;
+  flex: none;
   color: var(--brand);
   font-weight: 750;
+  font-size: 0.72rem;
+}
+
+.shot-player-btn .name {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .shot-player-btn.is-selected {
@@ -1761,19 +1841,38 @@ body.coach-mode .coach-controls {
 }
 
 .shot-action-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.shot-action-heading {
+  margin: 0.15rem 0 0.12rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.shot-action-row {
   display: grid;
-  grid-template-columns: 1fr;
-  gap: 0.4rem;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.28rem;
+}
+
+.shot-action-row-3 {
+  grid-template-columns: 1fr 1fr 1fr;
 }
 
 .shot-action-btn {
-  min-height: 44px;
-  padding: 0.55rem 0.75rem;
+  min-height: 38px;
+  padding: 0.3rem 0.35rem;
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   background: var(--bg-panel);
   font-weight: 700;
-  font-size: 0.9rem;
+  font-size: 0.8rem;
 }
 
 .shot-action-btn.is-assist {
@@ -1789,36 +1888,35 @@ body.coach-mode .coach-controls {
   border-color: var(--border-strong);
 }
 
+.shot-modal-panel .modal-actions {
+  margin-top: 0.45rem;
+}
+
+.shot-modal-panel .modal-actions .btn {
+  min-height: 40px;
+}
+
 #tracker-clear {
   margin-top: 0.75rem;
 }
 
-@media (min-width: 720px) {
-  .shot-action-grid {
-    grid-template-columns: 1fr 1fr 1fr;
+@media (max-height: 700px) {
+  .shot-player-btn {
+    padding: 0.12rem 0.08rem;
+    font-size: 0.64rem;
   }
 
-  .shot-action-btn.is-goal {
-    grid-column: 1 / -1;
-  }
-}
-
-@media (min-width: 900px) {
-  .tracker-layout {
-    grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
-    align-items: start;
+  .shot-player-btn .num {
+    font-size: 0.68rem;
   }
 
-  .tracker-pitch-col {
-    position: sticky;
-    top: calc(var(--header-h) + 0.75rem);
+  .shot-action-btn {
+    min-height: 34px;
+    font-size: 0.75rem;
   }
-}
 
-@media (max-width: 719px) {
-  .tracker-pitch-wrap {
-    width: 100%;
-    max-width: none;
+  .shot-modal-panel h2 {
+    font-size: 0.98rem;
   }
 }
 
