@@ -2925,6 +2925,7 @@
           : "—";
         return `
           <tr>
+            <td class="tracker-delete-cell"><button type="button" class="icon-btn tracker-delete" data-delete-shot="${escapeHtml(ev.id)}" aria-label="Delete shot">×</button></td>
             <td>${escapeHtml(formatShotTime(ev.createdAt))}</td>
             <td><span class="team-chip ${team === "opp" ? "is-opp" : "is-us"}">${escapeHtml(teamLabel(team))}</span></td>
             <td>${escapeHtml(player)}</td>
@@ -2933,7 +2934,6 @@
             <td>${escapeHtml(assistType)}</td>
             <td class="tracker-coord-cell">${escapeHtml(formatLoc(ev.shot))}<br /><span class="muted">${escapeHtml(formatXY(ev.shot))}</span></td>
             <td class="tracker-coord-cell">${assistCell}</td>
-            <td><button type="button" class="icon-btn tracker-delete" data-delete-shot="${escapeHtml(ev.id)}" aria-label="Delete shot">×</button></td>
           </tr>`;
       })
       .join("");
@@ -2949,6 +2949,7 @@
         <table class="tracker-table">
           <thead>
             <tr>
+              <th class="tracker-delete-cell"><span class="sr-only">Delete</span></th>
               <th>Time</th>
               <th>Team</th>
               <th>Player</th>
@@ -2957,7 +2958,6 @@
               <th>Assist type</th>
               <th>Shot location</th>
               <th>Assist location</th>
-              <th><span class="sr-only">Delete</span></th>
             </tr>
           </thead>
           <tbody>${shotTableRows(events)}</tbody>

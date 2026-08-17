@@ -1580,6 +1580,17 @@ body.coach-mode .coach-controls {
   flex: 1 1 8rem;
 }
 
+#tracker-record {
+  background: #c4453a;
+  border-color: #c4453a;
+  color: #fff;
+}
+
+#tracker-record:hover {
+  background: #a3362e;
+  border-color: #a3362e;
+}
+
 .tracker-status {
   margin: 0;
   font-weight: 650;
@@ -1865,6 +1876,26 @@ body.coach-mode .coach-controls {
 
 .tracker-table tbody tr:nth-child(even) {
   background: rgba(232, 238, 245, 0.45);
+}
+
+.tracker-table .tracker-delete-cell {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  width: 2.75rem;
+  padding-left: 0.35rem;
+  padding-right: 0.25rem;
+  background: var(--bg-panel);
+  box-shadow: 8px 0 8px -8px rgba(11, 31, 51, 0.18);
+}
+
+.tracker-table thead .tracker-delete-cell {
+  background: var(--bg-soft);
+  z-index: 2;
+}
+
+.tracker-table tbody tr:nth-child(even) .tracker-delete-cell {
+  background: #eef3f8;
 }
 
 .tracker-delete {
