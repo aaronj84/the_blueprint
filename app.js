@@ -1916,13 +1916,21 @@
 
   /* ---------- Secret varsity shot tracker ---------- */
   const HALF_L = PL / 2;
+  const DEF_SLIVER = 8;
+  const FIELD_Y_MAX = HALF_L + DEF_SLIVER;
+  const PEN_W = 40.32;
+  const SIX_W = 18.32;
+  const PEN_SIDE = (PW - PEN_W) / 2;
+  const WIDE_END = PEN_SIDE + 1.2;
+  const CENTER_W = 17;
+  const CENTER_X0 = (PW - CENTER_W) / 2;
+  const CENTER_X1 = CENTER_X0 + CENTER_W;
   const TRACKER_CHANNELS = [
-    { id: "LW", label: "Left wide", x0: 0, x1: PW / 6 },
-    { id: "LHS", label: "Left half-space", x0: PW / 6, x1: PW / 3 },
-    { id: "LC", label: "Left center", x0: PW / 3, x1: PW / 2 },
-    { id: "RC", label: "Right center", x0: PW / 2, x1: (PW * 2) / 3 },
-    { id: "RHS", label: "Right half-space", x0: (PW * 2) / 3, x1: (PW * 5) / 6 },
-    { id: "RW", label: "Right wide", x0: (PW * 5) / 6, x1: PW },
+    { id: "LW", label: "Left wide", x0: 0, x1: WIDE_END },
+    { id: "LHS", label: "Left half-space", x0: WIDE_END, x1: CENTER_X0 },
+    { id: "C", label: "Center", x0: CENTER_X0, x1: CENTER_X1 },
+    { id: "RHS", label: "Right half-space", x0: CENTER_X1, x1: PW - WIDE_END },
+    { id: "RW", label: "Right wide", x0: PW - WIDE_END, x1: PW },
   ];
   const TRACKER_DEPTHS = [
     { id: "6Y", label: "Six-yard", y0: 0, y1: 5.5 },
@@ -1984,7 +1992,15 @@
 
   function locatePitchPoint(rawX, rawY) {
     const x = Math.max(0, Math.min(PW, rawX));
-    const y = Math.max(0, Math.min(HALF_L, rawY));
+    const y = Math.max(0, Math.min(FIELD_Y_MAX, rawY));
+    if (y >= HALF_L) {
+      return {
+        x: Math.round(x * 10) / 10,
+        y: Math.round(y * 10) / 10,
+        zoneId: "DEF",
+        zoneLabel: "Defensive half",
+      };
+    }
     const col = TRACKER_CHANNELS.findIndex((c, i) =>
       i === TRACKER_CHANNELS.length - 1 ? x >= c.x0 && x <= c.x1 : x >= c.x0 && x < c.x1
     );
@@ -1993,21 +2009,20 @@
     );
     const channel = TRACKER_CHANNELS[Math.max(0, col)];
     const depth = TRACKER_DEPTHS[Math.max(0, row)];
-    const cell = Math.max(0, row) * 6 + Math.max(0, col) + 1;
-    const sixX0 = (PW - 18.32) / 2;
-    const penX0 = (PW - 40.32) / 2;
-    const inSix = x >= sixX0 && x <= sixX0 + 18.32 && y <= 5.5;
-    const inBox = x >= penX0 && x <= penX0 + 40.32 && y <= 16.5;
+    const sixX0 = (PW - SIX_W) / 2;
+    const penX0 = (PW - PEN_W) / 2;
+    const inSix = x >= sixX0 && x <= sixX0 + SIX_W && y <= 5.5;
+    const inBox = x >= penX0 && x <= penX0 + PEN_W && y <= 16.5;
     const nearSpot = Math.hypot(x - PW / 2, y - 11) <= 2.2;
     let zoneLabel;
-    if (nearSpot) zoneLabel = "Penalty spot";
+    if (channel.id === "C" && depth.id === "D") zoneLabel = "Zone 14";
+    else if (nearSpot) zoneLabel = "Penalty spot";
     else if (inSix) zoneLabel = `Six-yard box · ${channel.label}`;
     else if (inBox) zoneLabel = `Box · ${channel.label}`;
     else zoneLabel = `${channel.label} · ${depth.label}`;
     return {
       x: Math.round(x * 10) / 10,
       y: Math.round(y * 10) / 10,
-      cell,
       zoneId: `${channel.id}-${depth.id}`,
       zoneLabel,
     };
@@ -2015,7 +2030,7 @@
 
   function formatLoc(loc) {
     if (!loc) return "—";
-    return `Cell ${loc.cell} · ${loc.zoneLabel}`;
+    return loc.zoneLabel || "—";
   }
 
   function formatXY(loc) {
@@ -2053,14 +2068,14 @@
       "player_number",
       "player_name",
       "result",
-      "shot_cell",
+      "shot_zone_id",
       "shot_zone",
       "shot_x",
       "shot_y",
       "assisted_by_number",
       "assisted_by_name",
       "assist_type",
-      "assist_cell",
+      "assist_zone_id",
       "assist_zone",
       "assist_x",
       "assist_y",
@@ -2073,14 +2088,14 @@
           ev.shooterNumber,
           csvEscape(ev.shooterName),
           csvEscape(SHOT_RESULT_LABELS[ev.result] || ev.result),
-          ev.shot?.cell ?? "",
+          ev.shot?.zoneId ?? "",
           csvEscape(ev.shot?.zoneLabel || ""),
           ev.shot?.x ?? "",
           ev.shot?.y ?? "",
           ev.assist?.number ?? "",
           csvEscape(ev.assist?.name || ""),
           ev.assist ? ASSIST_TYPE_LABELS[ev.assist.type] || ev.assist.type : "",
-          ev.assist?.cell ?? "",
+          ev.assist?.zoneId ?? "",
           csvEscape(ev.assist?.zoneLabel || ""),
           ev.assist?.x ?? "",
           ev.assist?.y ?? "",
@@ -2129,9 +2144,9 @@
     const dx = Math.sqrt(arcR * arcR - (penH - spotY) * (penH - spotY));
 
     const stripes = [];
-    for (let i = 0; i < 4; i += 1) {
+    for (let i = 0; i < 5; i += 1) {
       stripes.push(
-        `<rect class="grass-stripe" x="0" y="${i * (HALF_L / 4)}" width="${PW}" height="${HALF_L / 8}" />`
+        `<rect class="grass-stripe" x="0" y="${i * (FIELD_Y_MAX / 5)}" width="${PW}" height="${FIELD_Y_MAX / 10}" />`
       );
     }
 
@@ -2142,11 +2157,9 @@
           if ((i + j) % 2 === 1) {
             grid += `<rect class="tracker-cell" x="${ch.x0}" y="${d.y0}" width="${ch.x1 - ch.x0}" height="${d.y1 - d.y0}" />`;
           }
-          const cx = (ch.x0 + ch.x1) / 2;
-          const cy = (d.y0 + d.y1) / 2;
-          grid += `<text class="tracker-cell-num" x="${cx}" y="${cy}" transform="rotate(-90 ${cx} ${cy})">${j * 6 + i + 1}</text>`;
         });
       });
+      grid += `<rect class="tracker-cell tracker-cell-deep" x="0" y="${HALF_L}" width="${PW}" height="${DEF_SLIVER}" />`;
       TRACKER_CHANNELS.slice(1).forEach((ch) => {
         grid += `<line class="tracker-grid-line" x1="${ch.x0}" y1="0" x2="${ch.x0}" y2="${HALF_L}" />`;
       });
@@ -2184,11 +2197,11 @@
       .join("");
 
     return `
-      <svg class="pitch-svg tracker-pitch-svg" viewBox="-1.6 -1 57.8 70" role="application" aria-label="Attacking half, goal on the right. Tap to mark a location.">
+      <svg class="pitch-svg tracker-pitch-svg" viewBox="-9.4 -1 64.8 70" role="application" aria-label="Attacking half with a sliver of the defensive half. Goal on the right.">
         <g transform="translate(${HALF_L},0) rotate(90)">
           ${stripes.join("")}
           <g class="tracker-grid">${grid}</g>
-          <rect x="0" y="0" width="${PW}" height="${HALF_L}" fill="none" stroke="${line}" stroke-width="0.45" />
+          <rect x="0" y="0" width="${PW}" height="${FIELD_Y_MAX}" fill="none" stroke="${line}" stroke-width="0.45" />
           <line x1="0" y1="${HALF_L}" x2="${PW}" y2="${HALF_L}" stroke="${line}" stroke-width="0.4" />
           <circle cx="${PW / 2}" cy="${HALF_L}" r="9.15" fill="none" stroke="${line}" stroke-width="0.35" />
           <circle cx="${PW / 2}" cy="${HALF_L}" r="0.45" fill="${line}" />
@@ -2359,7 +2372,6 @@
             type: assist.type,
             x: assist.location.x,
             y: assist.location.y,
-            cell: assist.location.cell,
             zoneId: assist.location.zoneId,
             zoneLabel: assist.location.zoneLabel,
           }
