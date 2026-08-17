@@ -7,7 +7,7 @@
   <meta name="theme-color" content="#f4f7fb" />
   <title>The Blueprint — Brighton Fresh/Soph Blue Team</title>
   <link rel="icon" href="assets/logo.svg" type="image/svg+xml" />
-  <link rel="stylesheet" href="styles.css?v=20260817b" />
+  <link rel="stylesheet" href="styles.css?v=20260817d" />
 </head>
 <body>
   <a class="sr-only" href="#main">Skip to content</a>
@@ -122,6 +122,10 @@
     <div class="modal-panel shot-modal-panel">
       <h2 id="shot-modal-title">Record event</h2>
       <p class="muted shot-modal-location" id="shot-modal-location"></p>
+      <p class="lineup-nudge" id="shot-lineup-nudge" hidden>
+        <span id="shot-lineup-nudge-text">Positions aren’t set. This play will save without a player.</span>
+        <button type="button" class="btn btn-ghost" id="shot-goto-lineup">Set positions</button>
+      </p>
       <p class="step-label shot-modal-heading" hidden>Player</p>
       <div class="shot-player-grid" id="shot-player-grid" hidden></div>
       <p class="step-label" id="shot-action-label" hidden>What happened?</p>
@@ -133,7 +137,33 @@
     </div>
   </div>
 
+  <div class="modal" id="number-pick-modal" hidden role="dialog" aria-modal="true" aria-labelledby="number-pick-title">
+    <div class="modal-backdrop" data-close-number-pick></div>
+    <div class="modal-panel number-pick-panel">
+      <h2 id="number-pick-title">Jersey number</h2>
+      <p class="muted">Spin to the number who came on. Gray numbers are already on the field.</p>
+      <label class="sr-only" for="number-pick-select">Jersey number</label>
+      <select id="number-pick-select" class="number-pick-select" size="7"></select>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-ghost" data-close-number-pick>Cancel</button>
+        <button type="button" class="btn btn-primary" id="number-pick-confirm">Use number</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="lineup-sub-modal" hidden role="dialog" aria-modal="true" aria-labelledby="lineup-sub-title">
+    <div class="modal-backdrop" data-close-lineup-sub></div>
+    <div class="modal-panel shot-modal-panel">
+      <h2 id="lineup-sub-title">Who came on?</h2>
+      <p class="muted">Swap this position to another player on the same team.</p>
+      <div class="shot-player-grid" id="lineup-sub-list"></div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-secondary" data-close-lineup-sub>Cancel</button>
+      </div>
+    </div>
+  </div>
+
   <script src="scenarios.js?v=20260817a"></script>
-  <script src="app.js?v=20260817b"></script>
+  <script src="app.js?v=20260817d"></script>
 </body>
 </html>

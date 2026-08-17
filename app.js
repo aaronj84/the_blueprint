@@ -124,6 +124,10 @@
       pending: null,
       showGrid: true,
       period: 1,
+      team: "us",
+      lineupEdit: "us",
+      opponent: "",
+      lineup: { set: false, us: {}, opp: {} },
     },
   };
 
@@ -2002,22 +2006,346 @@
       JSON.stringify({
         period: state.tracker.period,
         opponent: state.tracker.opponent || "",
+        team: state.tracker.team || "us",
+        lineupEdit: state.tracker.lineupEdit || "us",
+        lineup: state.tracker.lineup,
       })
     );
   }
 
   function eventPeriod(ev) {
-    return ev && ev.period === 2 ? 2 : 1;
+    return normalizePeriod(ev && ev.period);
+  }
+
+  function normalizePeriod(p) {
+    const n = Number(p);
+    if (n === 2 || n === 3 || n === 4) return n;
+    return 1;
   }
 
   function periodLabel(period) {
-    return period === 2 ? "2nd Half" : "1st Half";
+    if (period === 2) return "2nd Half";
+    if (period === 3) return "ET 1";
+    if (period === 4) return "ET 2";
+    return "1st Half";
+  }
+
+  function periodCsv(period) {
+    if (period === 3) return "ET1";
+    if (period === 4) return "ET2";
+    return String(period === 2 ? 2 : 1);
   }
 
   let trackerEvents = loadShots();
   const savedUi = loadTrackerUi();
-  state.tracker.period = savedUi.period === 2 ? 2 : 1;
+  state.tracker.period = normalizePeriod(savedUi.period);
   state.tracker.opponent = savedUi.opponent || "";
+  state.tracker.team = savedUi.team === "opp" ? "opp" : "us";
+  state.tracker.lineupEdit = savedUi.lineupEdit === "opp" ? "opp" : "us";
+  state.tracker.lineup = savedUi.lineup && typeof savedUi.lineup === "object"
+    ? Object.assign({ set: false, us: {}, opp: {} }, savedUi.lineup, {
+        us: savedUi.lineup.us || {},
+        opp: savedUi.lineup.opp || {},
+      })
+    : { set: false, us: {}, opp: {} };
+
+  const POSITION_SLOTS = [
+    { id: 1, code: "GK" },
+    { id: 2, code: "RB" },
+    { id: 3, code: "LB" },
+    { id: 4, code: "RCB" },
+    { id: 5, code: "LCB" },
+    { id: 6, code: "DM" },
+    { id: 7, code: "RW" },
+    { id: 8, code: "CM" },
+    { id: 9, code: "CF" },
+    { id: 10, code: "AM" },
+    { id: 11, code: "LW" },
+  ];
+
+  function jerseyChoices() {
+    return ["00", "0"].concat(Array.from({ length: 99 }, (_, i) => String(i + 1)));
+  }
+
+  function lineupIsSet() {
+    return !!state.tracker.lineup?.set;
+  }
+
+  function slotPlayer(team, slotId) {
+    const bag = team === "opp" ? state.tracker.lineup.opp : state.tracker.lineup.us;
+    return (bag && bag[String(slotId)]) || null;
+  }
+
+  function onFieldPlayers(team) {
+    return POSITION_SLOTS.map((slot) => {
+      const p = slotPlayer(team, slot.id);
+      if (!p) return null;
+      return Object.assign({ slot: slot.id, slotCode: slot.code, team }, p);
+    }).filter(Boolean);
+  }
+
+  function usedUsNumbers(exceptSlot) {
+    const used = new Set();
+    POSITION_SLOTS.forEach((slot) => {
+      if (exceptSlot && slot.id === exceptSlot) return;
+      const p = slotPlayer("us", slot.id);
+      if (p) used.add(String(p.number));
+    });
+    return used;
+  }
+
+  function usedOppNumbers(exceptSlot) {
+    const used = new Set();
+    POSITION_SLOTS.forEach((slot) => {
+      if (exceptSlot && slot.id === exceptSlot) return;
+      const p = slotPlayer("opp", slot.id);
+      if (p) used.add(String(p.number));
+    });
+    return used;
+  }
+
+  function assignSlot(team, slotId, player) {
+    const key = team === "opp" ? "opp" : "us";
+    if (!state.tracker.lineup[key] || typeof state.tracker.lineup[key] !== "object") {
+      state.tracker.lineup[key] = {};
+    }
+    if (!player) delete state.tracker.lineup[key][String(slotId)];
+    else state.tracker.lineup[key][String(slotId)] = player;
+    saveTrackerUi();
+  }
+
+  function usPlayerFromValue(value) {
+    if (!value) return null;
+    if (value.startsWith("n-")) {
+      const num = value.slice(2);
+      return { number: num, name: `JV #${num}`, short: "JV", adhoc: true };
+    }
+    const roster = VARSITY_ROSTER.find((p) => String(p.number) === value);
+    if (!roster) return null;
+    return {
+      number: roster.number,
+      name: roster.name,
+      short: roster.short || firstName(roster.name),
+      adhoc: false,
+    };
+  }
+
+  function findOnFieldPlayer(team, number) {
+    return onFieldPlayers(team).find((p) => String(p.number) === String(number)) || null;
+  }
+
+  function recordingTeam() {
+    return state.tracker.team === "opp" ? "opp" : "us";
+  }
+
+  function eventTeam(ev) {
+    return ev && ev.team === "opp" ? "opp" : "us";
+  }
+
+  function shouldAskPlayer() {
+    return lineupIsSet() && onFieldPlayers(recordingTeam()).length > 0;
+  }
+
+  function usSelectOptions(slotId) {
+    const current = slotPlayer("us", slotId);
+    const used = usedUsNumbers(slotId);
+    const opts = [`<option value="">—</option>`];
+    rosterForPicker().forEach((p) => {
+      const taken = used.has(String(p.number));
+      const selected = current && !current.adhoc && String(current.number) === String(p.number);
+      opts.push(
+        `<option value="${p.number}" ${taken ? "disabled" : ""} ${selected ? "selected" : ""}>${escapeHtml(playerDisplayName(p))}</option>`
+      );
+    });
+    if (current?.adhoc) {
+      opts.push(
+        `<option value="n-${escapeHtml(String(current.number))}" selected>#${escapeHtml(String(current.number))} (added)</option>`
+      );
+    }
+    opts.push(`<option value="__add__">Add number…</option>`);
+    return opts.join("");
+  }
+
+  function oppSelectOptions(slotId) {
+    const current = slotPlayer("opp", slotId);
+    const used = usedOppNumbers(slotId);
+    const opts = [`<option value="">—</option>`];
+    jerseyChoices().forEach((num) => {
+      const taken = used.has(num);
+      const selected = current && String(current.number) === num;
+      opts.push(
+        `<option value="${num}" ${taken ? "disabled" : ""} ${selected ? "selected" : ""}>${num}</option>`
+      );
+    });
+    return opts.join("");
+  }
+
+  function lineupEditorMarkup() {
+    const team = state.tracker.lineupEdit === "opp" ? "opp" : "us";
+    const count = onFieldPlayers(team).length;
+    const rows = POSITION_SLOTS.map((slot) => {
+      const filled = slotPlayer(team, slot.id);
+      const select =
+        team === "opp"
+          ? `<select class="lineup-select" data-lineup-team="opp" data-lineup-slot="${slot.id}">${oppSelectOptions(slot.id)}</select>`
+          : `<select class="lineup-select" data-lineup-team="us" data-lineup-slot="${slot.id}">${usSelectOptions(slot.id)}</select>`;
+      return `
+        <div class="lineup-row">
+          <span class="lineup-pos"><strong>${slot.id}</strong> ${slot.code}</span>
+          ${select}
+          <button type="button" class="btn btn-ghost lineup-sub" data-sub-slot="${slot.id}" ${filled ? "" : "disabled"}>Sub</button>
+        </div>`;
+    }).join("");
+    return `
+      <section class="lineup-section" id="lineup-section">
+        <div class="lineup-header">
+          <h2>Positions</h2>
+          <button type="button" class="btn ${lineupIsSet() ? "btn-secondary" : "btn-primary"}" id="set-positions-btn">${lineupIsSet() ? "Positions set" : "Set Positions"}</button>
+        </div>
+        <p class="muted lineup-help">${lineupIsSet() ? "Only these 11 appear when you add a play. Sub to swap." : "Assign the 11, then tap Set Positions. Until then, plays save without a player."}</p>
+        <div class="half-toggle lineup-team-toggle" role="tablist" aria-label="Lineup team">
+          <button type="button" class="half-toggle-btn ${team === "us" ? "is-on" : ""}" data-lineup-edit="us">Us</button>
+          <button type="button" class="half-toggle-btn ${team === "opp" ? "is-on" : ""}" data-lineup-edit="opp">Them</button>
+        </div>
+        <p class="lineup-count">${count}/11 on the field</p>
+        <div class="lineup-list">${rows}</div>
+      </section>`;
+  }
+
+  function openNumberPicker(usedSet, onPick) {
+    const modal = $("#number-pick-modal");
+    const select = $("#number-pick-select");
+    if (!modal || !select) return;
+    select.innerHTML = jerseyChoices()
+      .map((num) => `<option value="${num}" ${usedSet.has(num) ? "disabled" : ""}>${num}</option>`)
+      .join("");
+    const first = jerseyChoices().find((n) => !usedSet.has(n));
+    if (first) select.value = first;
+    modal.hidden = false;
+    const confirmBtn = $("#number-pick-confirm");
+    const cancelBtns = $$("[data-close-number-pick]");
+    const finish = (picked) => {
+      modal.hidden = true;
+      confirmBtn.onclick = null;
+      cancelBtns.forEach((el) => {
+        el.onclick = null;
+      });
+      if (picked) onPick(picked);
+    };
+    confirmBtn.onclick = () => {
+      const opt = select.selectedOptions[0];
+      if (!select.value || opt?.disabled) return;
+      finish(select.value);
+    };
+    cancelBtns.forEach((el) => {
+      el.onclick = () => finish(null);
+    });
+  }
+
+  function openSubPicker(team, slotId) {
+    const current = slotPlayer(team, slotId);
+    if (!current) return;
+    if (team === "opp") {
+      openNumberPicker(usedOppNumbers(slotId), (num) => {
+        assignSlot("opp", slotId, { number: num });
+        renderShotTracker({ keepScroll: true });
+      });
+      return;
+    }
+    const modal = $("#lineup-sub-modal");
+    const list = $("#lineup-sub-list");
+    if (!modal || !list) return;
+    const used = usedUsNumbers(slotId);
+    const available = rosterForPicker().filter(
+      (p) => String(p.number) !== String(current.number) && !used.has(String(p.number))
+    );
+    list.innerHTML = available
+      .map(
+        (p) =>
+          `<button type="button" class="shot-player-btn" data-sub-us="${p.number}">
+            <span class="name">${escapeHtml(playerDisplayName(p))}</span>
+            <span class="num">${p.number}</span>
+          </button>`
+      )
+      .join("") +
+      `<button type="button" class="shot-player-btn" data-sub-add="1"><span class="name">Add number</span></button>`;
+    modal.hidden = false;
+    const onClick = (e) => {
+      const add = e.target.closest("[data-sub-add]");
+      const usBtn = e.target.closest("[data-sub-us]");
+      if (add) {
+        modal.hidden = true;
+        list.removeEventListener("click", onClick);
+        openNumberPicker(usedUsNumbers(slotId), (num) => {
+          assignSlot("us", slotId, usPlayerFromValue(`n-${num}`));
+          renderShotTracker({ keepScroll: true });
+        });
+        return;
+      }
+      if (usBtn) {
+        assignSlot("us", slotId, usPlayerFromValue(usBtn.getAttribute("data-sub-us")));
+        modal.hidden = true;
+        list.removeEventListener("click", onClick);
+        renderShotTracker({ keepScroll: true });
+      }
+    };
+    list.addEventListener("click", onClick);
+    $$("[data-close-lineup-sub]").forEach((el) => {
+      el.onclick = () => {
+        modal.hidden = true;
+        list.removeEventListener("click", onClick);
+      };
+    });
+  }
+
+  function bindLineupEditor() {
+    $$("[data-lineup-edit]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        state.tracker.lineupEdit = btn.getAttribute("data-lineup-edit") === "opp" ? "opp" : "us";
+        saveTrackerUi();
+        renderShotTracker({ keepScroll: true });
+      });
+    });
+    $("#set-positions-btn")?.addEventListener("click", () => {
+      state.tracker.lineup.set = true;
+      saveTrackerUi();
+      renderShotTracker({ keepScroll: true });
+      showToast("Positions set — Add Play will use this 11");
+    });
+    $$(".lineup-select").forEach((sel) => {
+      sel.addEventListener("change", () => {
+        const team = sel.getAttribute("data-lineup-team");
+        const slotId = Number(sel.getAttribute("data-lineup-slot"));
+        const value = sel.value;
+        if (team === "opp") {
+          assignSlot("opp", slotId, value ? { number: value } : null);
+          renderShotTracker({ keepScroll: true });
+          return;
+        }
+        if (value === "__add__") {
+          sel.value = slotPlayer("us", slotId)
+            ? slotPlayer("us", slotId).adhoc
+              ? `n-${slotPlayer("us", slotId).number}`
+              : String(slotPlayer("us", slotId).number)
+            : "";
+          openNumberPicker(usedUsNumbers(slotId), (num) => {
+            assignSlot("us", slotId, usPlayerFromValue(`n-${num}`));
+            renderShotTracker({ keepScroll: true });
+          });
+          return;
+        }
+        assignSlot("us", slotId, usPlayerFromValue(value));
+        renderShotTracker({ keepScroll: true });
+      });
+    });
+    $$("[data-sub-slot]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const slotId = Number(btn.getAttribute("data-sub-slot"));
+        openSubPicker(state.tracker.lineupEdit === "opp" ? "opp" : "us", slotId);
+      });
+    });
+  }
+
   const shotModal = $("#shot-event-modal");
   const shotModalDraft = {
     step: "first",
@@ -2082,12 +2410,16 @@
   }
 
   function playerLabel(p) {
-    return `${playerDisplayName(p)}`;
+    if (!p) return "untagged";
+    if (p.team === "opp") return `Opp #${p.number}`;
+    return playerDisplayName(p);
   }
 
   function playerDisplayName(p) {
-    if (p?.short) return p.short;
-    return firstName(p?.name || p);
+    if (!p) return "";
+    if (p.team === "opp" || (p.number != null && !p.name && !p.short)) return `#${p.number}`;
+    if (p.short) return p.short;
+    return firstName(p.name || p);
   }
 
   function firstName(full) {
@@ -2122,6 +2454,7 @@
     }
     const headers = [
       "half",
+      "team",
       "time",
       "player_number",
       "player_name",
@@ -2142,10 +2475,11 @@
     trackerEvents.forEach((ev) => {
       lines.push(
         [
-          eventPeriod(ev),
+          periodCsv(eventPeriod(ev)),
+          eventTeam(ev) === "opp" ? "opponent" : "us",
           ev.createdAt,
-          ev.shooterNumber,
-          csvEscape(ev.shooterName),
+          ev.shooterNumber ?? "",
+          csvEscape(ev.shooterName || ""),
           csvEscape(SHOT_RESULT_LABELS[ev.result] || ev.result),
           ev.shot?.zoneId ?? "",
           csvEscape(ev.shot?.zoneLabel || ""),
@@ -2251,8 +2585,10 @@
           html += `<circle class="tracker-assist-dot" cx="${ev.assist.x}" cy="${ev.assist.y}" r="0.9" />`;
         }
         html += `<circle class="tracker-shot-dot ${escapeHtml(ev.result)}" cx="${ev.shot.x}" cy="${ev.shot.y}" r="1.7" />`;
-        html += `<text class="tracker-shot-num" x="${ev.shot.x}" y="${ev.shot.y}" transform="rotate(-90 ${ev.shot.x} ${ev.shot.y})">${escapeHtml(String(ev.shooterNumber))}</text>`;
-        return `<g class="tracker-event" data-event-id="${escapeHtml(ev.id)}">${html}</g>`;
+        if (ev.shooterNumber !== undefined && ev.shooterNumber !== null && ev.shooterNumber !== "") {
+          html += `<text class="tracker-shot-num" x="${ev.shot.x}" y="${ev.shot.y}" transform="rotate(-90 ${ev.shot.x} ${ev.shot.y})">${escapeHtml(String(ev.shooterNumber))}</text>`;
+        }
+        return `<g class="tracker-event ${eventTeam(ev) === "opp" ? "is-opp" : ""}" data-event-id="${escapeHtml(ev.id)}">${html}</g>`;
       })
       .join("");
 
@@ -2331,7 +2667,9 @@
     const playerGrid = $("#shot-player-grid");
     const actionGrid = $("#shot-action-grid");
     const backBtn = $("#shot-modal-back");
-    const panel = $(".shot-modal-panel");
+    const panel = $(".shot-modal-panel", shotModal);
+    const nudge = $("#shot-lineup-nudge");
+    const nudgeText = $("#shot-lineup-nudge-text");
     if (!shotModal || !playerGrid || !actionGrid) return;
 
     const step = shotModalDraft.step;
@@ -2339,6 +2677,17 @@
     const loc = shotModalDraft.location;
     const locText = loc ? `${formatLoc(loc)}  ·  (${formatXY(loc)})` : "";
     if (actionLabel) actionLabel.hidden = true;
+    if (nudge) {
+      const ask = shouldAskPlayer();
+      nudge.hidden = ask || phase === "player";
+      if (!ask && nudgeText) {
+        nudgeText.textContent = lineupIsSet()
+          ? `No ${recordingTeam() === "opp" ? "opponent numbers" : "players"} in the 11. This play will save without a player.`
+          : "Positions aren’t set. This play will save without a player.";
+      }
+      const btn = $("#shot-goto-lineup");
+      if (btn) btn.textContent = lineupIsSet() ? "Add players" : "Set positions";
+    }
 
     if (panel) panel.classList.toggle("is-player-phase", phase === "player");
     if (backBtn) backBtn.hidden = phase !== "player";
@@ -2373,6 +2722,7 @@
     }
 
     const chosen = shotModalDraft.action;
+    const team = recordingTeam();
     const whoTitle = chosen?.kind === "assist" ? "Who assisted?" : "Who shot?";
     title.textContent = whoTitle;
     locEl.textContent = chosen
@@ -2381,21 +2731,24 @@
     if (playerHeading) playerHeading.hidden = true;
     playerGrid.hidden = false;
     actionGrid.hidden = true;
-    playerGrid.innerHTML = rosterForPicker()
-      .map(
-        (p) => `
-        <button type="button" class="shot-player-btn" data-player-number="${p.number}">
-          <span class="name">${escapeHtml(playerDisplayName(p))}</span>
-          <span class="num">${p.number}</span>
-        </button>`
-      )
+    playerGrid.innerHTML = onFieldPlayers(team)
+      .map((p) => {
+        const label = team === "opp" ? `#${p.number}` : escapeHtml(playerDisplayName(p));
+        const num = team === "opp" ? p.slotCode : p.number;
+        return `
+        <button type="button" class="shot-player-btn" data-player-number="${escapeHtml(String(p.number))}" data-player-team="${team}">
+          <span class="name">${label}</span>
+          <span class="num">${escapeHtml(String(num))}</span>
+        </button>`;
+      })
       .join("");
   }
 
   function completeShotModal() {
     const action = shotModalDraft.action;
-    const player = shotModalDraft.player;
-    if (!action || !player) return;
+    if (!action) return;
+    const player = shotModalDraft.player || null;
+    if (shouldAskPlayer() && !player) return;
     if (shotModalDraft.step === "first" && action.kind === "assist") {
       state.tracker.pending = {
         assist: {
@@ -2419,19 +2772,23 @@
 
   function commitShotEvent(result, shooter, assist) {
     const loc = shotModalDraft.location;
-    if (!loc || !shooter) return;
+    if (!loc) return;
+    const team = recordingTeam();
     const event = {
       id: `shot-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
       createdAt: new Date().toISOString(),
-      period: state.tracker.period === 2 ? 2 : 1,
-      shooterNumber: shooter.number,
-      shooterName: shooter.name,
+      period: normalizePeriod(state.tracker.period),
+      team,
+      shooterNumber: shooter ? String(shooter.number) : "",
+      shooterName: shooter ? shooter.name || "" : "",
+      shooterShort: shooter ? shooter.short || "" : "",
       result,
       shot: loc,
       assist: assist
         ? {
-            number: assist.player.number,
-            name: assist.player.name,
+            number: assist.player ? String(assist.player.number) : "",
+            name: assist.player ? assist.player.name || "" : "",
+            short: assist.player ? assist.player.short || "" : "",
             type: assist.type,
             x: assist.location.x,
             y: assist.location.y,
@@ -2445,8 +2802,10 @@
     closeShotModal();
     resetTrackerDraft();
     renderShotTracker();
-    const extra = event.assist ? ` (assist: ${firstName(event.assist.name)})` : "";
-    showToast(`${SHOT_RESULT_LABELS[result]} — ${playerLabel(shooter)}${extra}`);
+    const extra = event.assist
+      ? ` (assist: ${event.assist.number ? (team === "opp" ? `Opp #${event.assist.number}` : firstName(event.assist.name) || `#${event.assist.number}`) : "untagged"})`
+      : "";
+    showToast(`${SHOT_RESULT_LABELS[result]} — ${playerLabel(shooter ? Object.assign({ team }, shooter) : null)}${extra}`);
   }
 
   function bindShotModal() {
@@ -2455,10 +2814,9 @@
     shotModal.addEventListener("click", (e) => {
       const playerBtn = e.target.closest("[data-player-number]");
       if (playerBtn) {
-        shotModalDraft.player =
-          VARSITY_ROSTER.find(
-            (p) => String(p.number) === playerBtn.getAttribute("data-player-number")
-          ) || null;
+        const team = playerBtn.getAttribute("data-player-team") || recordingTeam();
+        const number = playerBtn.getAttribute("data-player-number");
+        shotModalDraft.player = findOnFieldPlayer(team, number);
         completeShotModal();
         return;
       }
@@ -2469,8 +2827,12 @@
         );
         if (!action) return;
         shotModalDraft.action = action;
-        shotModalDraft.phase = "player";
-        renderShotModal();
+        if (shouldAskPlayer()) {
+          shotModalDraft.phase = "player";
+          renderShotModal();
+        } else {
+          completeShotModal();
+        }
       }
     });
     $("#shot-modal-back")?.addEventListener("click", () => {
@@ -2478,6 +2840,14 @@
       shotModalDraft.player = null;
       shotModalDraft.action = null;
       renderShotModal();
+    });
+    $("#shot-goto-lineup")?.addEventListener("click", () => {
+      dismissShotModal();
+      resetTrackerDraft();
+      renderShotTracker();
+      requestAnimationFrame(() => {
+        $("#lineup-section")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
     });
     $$("[data-close-shot-modal]").forEach((el) =>
       el.addEventListener("click", () => {
@@ -2526,13 +2896,25 @@
     return { goals: n("goal"), onTarget: n("on-target"), blocked: n("blocked"), missed: n("missed"), assists, total: events.length };
   }
 
+  function eventPersonLabel(team, number, name, short) {
+    if (number === undefined || number === null || String(number) === "") return "—";
+    if (team === "opp") return `Opp #${number}`;
+    if (short) return `#${number} ${short}`;
+    const nick = firstName(name);
+    return nick ? `#${number} ${nick}` : `#${number}`;
+  }
+
   function shotTableRows(events) {
     if (!events.length) {
       return `<tr><td colspan="9" class="empty-state" style="padding:1.25rem">No plays yet.</td></tr>`;
     }
     return events
       .map((ev) => {
-        const assistBy = ev.assist ? `#${ev.assist.number} ${escapeHtml(firstName(ev.assist.name))}` : "—";
+        const team = eventTeam(ev);
+        const player = eventPersonLabel(team, ev.shooterNumber, ev.shooterName, ev.shooterShort);
+        const assistBy = ev.assist
+          ? eventPersonLabel(team, ev.assist.number, ev.assist.name, ev.assist.short)
+          : "—";
         const assistType = ev.assist ? ASSIST_TYPE_LABELS[ev.assist.type] || ev.assist.type : "—";
         const assistCell = ev.assist
           ? `${escapeHtml(formatLoc(ev.assist))}<br /><span class="muted">${escapeHtml(formatXY(ev.assist))}</span>`
@@ -2540,9 +2922,10 @@
         return `
           <tr>
             <td>${escapeHtml(formatShotTime(ev.createdAt))}</td>
-            <td>#${ev.shooterNumber} ${escapeHtml(firstName(ev.shooterName))}</td>
+            <td><span class="team-chip ${team === "opp" ? "is-opp" : "is-us"}">${team === "opp" ? "Them" : "Us"}</span></td>
+            <td>${escapeHtml(player)}</td>
             <td><span class="shot-result-pill ${escapeHtml(ev.result)}">${escapeHtml(SHOT_RESULT_LABELS[ev.result] || ev.result)}</span></td>
-            <td>${assistBy}</td>
+            <td>${escapeHtml(assistBy)}</td>
             <td>${escapeHtml(assistType)}</td>
             <td class="tracker-coord-cell">${escapeHtml(formatLoc(ev.shot))}<br /><span class="muted">${escapeHtml(formatXY(ev.shot))}</span></td>
             <td class="tracker-coord-cell">${assistCell}</td>
@@ -2563,6 +2946,7 @@
           <thead>
             <tr>
               <th>Time</th>
+              <th>Team</th>
               <th>Player</th>
               <th>Result</th>
               <th>Assisted by</th>
@@ -2587,10 +2971,12 @@
       <span class="pill">Assists <strong>${sum.assists}</strong></span>`;
   }
 
-  function toFullFieldPoint(loc, period) {
+  function toFullFieldPoint(loc, period, team) {
     const x = Number(loc.x);
     const y = Number(loc.y);
-    if (period === 2) return { fx: y, fy: PW - x };
+    const usAttacksRight = period !== 2 && period !== 4;
+    const attacksRight = team === "opp" ? !usAttacksRight : usAttacksRight;
+    if (!attacksRight) return { fx: y, fy: PW - x };
     return { fx: PL - y, fy: x };
   }
 
@@ -2624,15 +3010,20 @@
     const markers = events
       .map((ev) => {
         const period = eventPeriod(ev);
-        const shot = toFullFieldPoint(ev.shot, period);
+        const team = eventTeam(ev);
+        const shot = toFullFieldPoint(ev.shot, period, team);
+        const stroke = team === "opp" ? "#c0392b" : ev.result === "missed" ? "#ffffff" : "#0b1f33";
+        const numFill = team === "opp" || ev.result === "missed" ? "#ffffff" : "#0b1f33";
         let html = "";
         if (ev.assist) {
-          const a = toFullFieldPoint(ev.assist, period);
+          const a = toFullFieldPoint(ev.assist, period, team);
           html += `<line x1="${a.fx}" y1="${a.fy}" x2="${shot.fx}" y2="${shot.fy}" stroke="rgba(255,255,255,0.85)" stroke-width="0.28" stroke-dasharray="1.1 0.7" fill="none" />`;
-          html += `<circle cx="${a.fx}" cy="${a.fy}" r="0.85" fill="#7ec8e3" stroke="#0b1f33" stroke-width="0.2" />`;
+          html += `<circle cx="${a.fx}" cy="${a.fy}" r="0.85" fill="#7ec8e3" stroke="${team === "opp" ? "#c0392b" : "#0b1f33"}" stroke-width="0.2" />`;
         }
-        html += `<circle cx="${shot.fx}" cy="${shot.fy}" r="1.65" fill="${resultFill(ev.result)}" stroke="${ev.result === "missed" ? "#ffffff" : "#0b1f33"}" stroke-width="0.28" />`;
-        html += `<text x="${shot.fx}" y="${shot.fy}" fill="${ev.result === "missed" ? "#ffffff" : "#0b1f33"}" font-size="1.25" font-weight="700" text-anchor="middle" dominant-baseline="central">${escapeHtml(String(ev.shooterNumber))}</text>`;
+        html += `<circle cx="${shot.fx}" cy="${shot.fy}" r="1.65" fill="${resultFill(ev.result)}" stroke="${stroke}" stroke-width="${team === "opp" ? "0.42" : "0.28"}" />`;
+        if (ev.shooterNumber !== undefined && ev.shooterNumber !== null && String(ev.shooterNumber) !== "") {
+          html += `<text x="${shot.fx}" y="${shot.fy}" fill="${numFill}" font-size="1.25" font-weight="700" text-anchor="middle" dominant-baseline="central">${escapeHtml(String(ev.shooterNumber))}</text>`;
+        }
         return html;
       })
       .join("");
@@ -2706,28 +3097,43 @@
     bindShotModal();
     const scrollY = window.scrollY;
     const events = trackerEvents;
-    const period = state.tracker.period === 2 ? 2 : 1;
+    const period = normalizePeriod(state.tracker.period);
+    const etMode = period >= 3;
     const firstHalf = events.filter((e) => eventPeriod(e) === 1);
     const secondHalf = events.filter((e) => eventPeriod(e) === 2);
+    const etOne = events.filter((e) => eventPeriod(e) === 3);
+    const etTwo = events.filter((e) => eventPeriod(e) === 4);
+    const showEtLog = etMode || etOne.length > 0 || etTwo.length > 0;
     const recording =
       state.tracker.mode === "awaiting-location" ||
       state.tracker.mode === "awaiting-shot-location";
-    let status = `Add Play, then tap. ${periodLabel(period)} · goal on the right.`;
+    let status = `Add Play, then tap. ${periodLabel(period)} · ${recordingTeam() === "opp" ? "Them" : "Us"} · goal on the right.`;
     if (state.tracker.mode === "awaiting-location") {
-      status = `Tap the pass or shot location · ${periodLabel(period)}.`;
+      status = `Tap the pass or shot location · ${periodLabel(period)} · ${recordingTeam() === "opp" ? "Them" : "Us"}.`;
     } else if (state.tracker.mode === "awaiting-shot-location") {
       const a = state.tracker.pending?.assist;
       status = a
-        ? `Assist: ${playerLabel(a.player)} (${ASSIST_TYPE_LABELS[a.type]}). Tap the shot.`
+        ? `Assist: ${playerLabel(a.player ? Object.assign({ team: recordingTeam() }, a.player) : null)} (${ASSIST_TYPE_LABELS[a.type]}). Tap the shot.`
         : "Tap where the shot was taken.";
     }
 
     root.innerHTML = `
       <div class="tracker-page">
         <section class="tracker-stage">
-          <div class="half-toggle" role="tablist" aria-label="Match half">
-            <button type="button" class="half-toggle-btn ${period === 1 ? "is-on" : ""}" data-set-period="1">1st Half</button>
+          <div class="half-toggle" role="tablist" aria-label="Match period">
+            ${
+              etMode
+                ? `<button type="button" class="half-toggle-btn ${period === 3 ? "is-on" : ""}" data-set-period="3">ET 1</button>
+            <button type="button" class="half-toggle-btn ${period === 4 ? "is-on" : ""}" data-set-period="4">ET 2</button>
+            <button type="button" class="half-toggle-btn is-et" data-et-toggle aria-label="Back to regular time">90</button>`
+                : `<button type="button" class="half-toggle-btn ${period === 1 ? "is-on" : ""}" data-set-period="1">1st Half</button>
             <button type="button" class="half-toggle-btn ${period === 2 ? "is-on" : ""}" data-set-period="2">2nd Half</button>
+            <button type="button" class="half-toggle-btn is-et" data-et-toggle aria-label="Extra time">ET</button>`
+            }
+          </div>
+          <div class="half-toggle tracker-side-toggle" role="tablist" aria-label="Recording team">
+            <button type="button" class="half-toggle-btn ${recordingTeam() === "us" ? "is-on" : ""}" data-set-team="us">Us</button>
+            <button type="button" class="half-toggle-btn ${recordingTeam() === "opp" ? "is-on" : ""}" data-set-team="opp">Them</button>
           </div>
           <div class="tracker-toolbar">
             ${
@@ -2747,12 +3153,15 @@
           <h2>Recorded plays</h2>
           ${shotTableMarkup("1st Half", firstHalf)}
           ${shotTableMarkup("2nd Half", secondHalf)}
+          ${showEtLog ? shotTableMarkup("ET 1", etOne) + shotTableMarkup("ET 2", etTwo) : ""}
           ${
             events.length
               ? `<button type="button" class="btn btn-ghost" id="tracker-clear">Clear results</button>`
               : ""
           }
         </section>
+
+        ${lineupEditorMarkup()}
       </div>
     `;
 
@@ -2766,9 +3175,20 @@
       resetTrackerDraft();
       renderShotTracker();
     });
+    $$("[data-set-team]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const next = btn.getAttribute("data-set-team") === "opp" ? "opp" : "us";
+        if (next === state.tracker.team) return;
+        state.tracker.team = next;
+        saveTrackerUi();
+        resetTrackerDraft();
+        closeShotModal();
+        renderShotTracker({ keepScroll: true });
+      });
+    });
     $$("[data-set-period]").forEach((btn) => {
       btn.addEventListener("click", () => {
-        const next = btn.getAttribute("data-set-period") === "2" ? 2 : 1;
+        const next = normalizePeriod(btn.getAttribute("data-set-period"));
         if (next === state.tracker.period) return;
         state.tracker.period = next;
         saveTrackerUi();
@@ -2776,6 +3196,13 @@
         closeShotModal();
         renderShotTracker({ keepScroll: true });
       });
+    });
+    $("[data-et-toggle]")?.addEventListener("click", () => {
+      state.tracker.period = period >= 3 ? 2 : 3;
+      saveTrackerUi();
+      resetTrackerDraft();
+      closeShotModal();
+      renderShotTracker({ keepScroll: true });
     });
     $("#tracker-toggle-grid")?.addEventListener("click", () => {
       state.tracker.showGrid = !state.tracker.showGrid;
@@ -2794,7 +3221,7 @@
         const id = btn.getAttribute("data-delete-shot");
         const ev = trackerEvents.find((e) => e.id === id);
         const label = ev
-          ? `${SHOT_RESULT_LABELS[ev.result] || ev.result} by #${ev.shooterNumber} ${firstName(ev.shooterName)}`
+          ? `${SHOT_RESULT_LABELS[ev.result] || ev.result} by ${eventPersonLabel(eventTeam(ev), ev.shooterNumber, ev.shooterName, ev.shooterShort)}`
           : "this recording";
         if (!confirm(`Delete ${label}?`)) return;
         trackerEvents = trackerEvents.filter((e) => e.id !== id);
@@ -2803,6 +3230,7 @@
       });
     });
     bindTrackerPitch();
+    bindLineupEditor();
     if (opts.keepScroll) window.scrollTo(0, scrollY);
   }
 
@@ -2810,6 +3238,9 @@
     const events = trackerEvents;
     const firstHalf = events.filter((e) => eventPeriod(e) === 1);
     const secondHalf = events.filter((e) => eventPeriod(e) === 2);
+    const etOne = events.filter((e) => eventPeriod(e) === 3);
+    const etTwo = events.filter((e) => eventPeriod(e) === 4);
+    const hasEt = etOne.length > 0 || etTwo.length > 0;
     const vs = state.tracker.opponent || "";
     const dateLabel = new Date().toLocaleDateString([], { weekday: "short", month: "short", day: "numeric", year: "numeric" });
     root.innerHTML = `
@@ -2831,7 +3262,7 @@
             </p>
           </header>
           <div class="shot-map-pitch">${fullFieldMarkup(events)}</div>
-          <p class="shot-map-caption">1st half attacks the right goal · 2nd half attacks the left (sides switched). Gold = goal · White = on target · Orange = blocked · Hollow = missed · Blue dot = assist.</p>
+          <p class="shot-map-caption">1st half and ET 1: we attack the right goal, they attack the left. 2nd half and ET 2 reverse. Gold = goal · White = on target · Orange = blocked · Hollow = missed · Blue dot = assist · Red ring = opponent.</p>
           <div class="shot-map-stats">
             <div>
               <h2>1st Half</h2>
@@ -2841,6 +3272,18 @@
               <h2>2nd Half</h2>
               <div class="tracker-summary">${summaryPills(trackerSummary(secondHalf))}</div>
             </div>
+            ${
+              hasEt
+                ? `<div>
+              <h2>ET 1</h2>
+              <div class="tracker-summary">${summaryPills(trackerSummary(etOne))}</div>
+            </div>
+            <div>
+              <h2>ET 2</h2>
+              <div class="tracker-summary">${summaryPills(trackerSummary(etTwo))}</div>
+            </div>`
+                : ""
+            }
           </div>
         </div>
       </div>
