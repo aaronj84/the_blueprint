@@ -2138,6 +2138,10 @@
     return state.tracker.team === "opp" ? "opp" : "us";
   }
 
+  function teamLabel(team) {
+    return team === "opp" ? "Opponent" : "Brighton";
+  }
+
   function eventTeam(ev) {
     return ev && ev.team === "opp" ? "opp" : "us";
   }
@@ -2204,8 +2208,8 @@
         </div>
         <p class="muted lineup-help">${lineupIsSet() ? "Only these 11 appear when you add a play. Sub to swap." : "Assign the 11, then tap Set Positions. Until then, plays save without a player."}</p>
         <div class="half-toggle lineup-team-toggle" role="tablist" aria-label="Lineup team">
-          <button type="button" class="half-toggle-btn ${team === "us" ? "is-on" : ""}" data-lineup-edit="us">Us</button>
-          <button type="button" class="half-toggle-btn ${team === "opp" ? "is-on" : ""}" data-lineup-edit="opp">Them</button>
+          <button type="button" class="half-toggle-btn ${team === "us" ? "is-on" : ""}" data-lineup-edit="us">Brighton</button>
+          <button type="button" class="half-toggle-btn ${team === "opp" ? "is-on" : ""}" data-lineup-edit="opp">Opponent</button>
         </div>
         <p class="lineup-count">${count}/11 on the field</p>
         <div class="lineup-list">${rows}</div>
@@ -2922,7 +2926,7 @@
         return `
           <tr>
             <td>${escapeHtml(formatShotTime(ev.createdAt))}</td>
-            <td><span class="team-chip ${team === "opp" ? "is-opp" : "is-us"}">${team === "opp" ? "Them" : "Us"}</span></td>
+            <td><span class="team-chip ${team === "opp" ? "is-opp" : "is-us"}">${escapeHtml(teamLabel(team))}</span></td>
             <td>${escapeHtml(player)}</td>
             <td><span class="shot-result-pill ${escapeHtml(ev.result)}">${escapeHtml(SHOT_RESULT_LABELS[ev.result] || ev.result)}</span></td>
             <td>${escapeHtml(assistBy)}</td>
@@ -3107,9 +3111,9 @@
     const recording =
       state.tracker.mode === "awaiting-location" ||
       state.tracker.mode === "awaiting-shot-location";
-    let status = `Add Play, then tap. ${periodLabel(period)} · ${recordingTeam() === "opp" ? "Them" : "Us"} · goal on the right.`;
+    let status = `Add Play, then tap. ${periodLabel(period)} · ${teamLabel(recordingTeam())} · goal on the right.`;
     if (state.tracker.mode === "awaiting-location") {
-      status = `Tap the pass or shot location · ${periodLabel(period)} · ${recordingTeam() === "opp" ? "Them" : "Us"}.`;
+      status = `Tap the pass or shot location · ${periodLabel(period)} · ${teamLabel(recordingTeam())}.`;
     } else if (state.tracker.mode === "awaiting-shot-location") {
       const a = state.tracker.pending?.assist;
       status = a
@@ -3132,8 +3136,8 @@
             }
           </div>
           <div class="half-toggle tracker-side-toggle" role="tablist" aria-label="Recording team">
-            <button type="button" class="half-toggle-btn ${recordingTeam() === "us" ? "is-on" : ""}" data-set-team="us">Us</button>
-            <button type="button" class="half-toggle-btn ${recordingTeam() === "opp" ? "is-on" : ""}" data-set-team="opp">Them</button>
+            <button type="button" class="half-toggle-btn ${recordingTeam() === "us" ? "is-on" : ""}" data-set-team="us">Brighton</button>
+            <button type="button" class="half-toggle-btn ${recordingTeam() === "opp" ? "is-on" : ""}" data-set-team="opp">Opponent</button>
           </div>
           <div class="tracker-toolbar">
             ${
