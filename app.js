@@ -2194,7 +2194,7 @@
           <rect x="${penX}" y="0" width="${penW}" height="${penH}" fill="none" stroke="${line}" stroke-width="0.35" />
           <rect x="${sixX}" y="0" width="${sixW}" height="${sixH}" fill="none" stroke="${line}" stroke-width="0.35" />
           <circle cx="${spotX}" cy="${spotY}" r="0.45" fill="${line}" />
-          <path d="M ${spotX - dx} ${penH} A ${arcR} ${arcR} 0 0 1 ${spotX + dx} ${penH}" fill="none" stroke="${line}" stroke-width="0.35" />
+          <path d="M ${spotX - dx} ${penH} A ${arcR} ${arcR} 0 0 0 ${spotX + dx} ${penH}" fill="none" stroke="${line}" stroke-width="0.35" />
           <path d="M 0 1 A 1 1 0 0 0 1 0" fill="none" stroke="${line}" stroke-width="0.3" />
           <path d="M ${PW} 1 A 1 1 0 0 1 ${PW - 1} 0" fill="none" stroke="${line}" stroke-width="0.3" />
           <text class="tracker-goal-label" x="${PW / 2}" y="-1.85" transform="rotate(-90 ${PW / 2} -1.85)">GOAL</text>
