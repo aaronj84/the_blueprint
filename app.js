@@ -1,22 +1,56 @@
-/* The Blueprint — Brighton Fresh/Soph Blue Team — application engine */
+/* The Blueprint / CFC Red — multi-pack tactical learning engine */
 (function () {
   "use strict";
 
-  const IQ = window.SoccerIQ;
-  if (!IQ || !IQ.SCENARIOS) {
+  const PACKS = {
+    blueprint: window.SoccerIQ,
+    cfcRed: window.CfcRedIQ,
+  };
+
+  if (!PACKS.blueprint || !PACKS.blueprint.SCENARIOS) {
     document.getElementById("app-root").innerHTML =
       '<p class="empty-state">Failed to load scenario data. Check scenarios.js.</p>';
     return;
   }
+  if (!PACKS.cfcRed || !PACKS.cfcRed.SCENARIOS) {
+    console.warn("CFC Red pack missing — cfc-red-scenarios.js did not load.");
+  }
 
-  const CONFIG = IQ.CONFIG;
-  const MODULES = IQ.MODULES;
-  const SCENARIOS = IQ.SCENARIOS;
-  const GLOSSARY = IQ.GLOSSARY;
-  const NAV_GROUPS = IQ.NAV_GROUPS || [];
-  const VARSITY_ROSTER = IQ.VARSITY_ROSTER || [];
-  const PW = CONFIG.pitch.width;
-  const PL = CONFIG.pitch.length;
+  let packId = "blueprint";
+  let CONFIG;
+  let MODULES;
+  let SCENARIOS;
+  let GLOSSARY;
+  let NAV_GROUPS;
+  let PW;
+  let PL;
+
+  function bindPack(id) {
+    const pack = PACKS[id];
+    if (!pack || !pack.SCENARIOS) return false;
+    if (packId === id && CONFIG) return true;
+    const switching = !!CONFIG;
+    if (switching) {
+      try {
+        localStorage.setItem(CONFIG.storageKey, JSON.stringify(state.progress));
+      } catch {
+        /* ignore */
+      }
+    }
+    packId = id;
+    CONFIG = pack.CONFIG;
+    MODULES = pack.MODULES;
+    SCENARIOS = pack.SCENARIOS;
+    GLOSSARY = pack.GLOSSARY;
+    NAV_GROUPS = pack.NAV_GROUPS || [];
+    PW = CONFIG.pitch.width;
+    PL = CONFIG.pitch.length;
+    if (switching) {
+      state.progress = loadProgress();
+    }
+    return true;
+  }
+
   const REDUCED_MOTION = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   /* ---------- Progress ---------- */
@@ -46,6 +80,8 @@
   function saveProgress() {
     localStorage.setItem(CONFIG.storageKey, JSON.stringify(state.progress));
   }
+
+  bindPack("blueprint");
 
   function getScenarioProgress(id) {
     return state.progress.scenarios[id] || {
@@ -164,12 +200,32 @@
   }
 
   /* ---------- Routing ---------- */
+  function detectPackId(raw) {
+    if (!raw || raw === "home") return null;
+    if (raw.startsWith("shots")) return null;
+    if (raw === "cfc-red" || raw === "cfc-glossary" || raw.startsWith("cfc-")) return "cfcRed";
+    if (PACKS.cfcRed) {
+      const cfc = PACKS.cfcRed;
+      if (
+        (cfc.MODULES || []).some((m) => m.hash === raw || m.id === raw) ||
+        (cfc.SCENARIOS || []).some((s) => s.id === raw || s.chapter === raw)
+      ) {
+        return "cfcRed";
+      }
+    }
+    return "blueprint";
+  }
+
   function parseHash() {
     const raw = (location.hash || "#home").replace(/^#/, "");
+    const nextPack = detectPackId(raw);
+    if (nextPack) bindPack(nextPack);
+
     if (!raw || raw === "home") return { view: "home" };
     if (raw === "blueprint") return { view: "blueprint" };
-    if (raw === "glossary") return { view: "glossary" };
-    if (raw === "challenge") return { view: "challenge" };
+    if (raw === "cfc-red") return { view: "cfc-red" };
+    if (raw === "glossary" || raw === "cfc-glossary") return { view: "glossary" };
+    if (raw === "challenge" || raw === "cfc-challenge") return { view: "challenge" };
     if (raw === "shots") return { view: "shots" };
     if (raw === "shots-map") return { view: "shots-map" };
     if (raw === "shots-games") return { view: "shots-games" };
@@ -186,7 +242,7 @@
       return { view: "scenario", moduleId: scenario.module, scenarioId: scenario.id };
     }
 
-    // chapter hashes like attack-the-moment
+    // chapter hashes like attack-the-moment / cfc-attack-the-moment
     const byChapter = SCENARIOS.find((s) => s.chapter === raw);
     if (byChapter) return { view: "module", moduleId: byChapter.module };
 
@@ -202,35 +258,59 @@
     return String(view || "").startsWith("shots");
   }
 
+  function isBlueprintArea(view) {
+    return !isShotsView(view) && view !== "home" && packId === "blueprint";
+  }
+
+  function isCfcRedArea(view) {
+    return !isShotsView(view) && view !== "home" && packId === "cfcRed";
+  }
+
   function updateChrome(view, moduleId) {
     const shots = isShotsView(view);
+    const blueprintArea = isBlueprintArea(view);
+    const cfcArea = isCfcRedArea(view);
     document.body.classList.toggle("tracker-view", shots);
-    document.body.classList.toggle("blueprint-view", !shots && view !== "home");
+    document.body.classList.toggle("blueprint-view", blueprintArea || cfcArea);
     document.body.classList.toggle("hub-view", view === "home");
     document.body.classList.toggle("shot-map-view", view === "shots-map");
     document.body.classList.toggle("shots-admin-view", view === "shots-games" || view === "shots-history");
 
     const brandSub = $("#brand-sub");
     if (brandSub) {
-      brandSub.textContent = shots ? "Shot Tracker" : view === "home" ? "BHS Blueprint · Shot Tracker" : "BHS Blueprint";
+      if (shots) brandSub.textContent = "Shot Tracker";
+      else if (view === "home") brandSub.textContent = "BHS Blueprint · CFC Red · Shot Tracker";
+      else if (cfcArea) brandSub.textContent = "CFC Red";
+      else brandSub.textContent = "BHS Blueprint";
     }
 
     const blueprintNav = $(".nav-blueprint");
+    const cfcNav = $(".nav-cfc-red");
     const shotsNav = $(".nav-shots");
-    if (blueprintNav) blueprintNav.hidden = shots || view === "home";
+    if (blueprintNav) blueprintNav.hidden = !blueprintArea;
+    if (cfcNav) cfcNav.hidden = !cfcArea;
     if (shotsNav) shotsNav.hidden = !shots;
 
     $$("[data-area]").forEach((el) => {
       const area = el.getAttribute("data-area");
-      const on = (area === "shots" && shots) || (area === "blueprint" && !shots && view !== "home");
+      const on =
+        (area === "shots" && shots) ||
+        (area === "blueprint" && blueprintArea) ||
+        (area === "cfc-red" && cfcArea);
       if (on) el.setAttribute("aria-current", "page");
       else el.removeAttribute("aria-current");
-      // On hub, neither area is "current" as a deep section — highlight neither or both lightly
       if (view === "home") el.removeAttribute("aria-current");
     });
 
     document.body.classList.toggle("shots-mode", shots);
-    document.body.classList.toggle("blueprint-mode", !shots);
+    document.body.classList.toggle("blueprint-mode", blueprintArea || view === "home");
+    document.body.classList.toggle("cfc-red-mode", cfcArea);
+    if (view === "home") {
+      document.body.classList.remove("blueprint-mode", "cfc-red-mode");
+      document.body.classList.add("hub-mode");
+    } else {
+      document.body.classList.remove("hub-mode");
+    }
 
     setNavCurrent(view, moduleId);
   }
@@ -238,14 +318,17 @@
   function setNavCurrent(view, moduleId) {
     const mod = moduleId ? findModule(moduleId) : null;
     const groupId = mod?.group || null;
+    const glossaryKey = packId === "cfcRed" ? "cfc-glossary" : "glossary";
+    const challengeKey = packId === "cfcRed" ? "cfc-challenge" : "challenge";
 
     $$("[data-nav]").forEach((el) => {
       const key = el.getAttribute("data-nav");
       const current =
         (view === "home" && key === "hub") ||
         (view === "blueprint" && (key === "blueprint" || key === "blueprint-area")) ||
-        (view === "glossary" && key === "glossary") ||
-        (view === "challenge" && key === "challenge") ||
+        (view === "cfc-red" && (key === "cfc-red" || key === "cfc-red-area")) ||
+        (view === "glossary" && key === glossaryKey) ||
+        (view === "challenge" && key === challengeKey) ||
         (view === "module" && key === moduleId) ||
         (view === "scenario" && key === moduleId) ||
         (view === "shots" && key === "shots") ||
@@ -430,16 +513,21 @@
   };
 
   function tokenAbbrev(p) {
+    if (p.label) return p.label;
+    if (p.role) {
+      const fromRole = shortRole(p.role);
+      if (fromRole) return fromRole;
+    }
     const n = Number(p.number);
     if (Number.isInteger(n) && SHIRT_ABBREV[n]) return SHIRT_ABBREV[n];
-    if (p.label) return p.label;
-    return shortRole(p.role);
+    return "";
   }
 
   function roleFullName(p) {
+    if (p.role) return p.role;
     const n = Number(p.number);
     if (Number.isInteger(n) && SHIRT_FULL[n]) return SHIRT_FULL[n];
-    return p.role || "";
+    return "";
   }
 
   function shortRole(role) {
@@ -450,6 +538,8 @@
       "Left back": "LB",
       "Right fullback": "RB",
       "Left fullback": "LB",
+      "Right wingback": "RWB",
+      "Left wingback": "LWB",
       "Right center back": "RCB",
       "Left center back": "LCB",
       "Center back": "CB",
@@ -480,9 +570,13 @@
       "Cutback run": "Cut",
       "Front Target": "FT",
       "Back Target": "BT",
+      "Corner Defense": "CD",
       "Corner defense": "CD",
       "Corner defender": "Def",
       "Back-post group": "BP",
+      "A — wide": "A",
+      "B — half-space": "B",
+      "C — deep": "C",
     };
     return map[role] || role.split(" ").map((w) => w[0]).join("").slice(0, 3).toUpperCase();
   }
@@ -526,7 +620,7 @@
     const isShots = isShotsView(state.view);
 
     if (state.view === "home") renderHub();
-    else if (state.view === "blueprint") renderBlueprintHome();
+    else if (state.view === "blueprint" || state.view === "cfc-red") renderPackHome();
     else if (state.view === "glossary") renderGlossary();
     else if (state.view === "challenge") renderChallenge();
     else if (isShots) {
@@ -544,12 +638,17 @@
     root.innerHTML = `
       <section class="hero hub-hero">
         <h1>Brighton Girls</h1>
-        <p>Two tools for the program — learn the model, then track the game.</p>
+        <p>Program tools — learn each game model, then track the game.</p>
       </section>
       <section class="hub-grid" aria-label="App areas">
         <a class="hub-card" href="#blueprint">
           <h2>BHS Blueprint</h2>
-          <p>Tactical learning for attacking shape, wide patterns, supporting runs, defense, and set pieces.</p>
+          <p>11v11 tactical learning — 4-3-3, 2-3-5 attack, 4-4-2 defense, and set pieces.</p>
+          <span class="hub-card-cta">Open modules</span>
+        </a>
+        <a class="hub-card hub-card-cfc" href="#cfc-red">
+          <h2>CFC Red</h2>
+          <p>U12 boys 9v9 — 4-1-2-1 base, 2-3-3 attack, 4-3-1 defense, same corner language.</p>
           <span class="hub-card-cta">Open modules</span>
         </a>
         <a class="hub-card hub-card-shots" href="#shots">
@@ -561,7 +660,9 @@
     `;
   }
 
-  function renderBlueprintHome() {
+  function renderPackHome() {
+    const challengeHash = packId === "cfcRed" ? "cfc-challenge" : "challenge";
+    const challengeQs = CONFIG.challengeCount || 10;
     const cards = MODULES.map((m) => {
       if (m.isChallenge) {
         return `
@@ -571,10 +672,10 @@
                 <h2>${escapeHtml(m.title)}</h2>
                 <p class="purpose">${escapeHtml(m.purpose)}</p>
               </div>
-              <span class="mastery-badge">10 Qs</span>
+              <span class="mastery-badge">${challengeQs} Qs</span>
             </div>
             <div class="module-card-actions">
-              <a class="btn btn-primary" href="#challenge">Start challenge</a>
+              <a class="btn btn-primary" href="#${escapeHtml(challengeHash)}">Start challenge</a>
             </div>
           </article>
         `;
@@ -624,10 +725,15 @@
       { done: 0, total: 0 }
     );
 
+    const blurb =
+      packId === "cfcRed"
+        ? "See it, choose it, explain it. Train the 4-1-2-1 game model — 2-3-3 attack, 4-3-1 defense, and corners."
+        : "See it, choose it, explain it. Train attacking shape, wide patterns, supporting runs, defensive shape, and set pieces.";
+
     root.innerHTML = `
       <section class="hero">
-        <h1>BHS Blueprint</h1>
-        <p>See it, choose it, explain it. Train attacking shape, wide patterns, supporting runs, defensive shape, and set pieces.</p>
+        <h1>${escapeHtml(packHomeLabel())}</h1>
+        <p>${escapeHtml(blurb)}</p>
         <div class="hero-meta">
           <span class="pill">Progress <strong>${overall.done}/${overall.total}</strong></span>
           <span class="pill">Saved on this device</span>
@@ -635,6 +741,14 @@
       </section>
       <section class="module-grid" aria-label="Modules">${cards}</section>
     `;
+  }
+
+  function packHomeHash() {
+    return packId === "cfcRed" ? "cfc-red" : "blueprint";
+  }
+
+  function packHomeLabel() {
+    return CONFIG.appName || (packId === "cfcRed" ? "CFC Red" : "BHS Blueprint");
   }
 
   function renderGlossary() {
@@ -647,13 +761,17 @@
         </dl>
       </div>`
     ).join("");
+    const intro =
+      packId === "cfcRed"
+        ? "Shared language for CFC Red’s 9v9 model. Short definitions — not essays."
+        : "Shared language for Brighton’s model. Short definitions — not essays.";
     root.innerHTML = `
       <div class="section-header">
         <div>
           <h1>Glossary</h1>
-          <p>Shared language for Brighton’s model. Short definitions — not essays.</p>
+          <p>${escapeHtml(intro)}</p>
         </div>
-        <a class="btn btn-secondary" href="#blueprint">Back</a>
+        <a class="btn btn-secondary" href="#${escapeHtml(packHomeHash())}">Back</a>
       </div>
       <div class="glossary-grid">${items}</div>
     `;
@@ -760,7 +878,7 @@
           <p>${escapeHtml(mod.purpose)}</p>
         </div>
         <div style="display:flex;gap:0.5rem;flex-wrap:wrap">
-          <a class="btn btn-ghost" href="#blueprint">Modules</a>
+          <a class="btn btn-ghost" href="#${escapeHtml(packHomeHash())}">Modules</a>
           ${
             ov
               ? `<button type="button" class="btn btn-secondary" id="header-show-overview">${overviewOpen ? "Overview" : "Read overview"}</button>`
@@ -856,7 +974,7 @@
       <div class="scenario-shell">
         <div class="scenario-toolbar">
           <div class="breadcrumb">
-            <a href="#blueprint">BHS Blueprint</a><span>/</span>
+            <a href="#${escapeHtml(packHomeHash())}">${escapeHtml(packHomeLabel())}</a><span>/</span>
             <a href="#${escapeHtml(mod.hash)}">${escapeHtml(mod.title)}</a><span>/</span>
             <span>${escapeHtml(s.title)}</span>
           </div>
@@ -1839,18 +1957,19 @@
       return;
     }
 
+    const qCount = CONFIG.challengeCount || 10;
     root.innerHTML = `
       <div class="section-header">
         <div>
           <h1>Mixed Challenge</h1>
-          <p>Ten unlabeled scenarios from every module. No first-hint. Decision and rationale both count. Results by concept.</p>
+          <p>${qCount} unlabeled scenarios from every module. No first-hint. Decision and rationale both count. Results by concept.</p>
         </div>
-        <a class="btn btn-ghost" href="#blueprint">Modules</a>
+        <a class="btn btn-ghost" href="#${escapeHtml(packHomeHash())}">Modules</a>
       </div>
       <div class="results-card">
         <p class="muted">Role labels and teaching highlights are removed. Commit before you see the answer.</p>
         <div class="module-card-actions" style="margin-top:1rem">
-          <button type="button" class="btn btn-primary" id="start-challenge">Start 10-question challenge</button>
+          <button type="button" class="btn btn-primary" id="start-challenge">Start ${qCount}-question challenge</button>
         </div>
       </div>
     `;
@@ -1968,7 +2087,7 @@
         <div class="module-card-actions" style="margin-top:1rem">
           <a class="btn btn-primary" href="#${escapeHtml(reviewMod.hash)}">Open ${escapeHtml(reviewMod.title)}</a>
           <button type="button" class="btn btn-secondary" id="retry-challenge">Try again</button>
-          <a class="btn btn-ghost" href="#blueprint">Modules</a>
+          <a class="btn btn-ghost" href="#${escapeHtml(packHomeHash())}">Modules</a>
         </div>
       </div>
     `;

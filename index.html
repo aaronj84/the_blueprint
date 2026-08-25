@@ -3,11 +3,11 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="description" content="Brighton Girls — BHS Blueprint tactical learning and Varsity Shot Tracker." />
+  <meta name="description" content="Brighton Girls — BHS Blueprint, CFC Red 9v9, and Varsity Shot Tracker." />
   <meta name="theme-color" content="#f4f7fb" />
   <title>Brighton Girls</title>
   <link rel="icon" href="assets/logo.svg" type="image/svg+xml" />
-  <link rel="stylesheet" href="styles.css?v=20260825e" />
+  <link rel="stylesheet" href="styles.css?v=20260825k" />
 </head>
 <body>
   <a class="sr-only" href="#main">Skip to content</a>
@@ -17,12 +17,13 @@
       <img src="assets/logo.svg" width="36" height="36" alt="" />
       <span class="brand-text">
         <span class="brand-name">Brighton Girls</span>
-        <span class="brand-sub" id="brand-sub">BHS Blueprint · Shot Tracker</span>
+        <span class="brand-sub" id="brand-sub">BHS Blueprint · CFC Red · Shot Tracker</span>
       </span>
     </a>
 
     <div class="area-switch" role="tablist" aria-label="App area">
       <a class="area-switch-btn" href="#blueprint" data-area="blueprint" data-nav="blueprint-area">BHS Blueprint</a>
+      <a class="area-switch-btn" href="#cfc-red" data-area="cfc-red" data-nav="cfc-red-area">CFC Red</a>
       <a class="area-switch-btn" href="#shots" data-area="shots" data-nav="shots-area">Shot Tracker</a>
     </div>
 
@@ -61,6 +62,41 @@
       <a class="nav-link" href="#glossary" data-nav="glossary">Glossary</a>
     </nav>
 
+    <nav class="nav-desktop nav-cfc-red" aria-label="CFC Red" hidden>
+      <a class="nav-link" href="#cfc-red" data-nav="cfc-red">Modules</a>
+      <a class="nav-link" href="#cfc-basics" data-nav="cfc-basics">Basic 4-1-2-1</a>
+
+      <div class="nav-flyout" data-flyout>
+        <button type="button" class="nav-link nav-flyout-trigger" data-nav-group="cfc-attack-group" aria-expanded="false" aria-haspopup="true">
+          Attack
+        </button>
+        <div class="nav-flyout-panel" role="menu">
+          <a href="#cfc-attack" data-nav="cfc-attack" role="menuitem">Attacking Shape</a>
+          <a href="#cfc-wide" data-nav="cfc-wide" role="menuitem">Wide Attack Patterns</a>
+          <a href="#cfc-support" data-nav="cfc-support" role="menuitem">Supporting Runs</a>
+        </div>
+      </div>
+
+      <div class="nav-flyout" data-flyout>
+        <a class="nav-link nav-flyout-trigger" href="#cfc-defense" data-nav="cfc-defense" data-nav-group="cfc-defense-group">Defense</a>
+        <div class="nav-flyout-panel" role="menu">
+          <a href="#cfc-defense" data-nav="cfc-defense" role="menuitem">Defensive Shape</a>
+        </div>
+      </div>
+
+      <div class="nav-flyout" data-flyout>
+        <button type="button" class="nav-link nav-flyout-trigger" data-nav-group="cfc-set-pieces-group" aria-expanded="false" aria-haspopup="true">
+          Set Pieces
+        </button>
+        <div class="nav-flyout-panel" role="menu">
+          <a href="#cfc-corner" data-nav="cfc-corner" role="menuitem">Corners</a>
+        </div>
+      </div>
+
+      <a class="nav-link" href="#cfc-challenge" data-nav="cfc-challenge">Challenge</a>
+      <a class="nav-link" href="#cfc-glossary" data-nav="cfc-glossary">Glossary</a>
+    </nav>
+
     <nav class="nav-desktop nav-shots" aria-label="Shot Tracker" hidden>
       <a class="nav-link" href="#shots-games" data-nav="shots-games">Games</a>
       <a class="nav-link" href="#shots" data-nav="shots">Record</a>
@@ -90,6 +126,7 @@
 
       <p class="nav-drawer-heading">Areas</p>
       <a href="#blueprint" data-area="blueprint" data-nav="blueprint-area" data-close-drawer>BHS Blueprint</a>
+      <a href="#cfc-red" data-area="cfc-red" data-nav="cfc-red-area" data-close-drawer>CFC Red</a>
       <a href="#shots" data-area="shots" data-nav="shots-area" data-close-drawer>Shot Tracker</a>
 
       <div class="drawer-blueprint">
@@ -103,6 +140,19 @@
         <a href="#corner" data-nav="corner" data-close-drawer>Corners</a>
         <a href="#challenge" data-nav="challenge" data-close-drawer>Challenge</a>
         <a href="#glossary" data-nav="glossary" data-close-drawer>Glossary</a>
+      </div>
+
+      <div class="drawer-cfc-red">
+        <p class="nav-drawer-heading">CFC Red</p>
+        <a href="#cfc-red" data-nav="cfc-red" data-close-drawer>Modules</a>
+        <a href="#cfc-basics" data-nav="cfc-basics" data-close-drawer>Basic 4-1-2-1</a>
+        <a href="#cfc-attack" data-nav="cfc-attack" data-close-drawer>Attacking Shape</a>
+        <a href="#cfc-wide" data-nav="cfc-wide" data-close-drawer>Wide Attack Patterns</a>
+        <a href="#cfc-support" data-nav="cfc-support" data-close-drawer>Supporting Runs</a>
+        <a href="#cfc-defense" data-nav="cfc-defense" data-close-drawer>Defensive Shape</a>
+        <a href="#cfc-corner" data-nav="cfc-corner" data-close-drawer>Corners</a>
+        <a href="#cfc-challenge" data-nav="cfc-challenge" data-close-drawer>Challenge</a>
+        <a href="#cfc-glossary" data-nav="cfc-glossary" data-close-drawer>Glossary</a>
       </div>
 
       <div class="drawer-shots">
@@ -145,8 +195,8 @@
       <h2 id="shot-modal-title">Record event</h2>
       <p class="muted shot-modal-location" id="shot-modal-location"></p>
       <p class="lineup-nudge" id="shot-lineup-nudge" hidden>
-        <span id="shot-lineup-nudge-text">Positions aren’t set. This play will save without a player.</span>
-        <button type="button" class="btn btn-ghost" id="shot-goto-lineup">Set positions</button>
+        <span id="shot-lineup-nudge-text">No players on the field yet — assign the XI below the pitch for faster tagging.</span>
+        <button type="button" class="btn btn-ghost" id="shot-goto-lineup">Assign lineup</button>
       </p>
       <p class="step-label shot-modal-heading" id="shot-modal-heading" hidden>Player</p>
       <div class="shot-position-grid" id="shot-position-grid" hidden></div>
@@ -235,23 +285,12 @@
     </div>
   </div>
 
-  <div class="modal" id="lineup-sub-modal" hidden role="dialog" aria-modal="true" aria-labelledby="lineup-sub-title">
-    <div class="modal-backdrop" data-close-lineup-sub></div>
-    <div class="modal-panel shot-modal-panel">
-      <h2 id="lineup-sub-title">Sub</h2>
-      <p class="muted">Same position group first, then other varsity, then JV.</p>
-      <div class="shot-player-grid" id="lineup-sub-list"></div>
-      <div class="modal-actions">
-        <button type="button" class="btn btn-secondary" data-close-lineup-sub>Cancel</button>
-      </div>
-    </div>
-  </div>
-
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="shots-config.js?v=20260825c"></script>
   <script src="scenarios.js?v=20260825e"></script>
+  <script src="cfc-red-scenarios.js?v=20260825f"></script>
   <script src="shots-api.js?v=20260825e"></script>
-  <script src="shots.js?v=20260825e"></script>
-  <script src="app.js?v=20260825e"></script>
+  <script src="shots.js?v=20260825k"></script>
+  <script src="app.js?v=20260825f"></script>
 </body>
 </html>

@@ -215,13 +215,12 @@
     try {
       const parsed = JSON.parse(localStorage.getItem(LS_LINEUP) || "{}") || {};
       return {
-        set: !!parsed.set,
         edit: parsed.edit === "opp" ? "opp" : "us",
         us: parsed.us && typeof parsed.us === "object" ? parsed.us : {},
         opp: parsed.opp && typeof parsed.opp === "object" ? parsed.opp : {},
       };
     } catch {
-      return { set: false, edit: "us", us: {}, opp: {} };
+      return { edit: "us", us: {}, opp: {} };
     }
   }
 
@@ -229,7 +228,6 @@
     localStorage.setItem(
       LS_LINEUP,
       JSON.stringify({
-        set: st.lineup.set,
         edit: st.lineup.edit,
         us: st.lineup.us,
         opp: st.lineup.opp,
@@ -366,8 +364,8 @@
     return ev && ev.team === "opp" ? "opp" : "us";
   }
 
-  function lineupIsSet() {
-    return !!st.lineup?.set;
+  function lineupHasXi(team = "us") {
+    return onFieldPlayers(team).length > 0;
   }
 
   function slotPlayer(team, slotId) {
@@ -429,6 +427,129 @@
     saveLineupBag();
   }
 
+  /** Ephemeral lineup editor gestures (not persisted). */
+  let lineupGesture = null;
+
+  function clearLineupGesture() {
+    lineupGesture = null;
+  }
+
+  function lineupPlayerPayload(player) {
+    if (!player) return null;
+    return {
+      id: player.id || "",
+      number: String(player.number ?? player.jersey_number ?? ""),
+      name: player.name || "",
+      short: player.short || player.short_name || "",
+    };
+  }
+
+  function slotIdForNumber(team, number) {
+    const want = String(number);
+    for (const slot of POSITION_SLOTS) {
+      const p = slotPlayer(team, slot.id);
+      if (p && String(p.number) === want) return slot.id;
+    }
+    return null;
+  }
+
+  function slotCodeForId(slotId) {
+    return POSITION_SLOTS.find((s) => s.id === Number(slotId))?.code || "";
+  }
+
+  function copyLineupBag(team) {
+    const key = team === "opp" ? "opp" : "us";
+    const bag = st.lineup[key] || {};
+    const copy = {};
+    Object.keys(bag).forEach((k) => {
+      copy[k] = Object.assign({}, bag[k]);
+    });
+    return copy;
+  }
+
+  function restoreLineupBag(team, bag) {
+    const key = team === "opp" ? "opp" : "us";
+    st.lineup[key] = {};
+    Object.keys(bag || {}).forEach((k) => {
+      st.lineup[key][k] = Object.assign({}, bag[k]);
+    });
+    saveLineupBag();
+  }
+
+  function swapSlots(team, slotA, slotB) {
+    if (Number(slotA) === Number(slotB)) return;
+    const a = lineupPlayerPayload(slotPlayer(team, slotA));
+    const b = lineupPlayerPayload(slotPlayer(team, slotB));
+    assignSlot(team, slotA, b);
+    assignSlot(team, slotB, a);
+  }
+
+  function cancelLineupGesture() {
+    if (lineupGesture?.mode === "place" && lineupGesture.snapshot) {
+      restoreLineupBag(lineupGesture.team || "us", lineupGesture.snapshot);
+    }
+    clearLineupGesture();
+  }
+
+  function startSwapGesture(slotId) {
+    const filled = slotPlayer("us", slotId);
+    if (!filled) return;
+    lineupGesture = { mode: "swap", fromSlot: Number(slotId), team: "us" };
+  }
+
+  function startPlaceGesture(team, holding, snapshot) {
+    if (!holding) return;
+    lineupGesture = {
+      mode: "place",
+      team: team === "opp" ? "opp" : "us",
+      holding: lineupPlayerPayload(holding),
+      snapshot: snapshot || copyLineupBag(team),
+    };
+  }
+
+  function completeSwapGesture(toSlotId) {
+    if (!lineupGesture || lineupGesture.mode !== "swap") return false;
+    const from = Number(lineupGesture.fromSlot);
+    const to = Number(toSlotId);
+    if (!to || from === to) {
+      clearLineupGesture();
+      return true;
+    }
+    const other = slotPlayer("us", to);
+    if (!other) {
+      showToast("Pick a player on the field to swap with");
+      return false;
+    }
+    swapSlots("us", from, to);
+    const a = slotCodeForId(from);
+    const b = slotCodeForId(to);
+    clearLineupGesture();
+    showToast(`Swapped ${a} ↔ ${b}`);
+    return true;
+  }
+
+  function placeHoldingOnSlot(slotId) {
+    if (!lineupGesture || lineupGesture.mode !== "place" || !lineupGesture.holding) return false;
+    const team = lineupGesture.team || "us";
+    const to = Number(slotId);
+    const displaced = slotPlayer(team, to);
+    assignSlot(team, to, lineupGesture.holding);
+    if (displaced) {
+      lineupGesture.holding = lineupPlayerPayload(displaced);
+      return true;
+    }
+    clearLineupGesture();
+    showToast("Position updated");
+    return true;
+  }
+
+  function benchHoldingPlayer() {
+    if (!lineupGesture || lineupGesture.mode !== "place") return;
+    const name = playerDisplayName(lineupGesture.holding);
+    clearLineupGesture();
+    showToast(name ? `${name} to the bench` : "Player to the bench");
+  }
+
   function defaultLineupCount() {
     return Object.keys(st.defaultLineup.us || {}).length;
   }
@@ -458,7 +579,6 @@
     Object.keys(bag).forEach((k) => {
       st.lineup.us[k] = Object.assign({}, bag[k]);
     });
-    st.lineup.set = true;
     saveLineupBag();
     showToast("Restored default starting lineup");
     draw({ keepScroll: true });
@@ -579,7 +699,6 @@
     saveDefaultLineupBag(bag);
     if (!Object.keys(st.lineup.us || {}).length) {
       st.lineup.us = Object.assign({}, bag);
-      st.lineup.set = true;
       saveLineupBag();
     }
   }
@@ -1530,7 +1649,7 @@
       }
     } else {
       shotModalDraft.phase = "player";
-      if (!shotModalDraft.position && lineupIsSet()) {
+      if (!shotModalDraft.position && lineupHasXi(recordingTeam())) {
         const onField = onFieldPlayers(recordingTeam());
         if (onField.length === 1) shotModalDraft.position = onField[0].slotCode;
       }
@@ -1564,10 +1683,10 @@
     if (posGrid) posGrid.hidden = phase !== "player";
 
     if (nudge) {
-      const showNudge = phase === "player" && recordingTeam() === "us" && !lineupIsSet();
+      const showNudge = phase === "player" && recordingTeam() === "us" && !lineupHasXi("us");
       nudge.hidden = !showNudge;
       if (nudgeText && showNudge) {
-        nudgeText.textContent = "No starting lineup set — position is optional. Set defaults below the pitch.";
+        nudgeText.textContent = "No players on the field yet — assign the XI below the pitch for faster tagging.";
       }
     }
 
@@ -1692,13 +1811,13 @@
       playerHeading.textContent = pickingFouler
         ? "Usually the other team. Unknown is fine."
         : showFormation
-          ? "Tap a player on the pitch. Sub or switch team up top."
-          : "Optional position, then player. Skip is a valid save.";
+          ? "Pick position if you know it, then a player — or Unknown to save position only."
+          : "Pick position and/or player. Unknown saves without a number.";
     }
     playerGrid.hidden = false;
     actionGrid.hidden = true;
     if (posGrid) {
-      posGrid.hidden = showFormation || pickingFouler;
+      posGrid.hidden = pickingFouler;
       if (!posGrid.hidden) {
         posGrid.innerHTML = POSITION_CODES.map(
           (code) =>
@@ -1745,18 +1864,20 @@
       FORMATION_LAYOUT.map((layout) => {
         const p = slotPlayer(forTeam, layout.id);
         if (!p) {
+          const selected = !pickingFouler && shotModalDraft.position === layout.code;
           return `
-            <div class="formation-card is-empty" style="${formationCardStyle(layout)}">
+            <button type="button" class="formation-card is-empty is-pick ${selected ? "is-pos-on" : ""}" style="${formationCardStyle(layout)}" data-shot-pos="${escapeHtml(layout.code)}" title="Record as ${escapeHtml(layout.code)}">
               <span class="formation-card-name">Empty</span>
               <span class="formation-card-meta">${escapeHtml(layout.code)}</span>
-            </div>`;
+            </button>`;
         }
         const label =
           forTeam === "opp" && !p.name && !p.short
             ? `#${escapeHtml(String(p.number))}`
             : escapeHtml(playerDisplayName(p));
+        const posSelected = !pickingFouler && shotModalDraft.position === layout.code;
         return `
-          <button type="button" class="formation-card is-pick" style="${formationCardStyle(layout)}" data-player-number="${escapeHtml(String(p.number))}" data-player-id="${escapeHtml(p.id || "")}" data-player-team="${forTeam}" data-slot-code="${escapeHtml(layout.code)}">
+          <button type="button" class="formation-card is-pick ${posSelected ? "is-pos-on" : ""}" style="${formationCardStyle(layout)}" data-player-number="${escapeHtml(String(p.number))}" data-player-id="${escapeHtml(p.id || "")}" data-player-team="${forTeam}" data-slot-code="${escapeHtml(layout.code)}">
             <span class="formation-card-name">${label}</span>
             <span class="formation-card-meta">${formationMeta(layout.code, p)}</span>
           </button>`;
@@ -2150,8 +2271,6 @@
           name: player.name || "",
           short: player.short || player.short_name || "",
         });
-        st.lineup.set = true;
-        saveLineupBag();
         shotModalDraft.position = slot.code;
         shotModalDraft.phase = "player";
         shotModalDraft.subSlotId = null;
@@ -2691,31 +2810,53 @@
 
   function usSelectOptions(slotId) {
     const current = slotPlayer("us", slotId);
-    const used = usedLineupNumbers("us", slotId);
     const group = groupForSlot(slotId);
+    const groupLabel = POSITION_GROUPS.find((g) => g.id === group)?.label || group || "Position";
     const all = sortPlayers(rosterPlayers("us"));
     const opts = [`<option value="">—</option>`];
 
+    const fieldStatus = (p) => {
+      const sid = slotIdForNumber("us", p.number);
+      if (!sid) return "bench";
+      if (Number(sid) === Number(slotId)) return "here";
+      return "elsewhere";
+    };
+
     const pushOpt = (p, suffix = "") => {
-      const taken = used.has(String(p.number));
       const selected = current && String(current.number) === String(p.number);
+      const status = fieldStatus(p);
+      const fieldTag = status === "elsewhere" ? ` · ${slotCodeForId(slotIdForNumber("us", p.number))}` : "";
       opts.push(
-        `<option value="${escapeHtml(String(p.id || p.number))}" data-number="${escapeHtml(String(p.number))}" ${taken && !selected ? "disabled" : ""} ${selected ? "selected" : ""}>${escapeHtml(playerDisplayName(p))} (#${escapeHtml(String(p.number))})${suffix}</option>`
+        `<option value="${escapeHtml(String(p.id || p.number))}" data-number="${escapeHtml(String(p.number))}" ${selected ? "selected" : ""}>${escapeHtml(playerDisplayName(p))} (#${escapeHtml(String(p.number))})${fieldTag}${suffix}</option>`
       );
     };
 
-    const inGroup = all.filter((p) => p.squad !== "jv" && playerInGroup(p, group));
-    const varsityRest = all.filter((p) => p.squad !== "jv" && !playerInGroup(p, group));
+    const varsity = all.filter((p) => p.squad !== "jv");
     const jv = all.filter((p) => p.squad === "jv");
 
-    if (inGroup.length) {
-      opts.push(`<optgroup label="${escapeHtml(POSITION_GROUPS.find((g) => g.id === group)?.label || group)}">`);
-      inGroup.forEach((p) => pushOpt(p));
+    // Current slot first, then bench players for this position group.
+    const positional = varsity.filter((p) => {
+      const status = fieldStatus(p);
+      return status === "here" || (playerInGroup(p, group) && status === "bench");
+    });
+    // Other varsity available off the field.
+    const varsityBench = varsity.filter((p) => fieldStatus(p) === "bench" && !playerInGroup(p, group));
+    // Anyone already on the pitch at another spot (swap targets).
+    const varsityOnField = varsity.filter((p) => fieldStatus(p) === "elsewhere");
+
+    if (positional.length) {
+      opts.push(`<optgroup label="${escapeHtml(groupLabel)}">`);
+      positional.forEach((p) => pushOpt(p));
       opts.push(`</optgroup>`);
     }
-    if (varsityRest.length) {
-      opts.push(`<optgroup label="Varsity">`);
-      varsityRest.forEach((p) => pushOpt(p));
+    if (varsityBench.length) {
+      opts.push(`<optgroup label="Varsity Bench">`);
+      varsityBench.forEach((p) => pushOpt(p));
+      opts.push(`</optgroup>`);
+    }
+    if (varsityOnField.length) {
+      opts.push(`<optgroup label="Varsity On-Field">`);
+      varsityOnField.forEach((p) => pushOpt(p));
       opts.push(`</optgroup>`);
     }
     if (jv.length) {
@@ -2753,35 +2894,97 @@
     return opts.join("");
   }
 
+  function lineupGestureBanner() {
+    if (!lineupGesture) return "";
+    if (lineupGesture.mode === "swap") {
+      const from = slotPlayer("us", lineupGesture.fromSlot);
+      const name = escapeHtml(playerDisplayName(from) || "Player");
+      const code = escapeHtml(slotCodeForId(lineupGesture.fromSlot));
+      return `
+        <div class="lineup-gesture-banner" role="status">
+          <p><strong>Swap ${name}</strong> (${code}) — tap another player on the field.</p>
+          <button type="button" class="btn btn-secondary" data-lineup-gesture-cancel>Cancel</button>
+        </div>`;
+    }
+    if (lineupGesture.mode === "place") {
+      const name = escapeHtml(playerDisplayName(lineupGesture.holding) || "Player");
+      return `
+        <div class="lineup-gesture-banner" role="status">
+          <p><strong>Place ${name}</strong> — tap her new spot, or Bench to take her off.</p>
+          <div class="lineup-gesture-actions">
+            <button type="button" class="btn btn-primary" data-lineup-gesture-bench>Bench</button>
+            <button type="button" class="btn btn-secondary" data-lineup-gesture-cancel>Cancel</button>
+          </div>
+        </div>`;
+    }
+    return "";
+  }
+
   function lineupEditorMarkup() {
     const team = st.lineup.edit === "opp" ? "opp" : "us";
     const count = onFieldPlayers(team).length;
+    const gestureOn = !!lineupGesture && team === "us";
     const cards = FORMATION_LAYOUT.map((layout) => {
       const slot = POSITION_SLOTS.find((s) => s.id === layout.id) || layout;
       const filled = slotPlayer(team, slot.id);
+      const who =
+        filled
+          ? team === "opp" && !filled.name && !filled.short
+            ? `#${escapeHtml(String(filled.number))}`
+            : escapeHtml(playerDisplayName(filled))
+          : "—";
       const select =
         team === "opp"
           ? `<select class="lineup-select formation-card-select" data-lineup-team="opp" data-lineup-slot="${slot.id}" aria-label="${escapeHtml(slot.code)}">${oppSelectOptions(slot.id)}</select>`
-          : `<select class="lineup-select formation-card-select" data-lineup-team="us" data-lineup-slot="${slot.id}" aria-label="${escapeHtml(slot.code)}">${usSelectOptions(slot.id)}</select>`;
+          : `<select class="lineup-select formation-card-select" data-lineup-team="us" data-lineup-slot="${slot.id}" aria-label="${escapeHtml(slot.code)}" ${gestureOn ? "disabled" : ""}>${usSelectOptions(slot.id)}</select>`;
+      const isSwapFrom =
+        lineupGesture?.mode === "swap" && Number(lineupGesture.fromSlot) === Number(slot.id);
+      const isPlaceTarget = lineupGesture?.mode === "place" && team === "us";
+      const isSwapTarget =
+        lineupGesture?.mode === "swap" && team === "us" && !!filled && !isSwapFrom;
+      const cardClass = [
+        "formation-card",
+        "is-editor",
+        isSwapFrom ? "is-swap-from" : "",
+        isSwapTarget || isPlaceTarget ? "is-gesture-target" : "",
+      ]
+        .filter(Boolean)
+        .join(" ");
+      const swapDisabled = team !== "us" || !filled || lineupGesture?.mode === "place";
+      const swapBtn =
+        team === "us"
+          ? `<button type="button" class="btn btn-ghost lineup-swap ${isSwapFrom ? "is-on" : ""}" data-swap-slot="${slot.id}" ${swapDisabled ? "disabled" : ""} title="Swap with another on-field player">Swap</button>`
+          : "";
+      const hitOverlay =
+        gestureOn && (isSwapTarget || isPlaceTarget || isSwapFrom)
+          ? `<button type="button" class="formation-card-hit" data-lineup-slot-hit="${slot.id}" aria-label="${isSwapFrom ? "Cancel swap" : isPlaceTarget ? "Place here" : "Swap with this player"}"></button>`
+          : "";
       return `
-        <div class="formation-card is-editor" style="${formationCardStyle(layout)}">
-          ${select}
+        <div class="${cardClass}" style="${formationCardStyle(layout)}" data-lineup-slot-card="${slot.id}">
+          <div class="formation-card-pick">
+            <span class="formation-card-name">${who}</span>
+            <span class="formation-card-chevron" aria-hidden="true"></span>
+            ${select}
+          </div>
           <span class="formation-card-meta">${formationMeta(slot.code, filled)}</span>
-          <button type="button" class="btn btn-ghost lineup-sub" data-sub-slot="${slot.id}" ${filled && team === "us" ? "" : "disabled"} title="Sub from position group">Sub</button>
+          ${swapBtn}
+          ${hitOverlay}
         </div>`;
     }).join("");
     const defaultCount = defaultLineupCount();
+    const help = (() => {
+      if (team !== "us") return "Assign opponent numbers on each position.";
+      if (lineupGesture?.mode === "swap") return "Tap the player she should trade places with.";
+      if (lineupGesture?.mode === "place") return "Tap the next position in the chain, then Bench when someone comes off.";
+      return "Dropdown to sub or reassign. Swap to trade two players on the field.";
+    })();
     return `
-      <section class="lineup-section" id="lineup-section">
+      <section class="lineup-section ${gestureOn ? "is-gesturing" : ""}" id="lineup-section">
         <div class="lineup-header">
           <h2>Starting lineup · 4-3-3</h2>
-          <button type="button" class="btn ${lineupIsSet() ? "btn-secondary" : "btn-primary"}" id="set-positions-btn">${lineupIsSet() ? "Positions locked" : "Use this lineup"}</button>
         </div>
-        <p class="muted lineup-help">${
-          lineupIsSet()
-            ? "Tap Sub on a card to swap. Dropdowns list that position group first."
-            : "Assign the XI on the pitch, then tap Use this lineup."
-        }</p>
+        <p class="muted lineup-help">${help}</p>
+        ${lineupGestureBanner()}
         <div class="half-toggle lineup-team-toggle" role="tablist" aria-label="Lineup team">
           <button type="button" class="half-toggle-btn ${team === "us" ? "is-on" : ""}" data-lineup-edit="us">Brighton</button>
           <button type="button" class="half-toggle-btn ${team === "opp" ? "is-on" : ""}" data-lineup-edit="opp">${escapeHtml(opponentOf(st.game)?.name || "Opponent")}</button>
@@ -2795,119 +2998,121 @@
       </section>`;
   }
 
-  function openSubPicker(slotId) {
-    const modal = $("#lineup-sub-modal");
-    const list = $("#lineup-sub-list");
-    const title = $("#lineup-sub-title");
-    if (!modal || !list) return;
-    const slot = POSITION_SLOTS.find((s) => s.id === Number(slotId));
-    const group = slot?.group || "";
-    const groupLabel = POSITION_GROUPS.find((g) => g.id === group)?.label || group;
-    const used = usedLineupNumbers("us", slotId);
-    const all = sortPlayers(rosterPlayers("us")).filter((p) => !used.has(String(p.number)));
-    const preferred = all.filter((p) => p.squad !== "jv" && playerInGroup(p, group));
-    const varsityRest = all.filter((p) => p.squad !== "jv" && !playerInGroup(p, group));
-    const jv = all.filter((p) => p.squad === "jv");
+  function applyLineupSelect(team, slotId, sel) {
+    const opt = sel.selectedOptions[0];
+    if (!sel.value) {
+      assignSlot(team, slotId, null);
+      clearLineupGesture();
+      return;
+    }
+    const number = opt?.getAttribute("data-number") || sel.value.replace(/^n-/, "");
+    const list = rosterPlayers(team);
+    const fromRoster =
+      list.find((p) => p.id && p.id === sel.value) ||
+      list.find((p) => String(p.number) === String(number)) ||
+      null;
+    const player = fromRoster || {
+      id: sel.value.startsWith("n-") ? "" : sel.value,
+      number,
+      name: "",
+      short: "",
+    };
+    const payload = lineupPlayerPayload(player);
+    const current = slotPlayer(team, slotId);
 
-    const btn = (p, tag) => `
-      <button type="button" class="shot-player-btn" data-pick-sub="${escapeHtml(String(p.id || ""))}" data-pick-number="${escapeHtml(String(p.number))}">
-        <span class="name">${escapeHtml(playerDisplayName(p))}</span>
-        <span class="num">#${escapeHtml(String(p.number))}${tag ? ` · ${tag}` : ""}</span>
-      </button>`;
+    if (current && String(current.number) === String(payload.number)) return;
 
-    if (title) title.textContent = `Sub ${slot?.code || ""} · ${groupLabel}`;
-    list.innerHTML =
-      (preferred.length ? `<div class="shot-quick-label">${escapeHtml(groupLabel)}</div>${preferred.map((p) => btn(p, "")).join("")}` : "") +
-      (varsityRest.length ? `<div class="shot-quick-label">Other varsity</div>${varsityRest.map((p) => btn(p, "")).join("")}` : "") +
-      (jv.length ? `<div class="shot-quick-label">JV</div>${jv.map((p) => btn(p, "JV")).join("")}` : "") +
-      (!preferred.length && !varsityRest.length && !jv.length ? `<p class="muted">No available players.</p>` : "");
-    modal.dataset.slotId = String(slotId);
-    modal.hidden = false;
+    const otherSlot = slotIdForNumber(team, payload.number);
+    if (otherSlot && Number(otherSlot) !== Number(slotId)) {
+      swapSlots(team, slotId, otherSlot);
+      clearLineupGesture();
+      showToast(`Swapped ${slotCodeForId(slotId)} ↔ ${slotCodeForId(otherSlot)}`);
+      return;
+    }
+
+    if (team === "us" && current) {
+      const snapshot = copyLineupBag("us");
+      assignSlot(team, slotId, payload);
+      startPlaceGesture("us", current, snapshot);
+      showToast(`${playerDisplayName(player)} in at ${slotCodeForId(slotId)}`);
+      return;
+    }
+
+    assignSlot(team, slotId, payload);
   }
 
   function bindLineupEditor() {
     $$("[data-lineup-edit]").forEach((btn) => {
       btn.addEventListener("click", () => {
+        if (lineupGesture) cancelLineupGesture();
         st.lineup.edit = btn.getAttribute("data-lineup-edit") === "opp" ? "opp" : "us";
         saveLineupBag();
         draw({ keepScroll: true });
       });
-    });
-    $("#set-positions-btn")?.addEventListener("click", () => {
-      st.lineup.set = true;
-      saveLineupBag();
-      showToast("Lineup ready — on-field players will appear first");
-      draw({ keepScroll: true });
     });
     $("#save-default-lineup")?.addEventListener("click", () => {
       saveCurrentAsDefault();
       draw({ keepScroll: true });
     });
     $("#restore-default-lineup")?.addEventListener("click", () => restoreDefaultLineup());
+    $$("[data-lineup-gesture-cancel]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        cancelLineupGesture();
+        draw({ keepScroll: true });
+      });
+    });
+    $$("[data-lineup-gesture-bench]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        benchHoldingPlayer();
+        draw({ keepScroll: true });
+      });
+    });
     $$(".lineup-select").forEach((sel) => {
       sel.addEventListener("change", () => {
         const team = sel.getAttribute("data-lineup-team") === "opp" ? "opp" : "us";
         const slotId = Number(sel.getAttribute("data-lineup-slot"));
-        const opt = sel.selectedOptions[0];
-        if (!sel.value) {
-          assignSlot(team, slotId, null);
-          draw({ keepScroll: true });
-          return;
-        }
-        const number = opt?.getAttribute("data-number") || sel.value.replace(/^n-/, "");
-        const list = rosterPlayers(team);
-        const fromRoster =
-          list.find((p) => p.id && p.id === sel.value) ||
-          list.find((p) => String(p.number) === String(number)) ||
-          null;
-        const player = fromRoster || {
-          id: sel.value.startsWith("n-") ? "" : sel.value,
-          number,
-          name: "",
-          short: "",
-        };
-        assignSlot(team, slotId, {
-          id: player.id || "",
-          number: String(player.number),
-          name: player.name || "",
-          short: player.short || player.short_name || "",
-        });
+        applyLineupSelect(team, slotId, sel);
         draw({ keepScroll: true });
       });
     });
-    $$("[data-sub-slot]").forEach((btn) => {
-      btn.addEventListener("click", () => openSubPicker(Number(btn.getAttribute("data-sub-slot"))));
-    });
-  }
-
-  function bindLineupSubModal() {
-    const modal = $("#lineup-sub-modal");
-    if (!modal || modal.dataset.bound === "1") return;
-    modal.dataset.bound = "1";
-    $$("[data-close-lineup-sub]").forEach((el) => {
-      el.addEventListener("click", () => {
-        modal.hidden = true;
+    $$("[data-swap-slot]").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const slotId = Number(btn.getAttribute("data-swap-slot"));
+        if (lineupGesture?.mode === "swap" && Number(lineupGesture.fromSlot) === slotId) {
+          clearLineupGesture();
+          draw({ keepScroll: true });
+          return;
+        }
+        if (lineupGesture?.mode === "swap") {
+          completeSwapGesture(slotId);
+          draw({ keepScroll: true });
+          return;
+        }
+        if (lineupGesture?.mode === "place") return;
+        startSwapGesture(slotId);
+        draw({ keepScroll: true });
       });
     });
-    modal.addEventListener("click", (e) => {
-      const pick = e.target.closest("[data-pick-sub]");
-      if (!pick) return;
-      const slotId = Number(modal.dataset.slotId);
-      const number = pick.getAttribute("data-pick-number");
-      const playerId = pick.getAttribute("data-pick-sub");
-      const player = playerFromRoster("us", playerId, number);
-      if (!player) return;
-      assignSlot("us", slotId, {
-        id: player.id || "",
-        number: String(player.number),
-        name: player.name || "",
-        short: player.short || player.short_name || "",
+    $$("[data-lineup-slot-hit]").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        if (!lineupGesture) return;
+        const slotId = Number(btn.getAttribute("data-lineup-slot-hit"));
+        if (lineupGesture.mode === "swap") {
+          if (Number(lineupGesture.fromSlot) === slotId) {
+            clearLineupGesture();
+          } else {
+            completeSwapGesture(slotId);
+          }
+          draw({ keepScroll: true });
+          return;
+        }
+        if (lineupGesture.mode === "place") {
+          placeHoldingOnSlot(slotId);
+          draw({ keepScroll: true });
+        }
       });
-      modal.hidden = true;
-      st.lineup.set = true;
-      saveLineupBag();
-      showToast(`Subbed in ${playerDisplayName(player)}`);
-      draw({ keepScroll: true });
     });
   }
 
@@ -3026,7 +3231,6 @@
     $("#tracker-sync")?.addEventListener("click", () => syncGameShots());
     bindTrackerPitches();
     bindLineupEditor();
-    bindLineupSubModal();
     bindLogActions();
     if (opts.keepScroll) window.scrollTo(0, scrollY);
   }
@@ -3420,9 +3624,9 @@
         dismissShotModal();
         return true;
       }
-      const sub = $("#lineup-sub-modal");
-      if (sub && !sub.hidden) {
-        sub.hidden = true;
+      if (lineupGesture) {
+        cancelLineupGesture();
+        draw({ keepScroll: true });
         return true;
       }
       const edit = $("#shot-edit-modal");

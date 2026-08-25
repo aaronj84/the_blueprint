@@ -389,12 +389,25 @@ body.tracker-view .brand-sub {
   display: none;
 }
 
-body.shots-mode .drawer-blueprint {
+body.shots-mode .drawer-blueprint,
+body.shots-mode .drawer-cfc-red {
   display: none;
 }
 
-body.blueprint-mode .drawer-shots {
+body.blueprint-mode .drawer-shots,
+body.blueprint-mode .drawer-cfc-red {
   display: none;
+}
+
+body.cfc-red-mode .drawer-shots,
+body.cfc-red-mode .drawer-blueprint {
+  display: none;
+}
+
+body.hub-mode .drawer-blueprint,
+body.hub-mode .drawer-cfc-red,
+body.hub-mode .drawer-shots {
+  display: block;
 }
 
 .hub-grid {
@@ -440,6 +453,14 @@ body.blueprint-mode .drawer-shots {
 
 .hub-card-shots {
   border-color: rgba(26, 77, 124, 0.28);
+}
+
+.hub-card-cfc {
+  border-color: rgba(139, 26, 26, 0.32);
+}
+
+.hub-card-cfc .hub-card-cta {
+  color: #8b1a1a;
 }
 
 .hub-hero h1 {
@@ -1615,7 +1636,7 @@ body.coach-mode .coach-controls {
   }
 
   .hub-grid {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(3, 1fr);
   }
 
   .module-grid {
@@ -1921,7 +1942,6 @@ body.coach-mode .coach-controls {
 .lineup-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 0.75rem;
 }
 
@@ -1978,13 +1998,73 @@ body.coach-mode .coach-controls {
   color: #b0b8c2;
 }
 
-.lineup-sub {
+.lineup-swap {
   min-height: 44px;
   padding: 0 0.7rem;
 }
 
-.lineup-sub:disabled {
+.lineup-swap:disabled {
   opacity: 0.4;
+}
+
+.lineup-swap.is-on {
+  background: var(--brand);
+  border-color: var(--brand);
+  color: #fff;
+}
+
+.lineup-gesture-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.55rem 0.75rem;
+  margin: 0.35rem 0 0.65rem;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid rgba(26, 77, 124, 0.28);
+  border-radius: var(--radius-sm);
+  background: rgba(26, 77, 124, 0.08);
+}
+
+.lineup-gesture-banner p {
+  margin: 0;
+  flex: 1 1 12rem;
+  font-size: 0.92rem;
+  line-height: 1.35;
+}
+
+.lineup-gesture-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.formation-card.is-swap-from {
+  box-shadow: 0 0 0 2px var(--brand);
+  z-index: 2;
+}
+
+.formation-card.is-gesture-target {
+  cursor: pointer;
+  box-shadow: 0 0 0 2px rgba(26, 77, 124, 0.35);
+}
+
+.formation-card-hit {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: inherit;
+  background: transparent;
+  cursor: pointer;
+}
+
+.lineup-section.is-gesturing .formation-pitch {
+  outline: 2px dashed rgba(26, 77, 124, 0.35);
+  outline-offset: 4px;
+  border-radius: 12px;
 }
 
 /* 4-3-3 formation card pitch (attacking goal on top) */
@@ -2118,6 +2198,16 @@ button.formation-card:active {
   color: var(--text-dim);
 }
 
+.formation-card.is-pos-on {
+  box-shadow: 0 0 0 2px var(--brand);
+  border-color: var(--brand);
+  z-index: 2;
+}
+
+button.formation-card.is-empty {
+  cursor: pointer;
+}
+
 .formation-card.is-editor {
   width: min(32%, 6.4rem);
   min-height: 3.6rem;
@@ -2125,13 +2215,44 @@ button.formation-card:active {
   gap: 0.12rem;
 }
 
+.formation-card-pick {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.12rem;
+  width: 100%;
+  min-width: 0;
+  min-height: 1.55rem;
+  padding: 0 0.1rem;
+}
+
 .formation-card-name {
   max-width: 100%;
+  min-width: 0;
+  flex: 1 1 auto;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   font-weight: 750;
   font-size: 0.72rem;
+  line-height: 1.25;
+  padding-top: 0.05rem;
+  text-align: center;
+}
+
+.formation-card-pick .formation-card-name {
+  font-size: 0.7rem;
+}
+
+.formation-card-chevron {
+  flex: none;
+  width: 0.45rem;
+  height: 0.45rem;
+  border-right: 1.5px solid var(--text-dim);
+  border-bottom: 1.5px solid var(--text-dim);
+  transform: translateY(-0.12rem) rotate(45deg);
+  opacity: 0.75;
 }
 
 .formation-card-meta {
@@ -2146,27 +2267,36 @@ button.formation-card:active {
 }
 
 .formation-card-select {
-  min-height: 1.55rem;
-  height: 1.55rem;
+  position: absolute;
+  inset: 0;
+  z-index: 1;
   width: 100%;
-  padding: 0 0.15rem;
+  height: 100%;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
   border: none;
   border-radius: 5px;
+  opacity: 0;
+  cursor: pointer;
+  font-size: 1rem;
+  /* Keep native menu usable; visible label is .formation-card-name */
+  color: transparent;
   background: transparent;
-  font-size: 0.68rem;
-  font-weight: 750;
-  text-align: center;
-  text-align-last: center;
-  color: var(--text);
 }
 
 .formation-card-select:focus {
+  outline: none;
+}
+
+.formation-card-pick:focus-within {
   outline: 2px solid var(--brand);
   outline-offset: 1px;
+  border-radius: 5px;
   background: var(--bg);
 }
 
-.formation-card .lineup-sub {
+.formation-card .lineup-swap {
   min-height: 1.35rem;
   padding: 0 0.35rem;
   font-size: 0.62rem;
@@ -2255,8 +2385,8 @@ button.formation-card:active {
     min-height: 3.35rem;
   }
 
-  .formation-card-select {
-    font-size: 0.6rem;
+  .formation-card-pick .formation-card-name {
+    font-size: 0.64rem;
   }
 }
 
