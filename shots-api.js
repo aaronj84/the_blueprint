@@ -187,6 +187,7 @@
           season_id: seasonId,
           player_id: playerInsert.data.id,
           jersey_number: jersey,
+          squad: "varsity",
         })
         .select(ROSTER_SELECT)
         .single();

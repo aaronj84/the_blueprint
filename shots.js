@@ -47,8 +47,42 @@
     { id: "HALF", label: "Toward halfway", y0: 35, y1: HALF_L },
   ];
   const OUTSIDE_BOX_DEPTHS = ["D", "AT", "HALF", "DEF"];
-  const POSITION_CODES = ["GK", "RB", "LB", "RCB", "LCB", "DM", "RW", "CM", "CF", "AM", "LW"];
-  const POSITION_SLOTS = POSITION_CODES.map((code, i) => ({ id: i + 1, code }));
+  const POSITION_CODES = ["GK", "LB", "LCB", "RCB", "RB", "DM", "LM", "RM", "LW", "CF", "RW"];
+  const POSITION_SLOTS = [
+    { id: 1, code: "GK", group: "GK" },
+    { id: 2, code: "LB", group: "OB" },
+    { id: 3, code: "LCB", group: "CB" },
+    { id: 4, code: "RCB", group: "CB" },
+    { id: 5, code: "RB", group: "OB" },
+    { id: 6, code: "DM", group: "MID" },
+    { id: 7, code: "LM", group: "MID" },
+    { id: 8, code: "RM", group: "MID" },
+    { id: 9, code: "LW", group: "FWD" },
+    { id: 10, code: "CF", group: "FWD" },
+    { id: 11, code: "RW", group: "FWD" },
+  ];
+  const POSITION_GROUPS = [
+    { id: "GK", label: "GK" },
+    { id: "OB", label: "Outside backs" },
+    { id: "CB", label: "Center backs" },
+    { id: "MID", label: "Mids" },
+    { id: "FWD", label: "Forwards" },
+  ];
+  const GROUP_FOR_CODE = Object.fromEntries(POSITION_SLOTS.map((s) => [s.code, s.group]));
+  /** Default 4-3-3 XI: back→front, left→right */
+  const DEFAULT_XI_JERSEYS = [
+    { slot: 1, code: "GK", number: "1" }, // Lilah
+    { slot: 2, code: "LB", number: "15" }, // Saige
+    { slot: 3, code: "LCB", number: "20" }, // Shai
+    { slot: 4, code: "RCB", number: "19" }, // Jane
+    { slot: 5, code: "RB", number: "2" }, // Maddie
+    { slot: 6, code: "DM", number: "24" }, // Savvy
+    { slot: 7, code: "LM", number: "17" }, // Jackie
+    { slot: 8, code: "RM", number: "26" }, // Sharky
+    { slot: 9, code: "LW", number: "9" }, // Georgia
+    { slot: 10, code: "CF", number: "13" }, // Kailee
+    { slot: 11, code: "RW", number: "32" }, // Ari
+  ];
   const GAME_TYPES = ["preseason", "region", "playoffs", "friendly", "other"];
   const SHOT_RESULT_LABELS = {
     goal: "Goal",
@@ -392,19 +426,24 @@
   function rosterPlayers(team) {
     const rows = team === "opp" ? st.oppRoster : st.ourRoster;
     return rows.map((r) => ({
-      id: r.player_id,
+      id: r.player_id || r.player?.id,
       rosterId: r.id,
       number: r.jersey_number,
       jersey_number: r.jersey_number,
       name: r.player?.name || null,
       short: r.player?.short_name || null,
       short_name: r.player?.short_name || null,
+      squad: r.squad === "jv" ? "jv" : "varsity",
+      positionGroups: Array.isArray(r.player?.position_groups) ? r.player.position_groups.slice() : [],
       team,
     }));
   }
 
   function sortPlayers(list) {
     return list.slice().sort((a, b) => {
+      const aJv = a.squad === "jv" ? 1 : 0;
+      const bJv = b.squad === "jv" ? 1 : 0;
+      if (aJv !== bJv) return aJv - bJv;
       const aNamed = !!(a.name || a.short || a.short_name);
       const bNamed = !!(b.name || b.short || b.short_name);
       if (aNamed !== bNamed) return aNamed ? -1 : 1;
@@ -412,6 +451,51 @@
       if (byName) return byName;
       return String(a.number || "").localeCompare(String(b.number || ""), undefined, { numeric: true });
     });
+  }
+
+  function normalizePositionCode(code) {
+    if (code === "CM") return "RM";
+    if (code === "AM") return "LM";
+    return code || "";
+  }
+
+  function playerInGroup(p, groupId) {
+    if (!groupId || !p) return false;
+    return (p.positionGroups || []).includes(groupId);
+  }
+
+  function groupForSlot(slotId) {
+    const slot = POSITION_SLOTS.find((s) => s.id === Number(slotId));
+    return slot?.group || GROUP_FOR_CODE[slot?.code] || "";
+  }
+
+  function buildDefaultXiFromRoster() {
+    const bag = {};
+    DEFAULT_XI_JERSEYS.forEach((row) => {
+      const p = rosterPlayers("us").find((x) => String(x.number) === String(row.number));
+      if (!p) return;
+      bag[String(row.slot)] = {
+        id: p.id || "",
+        number: String(p.number),
+        name: p.name || "",
+        short: p.short || p.short_name || "",
+      };
+    });
+    return bag;
+  }
+
+  function seedDefaultLineupIfEmpty() {
+    if (Object.keys(st.defaultLineup.us || {}).length) return;
+    if (!st.ourRoster.length) return;
+    const bag = buildDefaultXiFromRoster();
+    if (Object.keys(bag).length < 11) return;
+    st.defaultLineup = { us: bag };
+    saveDefaultLineupBag(bag);
+    if (!Object.keys(st.lineup.us || {}).length) {
+      st.lineup.us = Object.assign({}, bag);
+      st.lineup.set = true;
+      saveLineupBag();
+    }
   }
 
   function jerseyChoices() {
@@ -453,7 +537,7 @@
       shooterNumber: row.jersey_number_at_time || "",
       shooterName: row.player?.name || "",
       shooterShort: row.player?.short_name || "",
-      position: row.position || "",
+      position: normalizePositionCode(row.position || ""),
       result: row.result,
       missDirection: row.miss_direction || "",
       saveFailed: !!row.saveFailed,
@@ -471,7 +555,7 @@
             name: row.assist_player?.name || "",
             short: row.assist_player?.short_name || "",
             type: row.assist_type,
-            position: row.assist_position || "",
+            position: normalizePositionCode(row.assist_position || ""),
             x: Number(row.assist_x),
             y: Number(row.assist_y),
             zoneId: row.assist_zone_id,
@@ -507,6 +591,7 @@
     const opp = opponentOf(st.game);
     st.ourRoster = b ? await API.roster(b.id, st.game.season_id) : [];
     st.oppRoster = opp ? await API.roster(opp.id, st.game.season_id) : [];
+    seedDefaultLineupIfEmpty();
     const rows = await API.shotsForGame(st.gameId);
     st.shots = rows.map(mapShot);
     if (st._loadedGameId !== st.gameId) {
@@ -544,14 +629,8 @@
     }
   }
 
-  function trackerNav(active) {
-    return `
-      <nav class="shots-subnav no-print" aria-label="Shot tracker">
-        <a class="btn btn-ghost ${active === "games" ? "is-on" : ""}" href="#shots-games">Games</a>
-        <a class="btn btn-ghost ${active === "shots" ? "is-on" : ""}" href="#shots">Record</a>
-        <a class="btn btn-ghost ${active === "history" ? "is-on" : ""}" href="#shots-history">History</a>
-        <a class="btn btn-ghost ${active === "map" ? "is-on" : ""}" href="#shots-map">Map</a>
-      </nav>`;
+  function trackerNav() {
+    return "";
   }
 
   function gameTitle(game) {
@@ -1459,6 +1538,8 @@
     const rosterList = sortPlayers(rosterPlayers(team));
     const onFieldNums = new Set(onField.map((p) => String(p.number)));
     const rest = rosterList.filter((p) => !onFieldNums.has(String(p.number)));
+    const restVarsity = rest.filter((p) => p.squad !== "jv");
+    const restJv = rest.filter((p) => p.squad === "jv");
 
     const playerBtn = (p, extra = "") => {
       const label = team === "opp" && !p.name && !p.short ? `#${p.number}` : escapeHtml(playerDisplayName(p));
@@ -1484,9 +1565,16 @@
         .join("");
       if (quick) html += `<div class="shot-quick-label">Used this game</div>${quick}`;
     }
-    if (rest.length && onField.length) html += `<div class="shot-quick-label">Bench / roster</div>`;
+    if (restVarsity.length) {
+      html += `${onField.length ? `<div class="shot-quick-label">Bench / varsity</div>` : ""}${restVarsity.map((p) => playerBtn(p)).join("")}`;
+    }
+    if (restJv.length) {
+      html += `<div class="shot-quick-label">JV</div>${restJv.map((p) => playerBtn(p, " · JV")).join("")}`;
+    }
+    if (!onField.length && !restVarsity.length && !restJv.length && team !== "opp") {
+      html += rosterList.map((p) => playerBtn(p)).join("");
+    }
     html +=
-      (onField.length ? rest : rosterList).map((p) => playerBtn(p)).join("") +
       `<button type="button" class="shot-player-btn" data-player-skip="1">
         <span class="name">Unknown</span>
         <span class="num">no number</span>
@@ -2104,14 +2192,37 @@
   function usSelectOptions(slotId) {
     const current = slotPlayer("us", slotId);
     const used = usedLineupNumbers("us", slotId);
+    const group = groupForSlot(slotId);
+    const all = sortPlayers(rosterPlayers("us"));
     const opts = [`<option value="">—</option>`];
-    sortPlayers(rosterPlayers("us")).forEach((p) => {
+
+    const pushOpt = (p, suffix = "") => {
       const taken = used.has(String(p.number));
       const selected = current && String(current.number) === String(p.number);
       opts.push(
-        `<option value="${escapeHtml(String(p.id || p.number))}" data-number="${escapeHtml(String(p.number))}" ${taken && !selected ? "disabled" : ""} ${selected ? "selected" : ""}>${escapeHtml(playerDisplayName(p))} (#${escapeHtml(String(p.number))})</option>`
+        `<option value="${escapeHtml(String(p.id || p.number))}" data-number="${escapeHtml(String(p.number))}" ${taken && !selected ? "disabled" : ""} ${selected ? "selected" : ""}>${escapeHtml(playerDisplayName(p))} (#${escapeHtml(String(p.number))})${suffix}</option>`
       );
-    });
+    };
+
+    const inGroup = all.filter((p) => p.squad !== "jv" && playerInGroup(p, group));
+    const varsityRest = all.filter((p) => p.squad !== "jv" && !playerInGroup(p, group));
+    const jv = all.filter((p) => p.squad === "jv");
+
+    if (inGroup.length) {
+      opts.push(`<optgroup label="${escapeHtml(POSITION_GROUPS.find((g) => g.id === group)?.label || group)}">`);
+      inGroup.forEach((p) => pushOpt(p));
+      opts.push(`</optgroup>`);
+    }
+    if (varsityRest.length) {
+      opts.push(`<optgroup label="Varsity">`);
+      varsityRest.forEach((p) => pushOpt(p));
+      opts.push(`</optgroup>`);
+    }
+    if (jv.length) {
+      opts.push(`<optgroup label="JV">`);
+      jv.forEach((p) => pushOpt(p, " · JV"));
+      opts.push(`</optgroup>`);
+    }
     return opts.join("");
   }
 
@@ -2147,32 +2258,34 @@
     const count = onFieldPlayers(team).length;
     const rows = POSITION_SLOTS.map((slot) => {
       const filled = slotPlayer(team, slot.id);
+      const groupLabel = POSITION_GROUPS.find((g) => g.id === slot.group)?.label || slot.group;
       const select =
         team === "opp"
           ? `<select class="lineup-select" data-lineup-team="opp" data-lineup-slot="${slot.id}">${oppSelectOptions(slot.id)}</select>`
           : `<select class="lineup-select" data-lineup-team="us" data-lineup-slot="${slot.id}">${usSelectOptions(slot.id)}</select>`;
       return `
         <div class="lineup-row">
-          <span class="lineup-pos"><strong>${slot.id}</strong> ${slot.code}</span>
+          <span class="lineup-pos"><strong>${slot.code}</strong><span class="muted"> ${escapeHtml(groupLabel)}</span></span>
           ${select}
-          <button type="button" class="btn btn-ghost lineup-sub" data-sub-slot="${slot.id}" ${filled ? "" : "disabled"}>Clear</button>
+          <button type="button" class="btn btn-ghost lineup-sub" data-sub-slot="${slot.id}" ${filled && team === "us" ? "" : "disabled"} title="Sub from position group">Sub</button>
         </div>`;
     }).join("");
     const defaultCount = defaultLineupCount();
     return `
       <section class="lineup-section" id="lineup-section">
         <div class="lineup-header">
-          <h2>Starting lineup</h2>
+          <h2>Starting lineup · 4-3-3</h2>
           <button type="button" class="btn ${lineupIsSet() ? "btn-secondary" : "btn-primary"}" id="set-positions-btn">${lineupIsSet() ? "Positions locked" : "Use this lineup"}</button>
         </div>
         <p class="muted lineup-help">${
           lineupIsSet()
-            ? "On-field players appear first when recording. Clear a slot or restore the default XI anytime."
-            : "Assign the XI, then tap Use this lineup. Save as default so you can restore it each game."
+            ? "Sub prefers players in that position group (OB / CB / Mid / Fwd). JV listed at the bottom."
+            : "Assign the XI, then tap Use this lineup. Default XI is Lilah; Saige–Shai–Jane–Maddie; Savvy; Jackie–Sharky; Georgia–Kailee–Ari."
         }</p>
         <div class="lineup-actions">
           <button type="button" class="btn btn-ghost" id="save-default-lineup" ${onFieldPlayers("us").length ? "" : "disabled"}>Save Brighton as default</button>
           <button type="button" class="btn btn-ghost" id="restore-default-lineup" ${defaultCount ? "" : "disabled"}>Restore default starting lineup${defaultCount ? ` (${defaultCount})` : ""}</button>
+          <button type="button" class="btn btn-ghost" id="apply-seed-xi">Load Ryan’s 4-3-3</button>
         </div>
         <div class="half-toggle lineup-team-toggle" role="tablist" aria-label="Lineup team">
           <button type="button" class="half-toggle-btn ${team === "us" ? "is-on" : ""}" data-lineup-edit="us">Brighton</button>
@@ -2180,7 +2293,62 @@
         </div>
         <p class="lineup-count">${count}/11 on the field</p>
         <div class="lineup-list">${rows}</div>
+        ${team === "us" ? positionGroupsEditorMarkup() : ""}
       </section>`;
+  }
+
+  function positionGroupsEditorMarkup() {
+    const players = sortPlayers(rosterPlayers("us").filter((p) => p.squad !== "jv"));
+    if (!players.length) return "";
+    const rows = players
+      .map((p) => {
+        const checks = POSITION_GROUPS.map((g) => {
+          const on = playerInGroup(p, g.id);
+          return `<label class="group-check"><input type="checkbox" data-group-player="${escapeHtml(p.id)}" data-group-code="${g.id}" ${on ? "checked" : ""}/> ${escapeHtml(g.label)}</label>`;
+        }).join("");
+        return `
+          <div class="group-row">
+            <span class="group-player">${escapeHtml(playerDisplayName(p))} <span class="muted">#${escapeHtml(String(p.number))}</span></span>
+            <div class="group-checks">${checks}</div>
+          </div>`;
+      })
+      .join("");
+    return `
+      <div class="position-groups-editor" id="position-groups-editor">
+        <h3>Primary position groups</h3>
+        <p class="muted">Used when you Sub — same-group players appear first. A player can be in multiple groups.</p>
+        <div class="group-list">${rows}</div>
+      </div>`;
+  }
+
+  function openSubPicker(slotId) {
+    const modal = $("#lineup-sub-modal");
+    const list = $("#lineup-sub-list");
+    const title = $("#lineup-sub-title");
+    if (!modal || !list) return;
+    const slot = POSITION_SLOTS.find((s) => s.id === Number(slotId));
+    const group = slot?.group || "";
+    const groupLabel = POSITION_GROUPS.find((g) => g.id === group)?.label || group;
+    const used = usedLineupNumbers("us", slotId);
+    const all = sortPlayers(rosterPlayers("us")).filter((p) => !used.has(String(p.number)));
+    const preferred = all.filter((p) => p.squad !== "jv" && playerInGroup(p, group));
+    const varsityRest = all.filter((p) => p.squad !== "jv" && !playerInGroup(p, group));
+    const jv = all.filter((p) => p.squad === "jv");
+
+    const btn = (p, tag) => `
+      <button type="button" class="shot-player-btn" data-pick-sub="${escapeHtml(String(p.id || ""))}" data-pick-number="${escapeHtml(String(p.number))}">
+        <span class="name">${escapeHtml(playerDisplayName(p))}</span>
+        <span class="num">#${escapeHtml(String(p.number))}${tag ? ` · ${tag}` : ""}</span>
+      </button>`;
+
+    if (title) title.textContent = `Sub ${slot?.code || ""} · ${groupLabel}`;
+    list.innerHTML =
+      (preferred.length ? `<div class="shot-quick-label">${escapeHtml(groupLabel)}</div>${preferred.map((p) => btn(p, "")).join("")}` : "") +
+      (varsityRest.length ? `<div class="shot-quick-label">Other varsity</div>${varsityRest.map((p) => btn(p, "")).join("")}` : "") +
+      (jv.length ? `<div class="shot-quick-label">JV</div>${jv.map((p) => btn(p, "JV")).join("")}` : "") +
+      (!preferred.length && !varsityRest.length && !jv.length ? `<p class="muted">No available players.</p>` : "");
+    modal.dataset.slotId = String(slotId);
+    modal.hidden = false;
   }
 
   function bindLineupEditor() {
@@ -2202,6 +2370,20 @@
       draw({ keepScroll: true });
     });
     $("#restore-default-lineup")?.addEventListener("click", () => restoreDefaultLineup());
+    $("#apply-seed-xi")?.addEventListener("click", () => {
+      const bag = buildDefaultXiFromRoster();
+      if (Object.keys(bag).length < 11) {
+        showToast("Roster incomplete — run the JV/groups SQL migration first");
+        return;
+      }
+      st.lineup.us = bag;
+      st.lineup.set = true;
+      st.defaultLineup = { us: Object.assign({}, bag) };
+      saveLineupBag();
+      saveDefaultLineupBag(bag);
+      showToast("Loaded 4-3-3 starting XI");
+      draw({ keepScroll: true });
+    });
     $$(".lineup-select").forEach((sel) => {
       sel.addEventListener("change", () => {
         const team = sel.getAttribute("data-lineup-team") === "opp" ? "opp" : "us";
@@ -2234,11 +2416,55 @@
       });
     });
     $$("[data-sub-slot]").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        const team = st.lineup.edit === "opp" ? "opp" : "us";
-        assignSlot(team, Number(btn.getAttribute("data-sub-slot")), null);
-        draw({ keepScroll: true });
+      btn.addEventListener("click", () => openSubPicker(Number(btn.getAttribute("data-sub-slot"))));
+    });
+    $$("[data-group-player]").forEach((input) => {
+      input.addEventListener("change", async () => {
+        const playerId = input.getAttribute("data-group-player");
+        if (!playerId) return;
+        const boxes = $$(`[data-group-player="${CSS.escape(playerId)}"]`);
+        const groups = boxes.filter((el) => el.checked).map((el) => el.getAttribute("data-group-code"));
+        try {
+          await API.updatePlayer(playerId, { position_groups: groups });
+          const row = st.ourRoster.find((r) => r.player_id === playerId);
+          if (row?.player) row.player.position_groups = groups;
+          showToast("Groups saved");
+        } catch (err) {
+          showToast(err.message || "Could not save groups");
+          input.checked = !input.checked;
+        }
       });
+    });
+  }
+
+  function bindLineupSubModal() {
+    const modal = $("#lineup-sub-modal");
+    if (!modal || modal.dataset.bound === "1") return;
+    modal.dataset.bound = "1";
+    $$("[data-close-lineup-sub]").forEach((el) => {
+      el.addEventListener("click", () => {
+        modal.hidden = true;
+      });
+    });
+    modal.addEventListener("click", (e) => {
+      const pick = e.target.closest("[data-pick-sub]");
+      if (!pick) return;
+      const slotId = Number(modal.dataset.slotId);
+      const number = pick.getAttribute("data-pick-number");
+      const playerId = pick.getAttribute("data-pick-sub");
+      const player = playerFromRoster("us", playerId, number);
+      if (!player) return;
+      assignSlot("us", slotId, {
+        id: player.id || "",
+        number: String(player.number),
+        name: player.name || "",
+        short: player.short || player.short_name || "",
+      });
+      modal.hidden = true;
+      st.lineup.set = true;
+      saveLineupBag();
+      showToast(`Subbed in ${playerDisplayName(player)}`);
+      draw({ keepScroll: true });
     });
   }
 
@@ -2372,6 +2598,7 @@
     $("#tracker-export")?.addEventListener("click", () => exportShotsCsv(events));
     bindTrackerPitches();
     bindLineupEditor();
+    bindLineupSubModal();
     bindLogActions();
     if (opts.keepScroll) window.scrollTo(0, scrollY);
   }
@@ -2763,6 +2990,11 @@
     onEscape() {
       if (shotModal && !shotModal.hidden) {
         dismissShotModal();
+        return true;
+      }
+      const sub = $("#lineup-sub-modal");
+      if (sub && !sub.hidden) {
+        sub.hidden = true;
         return true;
       }
       const edit = $("#shot-edit-modal");

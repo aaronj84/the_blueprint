@@ -52,7 +52,7 @@
     { number: 18, name: "Stella Bollinger" },
     { number: 19, name: "Jane Thackeray" },
     { number: 20, name: "Shai Farrer" },
-    { number: 24, name: "Savanna Zenger" },
+    { number: 24, name: "Savanna Zenger", short: "Savvy" },
     { number: 25, name: "Grace Slagle" },
     { number: 26, name: "Charlotte Jacobsen", short: "Sharky" },
     { number: 27, name: "Natalia Shepherd" },

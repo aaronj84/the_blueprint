@@ -167,6 +167,7 @@
   function parseHash() {
     const raw = (location.hash || "#home").replace(/^#/, "");
     if (!raw || raw === "home") return { view: "home" };
+    if (raw === "blueprint") return { view: "blueprint" };
     if (raw === "glossary") return { view: "glossary" };
     if (raw === "challenge") return { view: "challenge" };
     if (raw === "shots") return { view: "shots" };
@@ -197,6 +198,43 @@
     else location.hash = "#" + hash;
   }
 
+  function isShotsView(view) {
+    return String(view || "").startsWith("shots");
+  }
+
+  function updateChrome(view, moduleId) {
+    const shots = isShotsView(view);
+    document.body.classList.toggle("tracker-view", shots);
+    document.body.classList.toggle("blueprint-view", !shots && view !== "home");
+    document.body.classList.toggle("hub-view", view === "home");
+    document.body.classList.toggle("shot-map-view", view === "shots-map");
+    document.body.classList.toggle("shots-admin-view", view === "shots-games" || view === "shots-history");
+
+    const brandSub = $("#brand-sub");
+    if (brandSub) {
+      brandSub.textContent = shots ? "Shot Tracker" : view === "home" ? "The Blueprint · Shot Tracker" : "The Blueprint";
+    }
+
+    const blueprintNav = $(".nav-blueprint");
+    const shotsNav = $(".nav-shots");
+    if (blueprintNav) blueprintNav.hidden = shots || view === "home";
+    if (shotsNav) shotsNav.hidden = !shots;
+
+    $$("[data-area]").forEach((el) => {
+      const area = el.getAttribute("data-area");
+      const on = (area === "shots" && shots) || (area === "blueprint" && !shots && view !== "home");
+      if (on) el.setAttribute("aria-current", "page");
+      else el.removeAttribute("aria-current");
+      // On hub, neither area is "current" as a deep section — highlight neither or both lightly
+      if (view === "home") el.removeAttribute("aria-current");
+    });
+
+    document.body.classList.toggle("shots-mode", shots);
+    document.body.classList.toggle("blueprint-mode", !shots);
+
+    setNavCurrent(view, moduleId);
+  }
+
   function setNavCurrent(view, moduleId) {
     const mod = moduleId ? findModule(moduleId) : null;
     const groupId = mod?.group || null;
@@ -204,11 +242,17 @@
     $$("[data-nav]").forEach((el) => {
       const key = el.getAttribute("data-nav");
       const current =
-        (view === "home" && key === "home") ||
+        (view === "home" && key === "hub") ||
+        (view === "blueprint" && (key === "blueprint" || key === "blueprint-area")) ||
         (view === "glossary" && key === "glossary") ||
         (view === "challenge" && key === "challenge") ||
         (view === "module" && key === moduleId) ||
-        (view === "scenario" && key === moduleId);
+        (view === "scenario" && key === moduleId) ||
+        (view === "shots" && key === "shots") ||
+        (view === "shots-games" && key === "shots-games") ||
+        (view === "shots-history" && key === "shots-history") ||
+        (view === "shots-map" && key === "shots-map") ||
+        (isShotsView(view) && key === "shots-area");
       if (current) el.setAttribute("aria-current", "page");
       else el.removeAttribute("aria-current");
     });
@@ -478,13 +522,11 @@
     state.view = route.view;
     state.moduleId = route.moduleId || null;
     state.scenarioId = route.scenarioId || null;
-    setNavCurrent(state.view, state.moduleId);
-    const isShots = String(state.view).startsWith("shots");
-    document.body.classList.toggle("tracker-view", isShots);
-    document.body.classList.toggle("shot-map-view", state.view === "shots-map");
-    document.body.classList.toggle("shots-admin-view", state.view === "shots-games" || state.view === "shots-history");
+    updateChrome(state.view, state.moduleId);
+    const isShots = isShotsView(state.view);
 
-    if (state.view === "home") renderHome();
+    if (state.view === "home") renderHub();
+    else if (state.view === "blueprint") renderBlueprintHome();
     else if (state.view === "glossary") renderGlossary();
     else if (state.view === "challenge") renderChallenge();
     else if (isShots) {
@@ -493,12 +535,33 @@
     }
     else if (state.view === "module") renderModule(state.moduleId);
     else if (state.view === "scenario") renderScenario(state.scenarioId);
-    else renderHome();
+    else renderHub();
 
     window.scrollTo(0, 0);
   }
 
-  function renderHome() {
+  function renderHub() {
+    root.innerHTML = `
+      <section class="hero hub-hero">
+        <h1>Brighton Girls</h1>
+        <p>Two tools for the program — learn the model, then track the game.</p>
+      </section>
+      <section class="hub-grid" aria-label="App areas">
+        <a class="hub-card" href="#blueprint">
+          <h2>The Blueprint</h2>
+          <p>Tactical learning for attacking shape, wide patterns, supporting runs, defense, and set pieces.</p>
+          <span class="hub-card-cta">Open modules</span>
+        </a>
+        <a class="hub-card hub-card-shots" href="#shots">
+          <h2>Shot Tracker</h2>
+          <p>Sideline recording for varsity games — plays, lineups, units, history, and shot maps.</p>
+          <span class="hub-card-cta">Open tracker</span>
+        </a>
+      </section>
+    `;
+  }
+
+  function renderBlueprintHome() {
     const cards = MODULES.map((m) => {
       if (m.isChallenge) {
         return `
@@ -564,7 +627,7 @@
     root.innerHTML = `
       <section class="hero">
         <h1>The Blueprint</h1>
-        <p>Brighton Fresh/Soph Blue Team — see it, choose it, explain it. Train attacking shape, wide patterns, supporting runs, defensive shape, and set pieces.</p>
+        <p>See it, choose it, explain it. Train attacking shape, wide patterns, supporting runs, defensive shape, and set pieces.</p>
         <div class="hero-meta">
           <span class="pill">Progress <strong>${overall.done}/${overall.total}</strong></span>
           <span class="pill">Saved on this device</span>
@@ -590,7 +653,7 @@
           <h1>Glossary</h1>
           <p>Shared language for Brighton’s model. Short definitions — not essays.</p>
         </div>
-        <a class="btn btn-secondary" href="#home">Back</a>
+        <a class="btn btn-secondary" href="#blueprint">Back</a>
       </div>
       <div class="glossary-grid">${items}</div>
     `;
@@ -599,7 +662,7 @@
   function renderModule(moduleId) {
     const mod = findModule(moduleId);
     if (!mod || mod.isChallenge) {
-      navigate("home");
+      navigate("blueprint");
       return;
     }
     const stats = moduleStats(moduleId);
@@ -697,7 +760,7 @@
           <p>${escapeHtml(mod.purpose)}</p>
         </div>
         <div style="display:flex;gap:0.5rem;flex-wrap:wrap">
-          <a class="btn btn-ghost" href="#home">Home</a>
+          <a class="btn btn-ghost" href="#blueprint">Modules</a>
           ${
             ov
               ? `<button type="button" class="btn btn-secondary" id="header-show-overview">${overviewOpen ? "Overview" : "Read overview"}</button>`
@@ -755,7 +818,7 @@
   function renderScenario(id) {
     const scenario = findScenario(id);
     if (!scenario) {
-      navigate("home");
+      navigate("blueprint");
       return;
     }
     const challengeMode = !!(state.challenge && state.challenge.active);
@@ -793,7 +856,7 @@
       <div class="scenario-shell">
         <div class="scenario-toolbar">
           <div class="breadcrumb">
-            <a href="#home">Home</a><span>/</span>
+            <a href="#blueprint">The Blueprint</a><span>/</span>
             <a href="#${escapeHtml(mod.hash)}">${escapeHtml(mod.title)}</a><span>/</span>
             <span>${escapeHtml(s.title)}</span>
           </div>
@@ -1782,7 +1845,7 @@
           <h1>Mixed Challenge</h1>
           <p>Ten unlabeled scenarios from every module. No first-hint. Decision and rationale both count. Results by concept.</p>
         </div>
-        <a class="btn btn-ghost" href="#home">Home</a>
+        <a class="btn btn-ghost" href="#blueprint">Modules</a>
       </div>
       <div class="results-card">
         <p class="muted">Role labels and teaching highlights are removed. Commit before you see the answer.</p>
@@ -1905,7 +1968,7 @@
         <div class="module-card-actions" style="margin-top:1rem">
           <a class="btn btn-primary" href="#${escapeHtml(reviewMod.hash)}">Open ${escapeHtml(reviewMod.title)}</a>
           <button type="button" class="btn btn-secondary" id="retry-challenge">Try again</button>
-          <a class="btn btn-ghost" href="#home">Home</a>
+          <a class="btn btn-ghost" href="#blueprint">Modules</a>
         </div>
       </div>
     `;
