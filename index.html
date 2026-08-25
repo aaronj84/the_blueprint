@@ -7,7 +7,7 @@
   <meta name="theme-color" content="#f4f7fb" />
   <title>The Blueprint — Brighton Fresh/Soph Blue Team</title>
   <link rel="icon" href="assets/logo.svg" type="image/svg+xml" />
-  <link rel="stylesheet" href="styles.css?v=20260819a" />
+  <link rel="stylesheet" href="styles.css?v=20260824a" />
 </head>
 <body>
   <a class="sr-only" href="#main">Skip to content</a>
@@ -163,6 +163,19 @@
           <option value="on-target">Shot on Goal</option>
           <option value="blocked">Shot Blocked</option>
           <option value="missed">Missed Shot</option>
+          <option value="foul">Foul</option>
+          <option value="corner">Corner</option>
+          <option value="pk-goal">PK Goal</option>
+          <option value="pk-missed">PK Missed</option>
+        </select>
+      </label>
+      <label class="shots-field">Miss direction
+        <select id="shot-edit-miss">
+          <option value="">—</option>
+          <option value="over">Over</option>
+          <option value="short">Short</option>
+          <option value="wide-left">Wide left</option>
+          <option value="wide-right">Wide right</option>
         </select>
       </label>
       <label class="shots-field">Position
@@ -198,10 +211,10 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="shots-config.js?v=20260819a"></script>
-  <script src="scenarios.js?v=20260817a"></script>
-  <script src="shots-api.js?v=20260819a"></script>
-  <script src="shots.js?v=20260819a"></script>
-  <script src="app.js?v=20260819a"></script>
+  <script src="shots-config.js?v=20260824a"></script>
+  <script src="scenarios.js?v=20260824a"></script>
+  <script src="shots-api.js?v=20260824a"></script>
+  <script src="shots.js?v=20260824a"></script>
+  <script src="app.js?v=20260824a"></script>
 </body>
 </html>

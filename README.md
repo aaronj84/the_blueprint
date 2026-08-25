@@ -167,7 +167,7 @@ Pickup notes for another machine (PIN, dashboard, `shots-config.js`): **[supabas
 ### One-time Supabase setup
 
 1. Create a Supabase project.
-2. SQL editor: run `supabase/schema.sql`, then optionally `supabase/sample_data.sql`.
+2. SQL editor: run `supabase/schema.sql`, then optionally `supabase/sample_data.sql`. For an existing project, also run `supabase/migrate_shot_tracker_v3.sql` (fouls, corners, PKs, miss direction, assist position).
 3. Authentication → Providers → **Anonymous** → Enable.
 4. Project Settings → API: copy Project URL and `anon` `public` key into `shots-config.js` (and into `supabase/README.md` if you are switching machines).
 

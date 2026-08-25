@@ -1,0 +1,31 @@
+half	team	time	player_number	player_name	result	shot_zone_id	shot_zone	shot_x	shot_y	assisted_by_number	assisted_by_name	assist_type	assist_zone_id	assist_zone	assist_x	assist_y
+ET2	opponent	2026-08-21T03:54:28.983Z	15		Goal	RHS-HALF	Right half-space · Toward halfway	45.9	47.8							
+ET1	us	2026-08-21T03:48:56.031Z	17	Jaqueline Scott	Shot on Goal	C-AT	Center · Attacking third	40.7	30.7							
+ET1	opponent	2026-08-21T03:46:30.796Z	97		Missed Shot	RHS-D	Right half-space · Top of the box	45.4	18							
+ET1	us	2026-08-21T03:44:43.254Z	32	Ariana Mlikota	Shot Blocked	C-D	Zone 14	34.8	21							
+ET1	opponent	2026-08-21T03:44:06.451Z	15		Missed Shot	LHS-6Y	Six-yard box · Left half-space	25	5.4	29		Cross	RW-6Y	Right wide · Six-yard	66.7	1.2
+ET1	opponent	2026-08-21T03:41:50.752Z	14		Missed Shot	C-BOX	Box · Center	27	12.9							
+ET1	us	2026-08-21T03:41:41.935Z	32	Ariana Mlikota	Shot Blocked	C-AT	Center · Attacking third	35.8	27.5							
+ET1	opponent	2026-08-21T03:39:27.906Z	14		Shot on Goal	RHS-BOX	Box · Right half-space	46.8	12.9							
+2	us	2026-08-21T03:27:38.509Z	24	Savanna Zenger	Missed Shot	C-AT	Center · Attacking third	33.6	29							
+2	opponent	2026-08-21T03:26:23.211Z	37		Goal	RHS-AT	Right half-space · Attacking third	43.4	29.2							
+2	us	2026-08-21T03:24:59.520Z	26	Charlotte Jacobsen	Missed Shot	C-AT	Center · Attacking third	30.7	31.7							
+2	opponent	2026-08-21T03:13:56.070Z	14		Missed Shot	LHS-PS	Box · Left half-space	18.6	8.9							
+2	opponent	2026-08-21T03:11:16.763Z	10		Shot on Goal	C-BOX	Box · Center	25.9	14							
+2	us	2026-08-21T03:08:39.977Z	8	Addison Despain	Shot on Goal	C-6Y	Six-yard box · Center	30.4	0.2							
+2	us	2026-08-21T03:08:32.776Z	8	Addison Despain	Shot on Goal	C-6Y	Six-yard box · Center	29.9	2.4							
+2	us	2026-08-21T02:59:36.548Z	13	Kailee Deeds	Missed Shot	RHS-PS	Box · Right half-space	43.1	8.6	32	Ariana Mlikota	Pass	C-BOX	Box · Center	30.5	14.5
+2	opponent	2026-08-21T02:53:22.795Z	37		Missed Shot	C-D	Zone 14	41.8	21.1							
+2	opponent	2026-08-21T02:30:07.835Z	24		Missed Shot	C-AT	Center · Attacking third	40.2	28.8							
+1	opponent	2026-08-21T02:26:47.954Z	10		Missed Shot	LHS-6Y	Six-yard box · Left half-space	25.3	3.8							
+1	opponent	2026-08-21T02:26:38.137Z	21		Shot Blocked	C-D	Zone 14	40.6	18.8							
+1	opponent	2026-08-21T02:25:03.690Z	55		Shot Blocked	LHS-AT	Left half-space · Attacking third	15.1	33.9							
+1	us	2026-08-21T02:23:15.881Z	8	Addison Despain	Missed Shot	RHS-AT	Right half-space · Attacking third	49	26.3							
+1	us	2026-08-21T02:15:42.825Z	32	Ariana Mlikota	Missed Shot	LHS-D	Left half-space · Top of the box	18.7	21.3							
+1	opponent	2026-08-21T02:12:15.921Z	15		Missed Shot	C-D	Zone 14	39.2	20.9							
+1	us	2026-08-21T02:10:54.614Z	8	Addison Despain	Goal	C-6Y	Six-yard box · Center	38.7	1.3	5	Kate Coccimiglio	Cross	LHS-6Y	Six-yard box · Left half-space	25.3	1.3
+1	us	2026-08-21T02:02:13.262Z	9	Georgia Mikell	Missed Shot	RHS-D	Right half-space · Top of the box	52.7	24.5							
+1	opponent	2026-08-21T01:54:40.797Z	14		Missed Shot	RHS-D	Right half-space · Top of the box	44.7	16.6							
+1	opponent	2026-08-21T01:53:12.805Z	15		Missed Shot	C-HALF	Center · Toward halfway	34	36							
+1	us	2026-08-21T01:51:15.143Z	17	Jaqueline Scott	Missed Shot	C-D	Zone 14	41.4	24.5							
+1	opponent	2026-08-21T01:50:05.770Z	37		Shot on Goal	RHS-D	Right half-space · Top of the box	44.8	20.6							

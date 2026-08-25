@@ -68,9 +68,30 @@ create table if not exists public.shots (
   y numeric not null,
   zone_id text,
   zone_label text,
-  result text not null check (result in ('goal', 'on-target', 'blocked', 'missed')),
+  result text not null check (
+    result in (
+      'goal',
+      'on-target',
+      'blocked',
+      'missed',
+      'foul',
+      'corner',
+      'pk-goal',
+      'pk-missed'
+    )
+  ),
+  miss_direction text check (
+    miss_direction is null
+    or miss_direction in ('over', 'short', 'wide-left', 'wide-right')
+  ),
   assist_player_id uuid references public.players (id),
   assist_type text check (assist_type is null or assist_type in ('pass', 'gap', 'cross')),
+  assist_position text check (
+    assist_position is null
+    or assist_position in (
+      'GK', 'RB', 'LB', 'RCB', 'LCB', 'DM', 'RW', 'CM', 'CF', 'AM', 'LW'
+    )
+  ),
   assist_x numeric,
   assist_y numeric,
   assist_zone_id text,
@@ -163,7 +184,7 @@ from (
     ('Shai Farrer',       'Shai'),
     ('Savanna Zenger',    'Savanna'),
     ('Grace Slagle',      'Grace'),
-    ('Charlotte Jacobsen','Charlotte'),
+    ('Charlotte Jacobsen','Sharky'),
     ('Natalia Shepherd',  'Natalia'),
     ('Abigail Platz',     'Abby'),
     ('Ariana Mlikota',    'Ari'),

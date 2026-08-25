@@ -54,7 +54,7 @@
     { number: 20, name: "Shai Farrer" },
     { number: 24, name: "Savanna Zenger" },
     { number: 25, name: "Grace Slagle" },
-    { number: 26, name: "Charlotte Jacobsen" },
+    { number: 26, name: "Charlotte Jacobsen", short: "Sharky" },
     { number: 27, name: "Natalia Shepherd" },
     { number: 29, name: "Abigail Platz", short: "Abby" },
     { number: 32, name: "Ariana Mlikota", short: "Ari" },

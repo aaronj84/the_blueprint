@@ -25,7 +25,7 @@ window.SHOTS_CONFIG = {
 
 ## Dashboard (must already be true)
 
-1. SQL editor: run `schema.sql` (this folder). Optional: `sample_data.sql`.
+1. SQL editor: run `schema.sql` (this folder). Optional: `sample_data.sql`. Existing projects: also run `migrate_shot_tracker_v3.sql` (fouls, corners, PKs, miss direction, assist position).
 2. Authentication → Providers → **Anonymous** → Enable.
 3. RLS is in `schema.sql`: `authenticated` can read/write; the PIN only gates sign-in on the client.
 

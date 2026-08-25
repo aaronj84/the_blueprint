@@ -48,28 +48,51 @@
   ];
   const OUTSIDE_BOX_DEPTHS = ["D", "AT", "HALF", "DEF"];
   const POSITION_CODES = ["GK", "RB", "LB", "RCB", "LCB", "DM", "RW", "CM", "CF", "AM", "LW"];
+  const POSITION_SLOTS = POSITION_CODES.map((code, i) => ({ id: i + 1, code }));
   const GAME_TYPES = ["preseason", "region", "playoffs", "friendly", "other"];
   const SHOT_RESULT_LABELS = {
     goal: "Goal",
     "on-target": "Shot on Goal",
     blocked: "Shot Blocked",
     missed: "Missed Shot",
+    foul: "Foul",
+    corner: "Corner",
+    "pk-goal": "PK Goal",
+    "pk-missed": "PK Missed",
   };
+  const MISS_DIRECTION_LABELS = {
+    over: "Over",
+    short: "Short",
+    "wide-left": "Wide left",
+    "wide-right": "Wide right",
+  };
+  const MISS_DIRECTIONS = ["over", "short", "wide-left", "wide-right"];
   const ASSIST_TYPE_LABELS = { pass: "Pass", gap: "Gap", cross: "Cross" };
-  const TRACKER_FIRST_ACTIONS = [
+  const TRACKER_ASSIST_ACTIONS = [
     { id: "assist-pass", label: "Assist — Pass", kind: "assist", type: "pass" },
     { id: "assist-gap", label: "Assist — Gap", kind: "assist", type: "gap" },
     { id: "assist-cross", label: "Assist — Cross", kind: "assist", type: "cross" },
+  ];
+  const TRACKER_SHOT_ACTIONS = [
     { id: "goal", label: "Goal", kind: "shot", result: "goal" },
     { id: "on-target", label: "Shot on Goal", kind: "shot", result: "on-target" },
     { id: "blocked", label: "Shot Blocked", kind: "shot", result: "blocked" },
     { id: "missed", label: "Missed Shot", kind: "shot", result: "missed" },
   ];
-  const TRACKER_SHOT_ACTIONS = TRACKER_FIRST_ACTIONS.filter((a) => a.kind === "shot");
+  const TRACKER_OTHER_ACTIONS = [
+    { id: "foul", label: "Foul", kind: "shot", result: "foul" },
+    { id: "corner", label: "Corner", kind: "shot", result: "corner" },
+    { id: "pk-goal", label: "PK Goal", kind: "shot", result: "pk-goal" },
+    { id: "pk-missed", label: "PK Missed", kind: "shot", result: "pk-missed" },
+  ];
+  const TRACKER_FIRST_ACTIONS = [...TRACKER_ASSIST_ACTIONS, ...TRACKER_SHOT_ACTIONS, ...TRACKER_OTHER_ACTIONS];
+  const RESULTS_NEEDING_MISS_DIR = new Set(["missed", "pk-missed"]);
   const LS_EVENTS = CONFIG.shotsStorageKey || "brighton-varsity-shot-tracker";
   const LS_UI_V1 = "brighton-varsity-shot-tracker-ui";
   const LS_UI_V2 = "brighton-varsity-shot-tracker-ui-v2";
-  const NICK = { Madeline: "Maddie", Abigail: "Abby", Jaqueline: "Jackie", Ariana: "Ari" };
+  const LS_LINEUP = "brighton-varsity-shot-tracker-lineup";
+  const LS_DEFAULT_LINEUP = "brighton-varsity-shot-tracker-default-lineup";
+  const NICK = { Madeline: "Maddie", Abigail: "Abby", Jaqueline: "Jackie", Ariana: "Ari", Charlotte: "Sharky" };
 
   const $ = (sel, root = document) => root.querySelector(sel);
   const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
@@ -111,13 +134,54 @@
         swapSides: st.swapSides,
         seasonId: st.seasonId,
         gameId: st.gameId,
+        halfReminderDismissed: st.halfReminderDismissed,
       })
     );
     if (st.seasonId) sessionStorage.setItem("shots-season-id", st.seasonId);
     if (st.gameId) sessionStorage.setItem("shots-game-id", st.gameId);
   }
 
+  function loadLineupBag() {
+    try {
+      const parsed = JSON.parse(localStorage.getItem(LS_LINEUP) || "{}") || {};
+      return {
+        set: !!parsed.set,
+        edit: parsed.edit === "opp" ? "opp" : "us",
+        us: parsed.us && typeof parsed.us === "object" ? parsed.us : {},
+        opp: parsed.opp && typeof parsed.opp === "object" ? parsed.opp : {},
+      };
+    } catch {
+      return { set: false, edit: "us", us: {}, opp: {} };
+    }
+  }
+
+  function saveLineupBag() {
+    localStorage.setItem(
+      LS_LINEUP,
+      JSON.stringify({
+        set: st.lineup.set,
+        edit: st.lineup.edit,
+        us: st.lineup.us,
+        opp: st.lineup.opp,
+      })
+    );
+  }
+
+  function loadDefaultLineup() {
+    try {
+      const parsed = JSON.parse(localStorage.getItem(LS_DEFAULT_LINEUP) || "{}") || {};
+      return parsed.us && typeof parsed.us === "object" ? { us: parsed.us } : { us: {} };
+    } catch {
+      return { us: {} };
+    }
+  }
+
+  function saveDefaultLineupBag(bag) {
+    localStorage.setItem(LS_DEFAULT_LINEUP, JSON.stringify({ us: bag || {} }));
+  }
+
   const savedUi = loadUi();
+  const savedLineup = loadLineupBag();
   const st = {
     view: "shots",
     booted: false,
@@ -142,6 +206,9 @@
     period: normalizePeriod(savedUi.period || "1"),
     team: savedUi.team === "opp" ? "opp" : "us",
     swapSides: !!savedUi.swapSides,
+    halfReminderDismissed: !!savedUi.halfReminderDismissed,
+    lineup: savedLineup,
+    defaultLineup: loadDefaultLineup(),
     csvPending: null,
     importOpen: false,
     history: { seasonId: "", playerId: "", opponentId: "", depth: "", rows: null, loading: false },
@@ -154,6 +221,7 @@
     player: null,
     action: null,
     position: "",
+    missDirection: "",
   };
 
   function normalizePeriod(p) {
@@ -217,6 +285,89 @@
 
   function eventTeam(ev) {
     return ev && ev.team === "opp" ? "opp" : "us";
+  }
+
+  function lineupIsSet() {
+    return !!st.lineup?.set;
+  }
+
+  function slotPlayer(team, slotId) {
+    const bag = team === "opp" ? st.lineup.opp : st.lineup.us;
+    return (bag && bag[String(slotId)]) || null;
+  }
+
+  function onFieldPlayers(team) {
+    return POSITION_SLOTS.map((slot) => {
+      const p = slotPlayer(team, slot.id);
+      if (!p) return null;
+      return Object.assign({ slot: slot.id, slotCode: slot.code, team }, p);
+    }).filter(Boolean);
+  }
+
+  function usedLineupNumbers(team, exceptSlot) {
+    const used = new Set();
+    POSITION_SLOTS.forEach((slot) => {
+      if (exceptSlot && slot.id === exceptSlot) return;
+      const p = slotPlayer(team, slot.id);
+      if (p) used.add(String(p.number));
+    });
+    return used;
+  }
+
+  function assignSlot(team, slotId, player) {
+    const key = team === "opp" ? "opp" : "us";
+    if (!st.lineup[key] || typeof st.lineup[key] !== "object") st.lineup[key] = {};
+    if (!player) delete st.lineup[key][String(slotId)];
+    else st.lineup[key][String(slotId)] = player;
+    saveLineupBag();
+  }
+
+  function defaultLineupCount() {
+    return Object.keys(st.defaultLineup.us || {}).length;
+  }
+
+  function saveCurrentAsDefault() {
+    const copy = {};
+    Object.keys(st.lineup.us || {}).forEach((k) => {
+      copy[k] = Object.assign({}, st.lineup.us[k]);
+    });
+    st.defaultLineup = { us: copy };
+    saveDefaultLineupBag(copy);
+    showToast("Default starting lineup saved");
+  }
+
+  function restoreDefaultLineup() {
+    const bag = st.defaultLineup.us || {};
+    if (!Object.keys(bag).length) {
+      showToast("No default lineup saved yet");
+      return;
+    }
+    st.lineup.us = {};
+    Object.keys(bag).forEach((k) => {
+      st.lineup.us[k] = Object.assign({}, bag[k]);
+    });
+    st.lineup.set = true;
+    saveLineupBag();
+    showToast("Restored default starting lineup");
+    draw({ keepScroll: true });
+  }
+
+  function playerWhoLabel(action) {
+    if (!action) return "Who?";
+    if (action.result === "foul") return "Who fouled?";
+    if (action.result === "corner") return "Who took the corner?";
+    if (action.result === "pk-goal" || action.result === "pk-missed") return "Who took the PK?";
+    if (action.kind === "assist") return "Who assisted?";
+    return "Who shot?";
+  }
+
+  function needsMissDirection(action) {
+    return !!(action && RESULTS_NEEDING_MISS_DIR.has(action.result));
+  }
+
+  function isOlympusGame(game) {
+    const opp = opponentOf(game || st.game);
+    return !!(opp && /olympus/i.test(opp.name || ""));
   }
 
   function firstName(full) {
@@ -304,6 +455,7 @@
       shooterShort: row.player?.short_name || "",
       position: row.position || "",
       result: row.result,
+      missDirection: row.miss_direction || "",
       saveFailed: !!row.saveFailed,
       pendingPayload: row.pendingPayload || null,
       shot: {
@@ -319,6 +471,7 @@
             name: row.assist_player?.name || "",
             short: row.assist_player?.short_name || "",
             type: row.assist_type,
+            position: row.assist_position || "",
             x: Number(row.assist_x),
             y: Number(row.assist_y),
             zoneId: row.assist_zone_id,
@@ -356,6 +509,10 @@
     st.oppRoster = opp ? await API.roster(opp.id, st.game.season_id) : [];
     const rows = await API.shotsForGame(st.gameId);
     st.shots = rows.map(mapShot);
+    if (st._loadedGameId !== st.gameId) {
+      st._loadedGameId = st.gameId;
+      st.halfReminderDismissed = false;
+    }
     saveUi();
   }
 
@@ -954,6 +1111,7 @@
       csvEscape(ev.shooterName || ev.player?.name || ""),
       ev.position || "",
       csvEscape(SHOT_RESULT_LABELS[ev.result] || ev.result),
+      ev.missDirection || ev.miss_direction || "",
       ev.shot?.zoneId ?? ev.zone_id ?? "",
       csvEscape(ev.shot?.zoneLabel || ev.zone_label || ""),
       ev.shot?.x ?? ev.x ?? "",
@@ -961,6 +1119,7 @@
       ev.assist?.number ?? "",
       csvEscape(ev.assist?.name || ev.assist_player?.name || ""),
       ev.assist ? ASSIST_TYPE_LABELS[ev.assist.type] || ev.assist.type : ev.assist_type || "",
+      ev.assist?.position || ev.assist_position || "",
       ev.assist?.zoneId ?? ev.assist_zone_id ?? "",
       csvEscape(ev.assist?.zoneLabel || ev.assist_zone_label || ""),
       ev.assist?.x ?? ev.assist_x ?? "",
@@ -979,6 +1138,7 @@
     "player_name",
     "position",
     "result",
+    "miss_direction",
     "shot_zone_id",
     "shot_zone",
     "shot_x",
@@ -986,6 +1146,7 @@
     "assisted_by_number",
     "assisted_by_name",
     "assist_type",
+    "assist_position",
     "assist_zone_id",
     "assist_zone",
     "assist_x",
@@ -1120,6 +1281,7 @@
     shotModalDraft.player = null;
     shotModalDraft.action = null;
     shotModalDraft.position = "";
+    shotModalDraft.missDirection = "";
   }
 
   function closeShotModal() {
@@ -1129,6 +1291,7 @@
     shotModalDraft.phase = "action";
     shotModalDraft.location = null;
     shotModalDraft.position = "";
+    shotModalDraft.missDirection = "";
   }
 
   function dismissShotModal() {
@@ -1143,6 +1306,7 @@
     shotModalDraft.player = null;
     shotModalDraft.action = null;
     shotModalDraft.position = "";
+    shotModalDraft.missDirection = "";
     renderShotModal();
     shotModal.dataset.openedAt = String(Date.now());
     shotModal.hidden = false;
@@ -1155,6 +1319,10 @@
     if (action.result === "blocked") return "Blocked";
     if (action.result === "missed") return "Missed";
     if (action.result === "goal") return "Goal";
+    if (action.result === "foul") return "Foul";
+    if (action.result === "corner") return "Corner";
+    if (action.result === "pk-goal") return "PK Goal";
+    if (action.result === "pk-missed") return "PK Miss";
     return action.label || "";
   }
 
@@ -1168,6 +1336,20 @@
     return [...nums].sort((a, b) => Number(a) - Number(b));
   }
 
+  function advanceAfterAction() {
+    const action = shotModalDraft.action;
+    if (needsMissDirection(action) && !shotModalDraft.missDirection) {
+      shotModalDraft.phase = "miss-dir";
+    } else {
+      shotModalDraft.phase = "player";
+      if (!shotModalDraft.position && lineupIsSet()) {
+        const onField = onFieldPlayers(recordingTeam());
+        if (onField.length === 1) shotModalDraft.position = onField[0].slotCode;
+      }
+    }
+    renderShotModal();
+  }
+
   function renderShotModal() {
     const title = $("#shot-modal-title");
     const locEl = $("#shot-modal-location");
@@ -1178,18 +1360,26 @@
     const backBtn = $("#shot-modal-back");
     const panel = $(".shot-modal-panel", shotModal);
     const nudge = $("#shot-lineup-nudge");
+    const nudgeText = $("#shot-lineup-nudge-text");
     const posGrid = $("#shot-position-grid");
     if (!shotModal || !playerGrid || !actionGrid) return;
-    if (nudge) nudge.hidden = true;
     if (actionLabel) actionLabel.hidden = true;
 
     const step = shotModalDraft.step;
     const phase = shotModalDraft.phase;
     const loc = shotModalDraft.location;
     const locText = loc ? `${formatLoc(loc)}  ·  (${formatXY(loc)})` : "";
-    if (panel) panel.classList.toggle("is-player-phase", phase === "player");
-    if (backBtn) backBtn.hidden = phase !== "player";
+    if (panel) panel.classList.toggle("is-player-phase", phase === "player" || phase === "miss-dir");
+    if (backBtn) backBtn.hidden = phase === "action";
     if (posGrid) posGrid.hidden = phase !== "player";
+
+    if (nudge) {
+      const showNudge = phase === "player" && recordingTeam() === "us" && !lineupIsSet();
+      nudge.hidden = !showNudge;
+      if (nudgeText && showNudge) {
+        nudgeText.textContent = "No starting lineup set — position is optional. Set defaults below the pitch.";
+      }
+    }
 
     if (phase === "action") {
       title.textContent = step === "shot" ? "Shot result?" : "What happened?";
@@ -1204,31 +1394,56 @@
       if (step === "shot") {
         actionGrid.innerHTML = `<div class="shot-action-row shot-action-row-fill">${shotBtns}</div>`;
       } else {
-        const assistBtns = TRACKER_FIRST_ACTIONS.filter((a) => a.kind === "assist")
-          .map(
-            (a) =>
-              `<button type="button" class="shot-action-btn is-assist" data-action-id="${escapeHtml(a.id)}">${escapeHtml(ASSIST_TYPE_LABELS[a.type])}</button>`
-          )
-          .join("");
+        const assistBtns = TRACKER_ASSIST_ACTIONS.map(
+          (a) =>
+            `<button type="button" class="shot-action-btn is-assist" data-action-id="${escapeHtml(a.id)}">${escapeHtml(ASSIST_TYPE_LABELS[a.type])}</button>`
+        ).join("");
+        const otherBtns = TRACKER_OTHER_ACTIONS.map(
+          (a) =>
+            `<button type="button" class="shot-action-btn is-${a.result}" data-action-id="${escapeHtml(a.id)}">${escapeHtml(actionShortLabel(a))}</button>`
+        ).join("");
         actionGrid.innerHTML = `
           <p class="shot-action-heading">Assist</p>
           <div class="shot-action-row shot-action-row-3">${assistBtns}</div>
           <p class="shot-action-heading">Shot</p>
-          <div class="shot-action-row shot-action-row-fill">${shotBtns}</div>`;
+          <div class="shot-action-row shot-action-row-fill">${shotBtns}</div>
+          <p class="shot-action-heading">Set piece / foul</p>
+          <div class="shot-action-row shot-action-row-fill">${otherBtns}</div>`;
       }
+      return;
+    }
+
+    if (phase === "miss-dir") {
+      const chosen = shotModalDraft.action;
+      title.textContent = "Where did it miss?";
+      locEl.textContent = chosen ? `${actionShortLabel(chosen)}  ·  ${locText}` : locText;
+      if (playerHeading) playerHeading.hidden = true;
+      playerGrid.hidden = true;
+      actionGrid.hidden = false;
+      actionGrid.innerHTML = `
+        <div class="shot-action-row shot-action-row-fill">
+          ${MISS_DIRECTIONS.map(
+            (d) =>
+              `<button type="button" class="shot-action-btn is-miss-dir" data-miss-dir="${d}">${escapeHtml(MISS_DIRECTION_LABELS[d])}</button>`
+          ).join("")}
+        </div>`;
       return;
     }
 
     const chosen = shotModalDraft.action;
     const team = recordingTeam();
-    const whoTitle = chosen?.kind === "assist" ? "Who assisted?" : "Who shot?";
-    title.textContent = whoTitle;
+    title.textContent = playerWhoLabel(chosen);
+    const missBit = shotModalDraft.missDirection
+      ? ` · ${MISS_DIRECTION_LABELS[shotModalDraft.missDirection]}`
+      : "";
     locEl.textContent = chosen
-      ? `${actionShortLabel(chosen)}${chosen.kind === "assist" ? " assist" : ""}  ·  ${locText}`
+      ? `${actionShortLabel(chosen)}${chosen.kind === "assist" ? " assist" : ""}${missBit}  ·  ${locText}`
       : locText;
     if (playerHeading) {
       playerHeading.hidden = false;
-      playerHeading.textContent = "Optional position, then player. Skip is a valid save.";
+      playerHeading.textContent = lineupIsSet()
+        ? "On-field players first. Position auto-fills from the lineup slot."
+        : "Optional position, then player. Skip is a valid save.";
     }
     playerGrid.hidden = false;
     actionGrid.hidden = true;
@@ -1239,31 +1454,39 @@
           `<button type="button" class="shot-pos-btn ${shotModalDraft.position === code ? "is-on" : ""}" data-shot-pos="${code}">${code}</button>`
       ).join("");
     }
-    const players = sortPlayers(rosterPlayers(team));
-    const quick =
-      team === "opp"
-        ? usedThisGameNumbers("opp")
-            .map((num) => {
-              const p = players.find((x) => String(x.number) === String(num));
-              return `<button type="button" class="shot-player-btn" data-player-number="${escapeHtml(String(num))}" data-player-id="${escapeHtml(p?.id || "")}" data-player-team="${team}">
-                <span class="name">${p && (p.name || p.short) ? escapeHtml(playerDisplayName(p)) : `#${escapeHtml(num)}`}</span>
-                <span class="num">this game</span>
-              </button>`;
-            })
-            .join("")
-        : "";
-    playerGrid.innerHTML =
-      (quick ? `<div class="shot-quick-label">Used this game</div>${quick}` : "") +
-      players
-        .map((p) => {
-          const label = team === "opp" && !p.name && !p.short ? `#${p.number}` : escapeHtml(playerDisplayName(p));
-          return `
-          <button type="button" class="shot-player-btn" data-player-number="${escapeHtml(String(p.number))}" data-player-id="${escapeHtml(p.id)}" data-player-team="${team}">
-            <span class="name">${label}</span>
-            <span class="num">${escapeHtml(String(p.number))}</span>
-          </button>`;
+
+    const onField = lineupIsSet() ? onFieldPlayers(team) : [];
+    const rosterList = sortPlayers(rosterPlayers(team));
+    const onFieldNums = new Set(onField.map((p) => String(p.number)));
+    const rest = rosterList.filter((p) => !onFieldNums.has(String(p.number)));
+
+    const playerBtn = (p, extra = "") => {
+      const label = team === "opp" && !p.name && !p.short ? `#${p.number}` : escapeHtml(playerDisplayName(p));
+      const posHint = p.slotCode ? ` · ${p.slotCode}` : "";
+      return `
+        <button type="button" class="shot-player-btn" data-player-number="${escapeHtml(String(p.number))}" data-player-id="${escapeHtml(p.id || "")}" data-player-team="${team}" data-slot-code="${escapeHtml(p.slotCode || "")}">
+          <span class="name">${label}</span>
+          <span class="num">${escapeHtml(String(p.number))}${posHint}${extra}</span>
+        </button>`;
+    };
+
+    let html = "";
+    if (onField.length) {
+      html += `<div class="shot-quick-label">On the field</div>${onField.map((p) => playerBtn(p)).join("")}`;
+    }
+    if (team === "opp") {
+      const quick = usedThisGameNumbers("opp")
+        .filter((num) => !onFieldNums.has(String(num)))
+        .map((num) => {
+          const p = rosterList.find((x) => String(x.number) === String(num)) || { number: num, id: "" };
+          return playerBtn(p, " · game");
         })
-        .join("") +
+        .join("");
+      if (quick) html += `<div class="shot-quick-label">Used this game</div>${quick}`;
+    }
+    if (rest.length && onField.length) html += `<div class="shot-quick-label">Bench / roster</div>`;
+    html +=
+      (onField.length ? rest : rosterList).map((p) => playerBtn(p)).join("") +
       `<button type="button" class="shot-player-btn" data-player-skip="1">
         <span class="name">Unknown</span>
         <span class="num">no number</span>
@@ -1272,9 +1495,19 @@
         <span class="name">Add number</span>
         <span class="num">new</span>
       </button>`;
+    playerGrid.innerHTML = html;
   }
 
   function playerFromRoster(team, playerId, number) {
+    const onField = onFieldPlayers(team);
+    if (playerId) {
+      const fromField = onField.find((p) => p.id === playerId);
+      if (fromField) return fromField;
+    }
+    if (number != null && number !== "") {
+      const fromField = onField.find((p) => String(p.number) === String(number));
+      if (fromField) return fromField;
+    }
     const list = rosterPlayers(team);
     if (playerId) return list.find((p) => p.id === playerId) || null;
     if (number != null && number !== "") return list.find((p) => String(p.number) === String(number)) || null;
@@ -1369,8 +1602,10 @@
       zone_id: loc.zoneId,
       zone_label: loc.zoneLabel,
       result,
+      miss_direction: RESULTS_NEEDING_MISS_DIR.has(result) ? shotModalDraft.missDirection || null : null,
       assist_player_id: assist?.player?.id || null,
       assist_type: assist ? assist.type : null,
+      assist_position: assist?.position || null,
       assist_x: assist ? assist.location.x : null,
       assist_y: assist ? assist.location.y : null,
       assist_zone_id: assist ? assist.location.zoneId : null,
@@ -1400,10 +1635,11 @@
     closeShotModal();
     resetTrackerDraft();
     draw();
+    const missBit = view.missDirection ? ` (${MISS_DIRECTION_LABELS[view.missDirection]})` : "";
     const extra = view.assist
       ? ` (assist: ${view.assist.number ? (team === "opp" ? `Opp #${view.assist.number}` : view.assist.short || firstName(view.assist.name) || `#${view.assist.number}`) : "untagged"})`
       : "";
-    showToast(`${SHOT_RESULT_LABELS[result]} — ${playerLabel(shooter ? Object.assign({ team }, shooter) : null)}${extra}`);
+    showToast(`${SHOT_RESULT_LABELS[result]}${missBit} — ${playerLabel(shooter ? Object.assign({ team }, shooter) : null)}${extra}`);
     const saved = await API.insertShot(payload);
     if (!saved.ok) {
       view.saveFailed = true;
@@ -1442,6 +1678,13 @@
         renderShotModal();
         return;
       }
+      const missBtn = e.target.closest("[data-miss-dir]");
+      if (missBtn) {
+        shotModalDraft.missDirection = missBtn.getAttribute("data-miss-dir") || "";
+        shotModalDraft.phase = "player";
+        renderShotModal();
+        return;
+      }
       if (e.target.closest("[data-player-skip]")) {
         shotModalDraft.player = null;
         await completeShotModal();
@@ -1456,7 +1699,12 @@
         const team = playerBtn.getAttribute("data-player-team") || recordingTeam();
         const number = playerBtn.getAttribute("data-player-number");
         const playerId = playerBtn.getAttribute("data-player-id");
+        const slotCode = playerBtn.getAttribute("data-slot-code") || "";
         shotModalDraft.player = playerFromRoster(team, playerId, number);
+        if (slotCode && !shotModalDraft.position) shotModalDraft.position = slotCode;
+        else if (shotModalDraft.player?.slotCode && !shotModalDraft.position) {
+          shotModalDraft.position = shotModalDraft.player.slotCode;
+        }
         await completeShotModal();
         return;
       }
@@ -1465,15 +1713,34 @@
         const action = TRACKER_FIRST_ACTIONS.find((a) => a.id === actionBtn.getAttribute("data-action-id"));
         if (!action) return;
         shotModalDraft.action = action;
-        shotModalDraft.phase = "player";
-        renderShotModal();
+        shotModalDraft.missDirection = "";
+        advanceAfterAction();
       }
     });
     $("#shot-modal-back")?.addEventListener("click", () => {
+      if (shotModalDraft.phase === "player" && needsMissDirection(shotModalDraft.action)) {
+        shotModalDraft.phase = "miss-dir";
+        shotModalDraft.player = null;
+        shotModalDraft.missDirection = "";
+        renderShotModal();
+        return;
+      }
+      if (shotModalDraft.phase === "miss-dir") {
+        shotModalDraft.phase = "action";
+        shotModalDraft.action = null;
+        shotModalDraft.missDirection = "";
+        renderShotModal();
+        return;
+      }
       shotModalDraft.phase = "action";
       shotModalDraft.player = null;
       shotModalDraft.action = null;
+      shotModalDraft.missDirection = "";
       renderShotModal();
+    });
+    $("#shot-goto-lineup")?.addEventListener("click", () => {
+      dismissShotModal();
+      setTimeout(() => $("#lineup-section")?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
     });
     $$("[data-close-shot-modal]").forEach((el) =>
       el.addEventListener("click", () => {
@@ -1485,31 +1752,48 @@
   }
 
   function bindTrackerPitches() {
-    const recording = st.mode === "awaiting-location" || st.mode === "awaiting-shot-location";
+    const awaitingShot = st.mode === "awaiting-shot-location";
     $$("[data-pitch-team]").forEach((svg) => {
       const team = svg.getAttribute("data-pitch-team");
       const wrap = svg.closest(".tracker-pitch-wrap");
-      const active = recording && recordingTeam() === team;
-      wrap?.classList.toggle("is-recording", active);
-      if (!active) return;
-      let lastTap = 0;
+      const block = svg.closest(".tracker-pitch-block");
+      const canSecondTap = awaitingShot && recordingTeam() === team;
+      wrap?.classList.toggle("is-recording", canSecondTap || !awaitingShot);
+      block?.classList.toggle("is-active", canSecondTap || (!awaitingShot && recordingTeam() === team));
+      let lastTapAt = 0;
+      let lastTapX = 0;
+      let lastTapY = 0;
       const onTap = (evt) => {
         if (!shotModal.hidden) return;
         const now = Date.now();
-        if (now - lastTap < 350) return;
-        lastTap = now;
-        evt.preventDefault();
-        evt.stopPropagation();
         const p = svgEventPoint(svg, evt);
         const pitch = pitchFromSvgPoint(p.x, p.y, st.swapSides);
         const loc = locatePitchPoint(pitch.x, pitch.y);
-        if (st.mode === "awaiting-location") {
-          fillShotModal("first", loc);
-          draw({ keepScroll: true });
-        } else if (st.mode === "awaiting-shot-location") {
+        const nearPrev = Math.hypot(p.x - lastTapX, p.y - lastTapY) < 8;
+        const isDouble = now - lastTapAt < 420 && nearPrev;
+        lastTapAt = now;
+        lastTapX = p.x;
+        lastTapY = p.y;
+        evt.preventDefault();
+        evt.stopPropagation();
+
+        if (awaitingShot) {
+          if (recordingTeam() !== team) {
+            showToast("Finish this shot on the same team’s pitch");
+            return;
+          }
           fillShotModal("shot", loc);
           draw({ keepScroll: true });
+          return;
         }
+
+        if (!isDouble) return;
+        st.team = team === "opp" ? "opp" : "us";
+        st.mode = "idle";
+        st.pending = null;
+        saveUi();
+        fillShotModal("first", loc);
+        draw({ keepScroll: true });
       };
       svg.addEventListener("pointerup", onTap);
     });
@@ -1518,7 +1802,17 @@
   function trackerSummary(events) {
     const n = (result) => events.filter((e) => e.result === result).length;
     const assists = events.filter((e) => e.assist).length;
-    return { goals: n("goal"), onTarget: n("on-target"), blocked: n("blocked"), missed: n("missed"), assists, total: events.length };
+    return {
+      goals: n("goal") + n("pk-goal"),
+      onTarget: n("on-target"),
+      blocked: n("blocked"),
+      missed: n("missed") + n("pk-missed"),
+      fouls: n("foul"),
+      corners: n("corner"),
+      pks: n("pk-goal") + n("pk-missed"),
+      assists,
+      total: events.length,
+    };
   }
 
   function summaryPills(sum) {
@@ -1528,7 +1822,79 @@
       <span class="pill">On target <strong>${sum.onTarget}</strong></span>
       <span class="pill">Blocked <strong>${sum.blocked}</strong></span>
       <span class="pill">Missed <strong>${sum.missed}</strong></span>
+      <span class="pill">Fouls <strong>${sum.fouls}</strong></span>
+      <span class="pill">Corners <strong>${sum.corners}</strong></span>
+      <span class="pill">PKs <strong>${sum.pks}</strong></span>
       <span class="pill">Assists <strong>${sum.assists}</strong></span>`;
+  }
+
+  function unitsBreakdown(events) {
+    const posCounts = {};
+    const pairCounts = {};
+    const missByPlayer = {};
+    events.forEach((ev) => {
+      if (eventTeam(ev) !== "us") return;
+      const shotResults = ["goal", "on-target", "blocked", "missed", "pk-goal", "pk-missed"];
+      if (!shotResults.includes(ev.result)) return;
+      const pos = ev.position || "—";
+      posCounts[pos] = (posCounts[pos] || 0) + 1;
+      if (ev.assist) {
+        const aPos = ev.assist.position || "—";
+        const key = `${aPos} → ${pos}`;
+        pairCounts[key] = (pairCounts[key] || 0) + 1;
+      }
+      if (ev.missDirection) {
+        const who = eventPersonLabel("us", ev.shooterNumber, ev.shooterName, ev.shooterShort);
+        if (!missByPlayer[who]) missByPlayer[who] = { over: 0, short: 0, "wide-left": 0, "wide-right": 0 };
+        missByPlayer[who][ev.missDirection] = (missByPlayer[who][ev.missDirection] || 0) + 1;
+      }
+    });
+    const topPos = Object.entries(posCounts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 8);
+    const topPairs = Object.entries(pairCounts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 8);
+    const missRows = Object.entries(missByPlayer)
+      .map(([who, dirs]) => ({ who, ...dirs, total: dirs.over + dirs.short + dirs["wide-left"] + dirs["wide-right"] }))
+      .sort((a, b) => b.total - a.total)
+      .slice(0, 8);
+    return { topPos, topPairs, missRows };
+  }
+
+  function unitsMarkup(events) {
+    const { topPos, topPairs, missRows } = unitsBreakdown(events);
+    if (!topPos.length && !topPairs.length && !missRows.length) {
+      return `<p class="muted">Record positions on shots (and assists) to see which units create chances.</p>`;
+    }
+    return `
+      <div class="units-grid">
+        <div>
+          <h3 class="tracker-half-heading">Positions producing shots</h3>
+          <ul class="units-list">
+            ${topPos.map(([pos, n]) => `<li><strong>${escapeHtml(pos)}</strong> <span class="muted">${n}</span></li>`).join("") || "<li class='muted'>None yet</li>"}
+          </ul>
+        </div>
+        <div>
+          <h3 class="tracker-half-heading">Units / partnerships</h3>
+          <ul class="units-list">
+            ${topPairs.map(([pair, n]) => `<li><strong>${escapeHtml(pair)}</strong> <span class="muted">${n}</span></li>`).join("") || "<li class='muted'>Need assists with positions</li>"}
+          </ul>
+        </div>
+        <div>
+          <h3 class="tracker-half-heading">Miss trends</h3>
+          <ul class="units-list">
+            ${
+              missRows
+                .map(
+                  (r) =>
+                    `<li><strong>${escapeHtml(r.who)}</strong> <span class="muted">O${r.over} S${r.short} WL${r["wide-left"]} WR${r["wide-right"]}</span></li>`
+                )
+                .join("") || "<li class='muted'>No miss directions yet</li>"
+            }
+          </ul>
+        </div>
+      </div>`;
   }
 
   function eventPersonLabel(team, number, name, short) {
@@ -1543,7 +1909,7 @@
 
   function shotTableRows(events, opts = {}) {
     if (!events.length) {
-      return `<tr><td colspan="11" class="empty-state" style="padding:1.25rem">No plays yet.</td></tr>`;
+      return `<tr><td colspan="12" class="empty-state" style="padding:1.25rem">No plays yet.</td></tr>`;
     }
     return events
       .map((ev) => {
@@ -1551,9 +1917,12 @@
         const player = eventPersonLabel(team, ev.shooterNumber, ev.shooterName, ev.shooterShort);
         const assistBy = ev.assist ? eventPersonLabel(team, ev.assist.number, ev.assist.name, ev.assist.short) : "—";
         const assistType = ev.assist ? ASSIST_TYPE_LABELS[ev.assist.type] || ev.assist.type : "—";
+        const assistPos = ev.assist?.position ? ` · ${ev.assist.position}` : "";
         const assistCell = ev.assist
           ? `${escapeHtml(formatLoc(ev.assist))}<br /><span class="muted">${escapeHtml(formatXY(ev.assist))}</span>`
           : "—";
+        const resultLabel = SHOT_RESULT_LABELS[ev.result] || ev.result;
+        const missLabel = ev.missDirection ? MISS_DIRECTION_LABELS[ev.missDirection] || ev.missDirection : "—";
         const failed = ev.saveFailed
           ? `<button type="button" class="btn btn-ghost shots-retry" data-retry-shot="${escapeHtml(ev.id)}">Retry save</button>`
           : "";
@@ -1568,8 +1937,9 @@
             <td><span class="team-chip ${team === "opp" ? "is-opp" : "is-us"}">${escapeHtml(teamLabel(team, ev))}</span></td>
             <td><button type="button" class="linkish" data-edit-shot="${escapeHtml(ev.id)}">${escapeHtml(player)}</button></td>
             <td>${escapeHtml(ev.position || "—")}</td>
-            <td><span class="shot-result-pill ${escapeHtml(ev.result)}">${escapeHtml(SHOT_RESULT_LABELS[ev.result] || ev.result)}</span></td>
-            <td>${escapeHtml(assistBy)}</td>
+            <td><span class="shot-result-pill ${escapeHtml(ev.result)}">${escapeHtml(resultLabel)}</span></td>
+            <td>${escapeHtml(missLabel)}</td>
+            <td>${escapeHtml(assistBy)}${escapeHtml(assistPos)}</td>
             <td>${escapeHtml(assistType)}</td>
             <td class="tracker-coord-cell">${escapeHtml(formatLoc(ev.shot))}<br /><span class="muted">${escapeHtml(formatXY(ev.shot))}</span></td>
             <td class="tracker-coord-cell">${assistCell}</td>
@@ -1592,6 +1962,7 @@
               <th>Player</th>
               <th>Pos</th>
               <th>Result</th>
+              <th>Miss</th>
               <th>Assisted by</th>
               <th>Assist type</th>
               <th>Shot location</th>
@@ -1653,6 +2024,11 @@
     }
     $("#shot-edit-result").value = ev.result;
     $("#shot-edit-position").value = ev.position || "";
+    const missSel = $("#shot-edit-miss");
+    if (missSel) {
+      missSel.value = ev.missDirection || "";
+      missSel.disabled = !RESULTS_NEEDING_MISS_DIR.has(ev.result);
+    }
     $("#shot-edit-player").innerHTML =
       `<option value="">Unknown / untagged</option>` +
       players
@@ -1675,6 +2051,13 @@
         modal.hidden = true;
       });
     });
+    $("#shot-edit-result")?.addEventListener("change", () => {
+      const missSel = $("#shot-edit-miss");
+      if (!missSel) return;
+      const needs = RESULTS_NEEDING_MISS_DIR.has($("#shot-edit-result").value);
+      missSel.disabled = !needs;
+      if (!needs) missSel.value = "";
+    });
     $("#shot-edit-save")?.addEventListener("click", async () => {
       const id = modal.dataset.shotId;
       const ev = st.shots.find((s) => s.id === id) || st.history.rows?.find((s) => s.id === id);
@@ -1682,9 +2065,12 @@
       const playerId = $("#shot-edit-player").value || null;
       const team = eventTeam(ev);
       const player = playerId ? playerFromRoster(team, playerId, null) : null;
+      const result = $("#shot-edit-result").value;
+      const missVal = $("#shot-edit-miss")?.value || "";
       const patch = {
-        result: $("#shot-edit-result").value,
+        result,
         position: $("#shot-edit-position").value || null,
+        miss_direction: RESULTS_NEEDING_MISS_DIR.has(result) ? missVal || null : null,
         player_id: playerId,
         jersey_number_at_time: player ? String(player.number) : ev.shooterNumber || null,
       };
@@ -1704,11 +2090,165 @@
         const mapped = mapShot(saved.data);
         const idx = st.shots.findIndex((s) => s.id === id);
         if (idx >= 0) st.shots[idx] = mapped;
+        if (st.history.rows) {
+          const hIdx = st.history.rows.findIndex((s) => s.id === id);
+          if (hIdx >= 0) st.history.rows[hIdx] = Object.assign({}, st.history.rows[hIdx], mapped);
+        }
       }
       modal.hidden = true;
       showToast("Shot updated");
       draw({ keepScroll: true });
     });
+  }
+
+  function usSelectOptions(slotId) {
+    const current = slotPlayer("us", slotId);
+    const used = usedLineupNumbers("us", slotId);
+    const opts = [`<option value="">—</option>`];
+    sortPlayers(rosterPlayers("us")).forEach((p) => {
+      const taken = used.has(String(p.number));
+      const selected = current && String(current.number) === String(p.number);
+      opts.push(
+        `<option value="${escapeHtml(String(p.id || p.number))}" data-number="${escapeHtml(String(p.number))}" ${taken && !selected ? "disabled" : ""} ${selected ? "selected" : ""}>${escapeHtml(playerDisplayName(p))} (#${escapeHtml(String(p.number))})</option>`
+      );
+    });
+    return opts.join("");
+  }
+
+  function oppSelectOptions(slotId) {
+    const current = slotPlayer("opp", slotId);
+    const used = usedLineupNumbers("opp", slotId);
+    const opts = [`<option value="">—</option>`];
+    const roster = sortPlayers(rosterPlayers("opp"));
+    if (roster.length) {
+      roster.forEach((p) => {
+        const taken = used.has(String(p.number));
+        const selected = current && String(current.number) === String(p.number);
+        opts.push(
+          `<option value="${escapeHtml(String(p.id || p.number))}" data-number="${escapeHtml(String(p.number))}" ${taken && !selected ? "disabled" : ""} ${selected ? "selected" : ""}>${
+            p.name || p.short ? escapeHtml(playerDisplayName(p)) + ` (#${escapeHtml(String(p.number))})` : `#${escapeHtml(String(p.number))}`
+          }</option>`
+        );
+      });
+    } else {
+      jerseyChoices().forEach((num) => {
+        const taken = used.has(num);
+        const selected = current && String(current.number) === num;
+        opts.push(
+          `<option value="n-${num}" data-number="${num}" ${taken && !selected ? "disabled" : ""} ${selected ? "selected" : ""}>${num}</option>`
+        );
+      });
+    }
+    return opts.join("");
+  }
+
+  function lineupEditorMarkup() {
+    const team = st.lineup.edit === "opp" ? "opp" : "us";
+    const count = onFieldPlayers(team).length;
+    const rows = POSITION_SLOTS.map((slot) => {
+      const filled = slotPlayer(team, slot.id);
+      const select =
+        team === "opp"
+          ? `<select class="lineup-select" data-lineup-team="opp" data-lineup-slot="${slot.id}">${oppSelectOptions(slot.id)}</select>`
+          : `<select class="lineup-select" data-lineup-team="us" data-lineup-slot="${slot.id}">${usSelectOptions(slot.id)}</select>`;
+      return `
+        <div class="lineup-row">
+          <span class="lineup-pos"><strong>${slot.id}</strong> ${slot.code}</span>
+          ${select}
+          <button type="button" class="btn btn-ghost lineup-sub" data-sub-slot="${slot.id}" ${filled ? "" : "disabled"}>Clear</button>
+        </div>`;
+    }).join("");
+    const defaultCount = defaultLineupCount();
+    return `
+      <section class="lineup-section" id="lineup-section">
+        <div class="lineup-header">
+          <h2>Starting lineup</h2>
+          <button type="button" class="btn ${lineupIsSet() ? "btn-secondary" : "btn-primary"}" id="set-positions-btn">${lineupIsSet() ? "Positions locked" : "Use this lineup"}</button>
+        </div>
+        <p class="muted lineup-help">${
+          lineupIsSet()
+            ? "On-field players appear first when recording. Clear a slot or restore the default XI anytime."
+            : "Assign the XI, then tap Use this lineup. Save as default so you can restore it each game."
+        }</p>
+        <div class="lineup-actions">
+          <button type="button" class="btn btn-ghost" id="save-default-lineup" ${onFieldPlayers("us").length ? "" : "disabled"}>Save Brighton as default</button>
+          <button type="button" class="btn btn-ghost" id="restore-default-lineup" ${defaultCount ? "" : "disabled"}>Restore default starting lineup${defaultCount ? ` (${defaultCount})` : ""}</button>
+        </div>
+        <div class="half-toggle lineup-team-toggle" role="tablist" aria-label="Lineup team">
+          <button type="button" class="half-toggle-btn ${team === "us" ? "is-on" : ""}" data-lineup-edit="us">Brighton</button>
+          <button type="button" class="half-toggle-btn ${team === "opp" ? "is-on" : ""}" data-lineup-edit="opp">${escapeHtml(opponentOf(st.game)?.name || "Opponent")}</button>
+        </div>
+        <p class="lineup-count">${count}/11 on the field</p>
+        <div class="lineup-list">${rows}</div>
+      </section>`;
+  }
+
+  function bindLineupEditor() {
+    $$("[data-lineup-edit]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        st.lineup.edit = btn.getAttribute("data-lineup-edit") === "opp" ? "opp" : "us";
+        saveLineupBag();
+        draw({ keepScroll: true });
+      });
+    });
+    $("#set-positions-btn")?.addEventListener("click", () => {
+      st.lineup.set = true;
+      saveLineupBag();
+      showToast("Lineup ready — on-field players will appear first");
+      draw({ keepScroll: true });
+    });
+    $("#save-default-lineup")?.addEventListener("click", () => {
+      saveCurrentAsDefault();
+      draw({ keepScroll: true });
+    });
+    $("#restore-default-lineup")?.addEventListener("click", () => restoreDefaultLineup());
+    $$(".lineup-select").forEach((sel) => {
+      sel.addEventListener("change", () => {
+        const team = sel.getAttribute("data-lineup-team") === "opp" ? "opp" : "us";
+        const slotId = Number(sel.getAttribute("data-lineup-slot"));
+        const opt = sel.selectedOptions[0];
+        if (!sel.value) {
+          assignSlot(team, slotId, null);
+          draw({ keepScroll: true });
+          return;
+        }
+        const number = opt?.getAttribute("data-number") || sel.value.replace(/^n-/, "");
+        const list = rosterPlayers(team);
+        const fromRoster =
+          list.find((p) => p.id && p.id === sel.value) ||
+          list.find((p) => String(p.number) === String(number)) ||
+          null;
+        const player = fromRoster || {
+          id: sel.value.startsWith("n-") ? "" : sel.value,
+          number,
+          name: "",
+          short: "",
+        };
+        assignSlot(team, slotId, {
+          id: player.id || "",
+          number: String(player.number),
+          name: player.name || "",
+          short: player.short || player.short_name || "",
+        });
+        draw({ keepScroll: true });
+      });
+    });
+    $$("[data-sub-slot]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const team = st.lineup.edit === "opp" ? "opp" : "us";
+        assignSlot(team, Number(btn.getAttribute("data-sub-slot")), null);
+        draw({ keepScroll: true });
+      });
+    });
+  }
+
+  function halfReminderMarkup() {
+    if (!isOlympusGame() || st.halfReminderDismissed) return "";
+    return `
+      <div class="half-reminder" role="status">
+        <p><strong>Olympus reminder:</strong> at halftime switch to <em>2nd Half</em> and tap <em>Swap sides</em> so attack direction matches the field.</p>
+        <button type="button" class="btn btn-ghost" id="dismiss-half-reminder">Got it</button>
+      </div>`;
   }
 
   function renderRecorder(opts = {}) {
@@ -1723,16 +2263,14 @@
     const etOne = events.filter((e) => eventPeriod(e) === "ET1");
     const etTwo = events.filter((e) => eventPeriod(e) === "ET2");
     const showEtLog = etMode || etOne.length > 0 || etTwo.length > 0;
-    const recording = st.mode === "awaiting-location" || st.mode === "awaiting-shot-location";
+    const awaitingShot = st.mode === "awaiting-shot-location";
     const goalSide = st.swapSides ? "left" : "right";
-    let status = `Add Play, then tap the highlighted pitch. ${periodLabel(period)} · ${teamLabel(recordingTeam())} · goal on the ${goalSide}.`;
-    if (st.mode === "awaiting-location") {
-      status = `Tap the pass or shot location · ${periodLabel(period)} · ${teamLabel(recordingTeam())}.`;
-    } else if (st.mode === "awaiting-shot-location") {
+    let status = `Double-tap a spot on either pitch to start a play. ${periodLabel(period)} · goal on the ${goalSide}.`;
+    if (awaitingShot) {
       const a = st.pending?.assist;
       status = a
-        ? `Assist: ${playerLabel(a.player ? Object.assign({ team: recordingTeam() }, a.player) : null)} (${ASSIST_TYPE_LABELS[a.type]}). Tap the shot.`
-        : "Tap where the shot was taken.";
+        ? `Assist: ${playerLabel(a.player ? Object.assign({ team: recordingTeam() }, a.player) : null)} (${ASSIST_TYPE_LABELS[a.type]}). Tap the shot on the ${teamLabel(recordingTeam())} pitch.`
+        : `Tap where the shot was taken on the ${teamLabel(recordingTeam())} pitch.`;
     }
     const usActive = recordingTeam() === "us";
     const pitchOpts = { showGrid: st.showGrid, period, swapped: st.swapSides };
@@ -1741,6 +2279,7 @@
       <div class="tracker-page">
         ${trackerNav("shots")}
         <p class="shots-game-label">${escapeHtml(gameTitle(st.game))}</p>
+        ${halfReminderMarkup()}
         <section class="tracker-stage">
           <div class="half-toggle" role="tablist" aria-label="Match period">
             ${
@@ -1753,31 +2292,32 @@
             <button type="button" class="half-toggle-btn is-et" data-et-toggle aria-label="Extra time">ET</button>`
             }
           </div>
-          <div class="half-toggle tracker-side-toggle" role="tablist" aria-label="Recording team">
-            <button type="button" class="half-toggle-btn ${usActive ? "is-on" : ""}" data-set-team="us">Brighton</button>
-            <button type="button" class="half-toggle-btn ${!usActive ? "is-on" : ""}" data-set-team="opp">${escapeHtml(opponentOf(st.game)?.name || "Opponent")}</button>
-          </div>
           <div class="tracker-toolbar">
             ${
-              recording
-                ? `<button type="button" class="btn btn-secondary" id="tracker-cancel-record">Cancel</button>`
-                : `<button type="button" class="btn btn-primary" id="tracker-record">Add Play</button>`
+              awaitingShot
+                ? `<button type="button" class="btn btn-secondary" id="tracker-cancel-record">Cancel assist</button>`
+                : ""
             }
             <button type="button" class="btn btn-ghost" id="tracker-swap">${st.swapSides ? "Goal left" : "Swap sides"}</button>
             <button type="button" class="btn btn-ghost" id="tracker-export" ${events.length ? "" : "disabled"}>CSV</button>
             <button type="button" class="btn btn-ghost" id="tracker-toggle-grid">${st.showGrid ? "Hide zones" : "Zones"}</button>
           </div>
-          <p class="tracker-status ${recording ? "is-live" : ""}" id="tracker-status">${escapeHtml(status)}</p>
+          <p class="tracker-status ${awaitingShot ? "is-live" : ""}" id="tracker-status">${escapeHtml(status)}</p>
           <div class="tracker-pitches">
-            <div class="tracker-pitch-block ${usActive ? "is-active" : ""}">
-              <p class="tracker-pitch-caption">Brighton</p>
+            <div class="tracker-pitch-block ${usActive || !awaitingShot ? "is-active" : ""}">
+              <p class="tracker-pitch-caption">Brighton · double-tap to record</p>
               <div class="pitch-wrap tracker-pitch-wrap" id="tracker-pitch-us">${halfPitchMarkup(events, Object.assign({ team: "us" }, pitchOpts))}</div>
             </div>
-            <div class="tracker-pitch-block is-opp ${!usActive ? "is-active" : ""}">
-              <p class="tracker-pitch-caption">Opponent</p>
+            <div class="tracker-pitch-block is-opp ${!usActive || !awaitingShot ? "is-active" : ""}">
+              <p class="tracker-pitch-caption">${escapeHtml(opponentOf(st.game)?.name || "Opponent")} · double-tap to record</p>
               <div class="pitch-wrap tracker-pitch-wrap" id="tracker-pitch-opp">${halfPitchMarkup(events, Object.assign({ team: "opp" }, pitchOpts))}</div>
             </div>
           </div>
+        </section>
+        ${lineupEditorMarkup()}
+        <section class="tracker-units" id="tracker-units">
+          <h2>Units &amp; trends</h2>
+          ${unitsMarkup(events.filter((e) => eventTeam(e) === "us"))}
         </section>
         <section class="tracker-log" id="tracker-log">
           <h2>Recorded plays</h2>
@@ -1787,35 +2327,25 @@
         </section>
       </div>`;
 
-    $("#tracker-record")?.addEventListener("click", () => {
-      st.mode = "awaiting-location";
-      st.pending = null;
-      draw();
-    });
     $("#tracker-cancel-record")?.addEventListener("click", () => {
       closeShotModal();
       resetTrackerDraft();
       draw();
     });
-    $$("[data-set-team]").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        const next = btn.getAttribute("data-set-team") === "opp" ? "opp" : "us";
-        if (next === st.team) return;
-        if (st.mode === "awaiting-shot-location") {
-          showToast("Finish this shot first");
-          return;
-        }
-        st.team = next;
-        saveUi();
-        closeShotModal();
-        draw({ keepScroll: true });
-      });
+    $("#dismiss-half-reminder")?.addEventListener("click", () => {
+      st.halfReminderDismissed = true;
+      saveUi();
+      draw({ keepScroll: true });
     });
     $$("[data-set-period]").forEach((btn) => {
       btn.addEventListener("click", () => {
         const next = normalizePeriod(btn.getAttribute("data-set-period"));
         if (next === st.period) return;
+        const wasFirst = st.period === "1";
         st.period = next;
+        if (wasFirst && next === "2" && isOlympusGame()) {
+          showToast("Olympus: switch half — consider Swap sides too");
+        }
         saveUi();
         resetTrackerDraft();
         closeShotModal();
@@ -1841,6 +2371,7 @@
     });
     $("#tracker-export")?.addEventListener("click", () => exportShotsCsv(events));
     bindTrackerPitches();
+    bindLineupEditor();
     bindLogActions();
     if (opts.keepScroll) window.scrollTo(0, scrollY);
   }
@@ -1855,9 +2386,11 @@
   }
 
   function resultFill(result) {
-    if (result === "goal") return "#f0c14b";
+    if (result === "goal" || result === "pk-goal") return "#f0c14b";
     if (result === "on-target") return "#ffffff";
     if (result === "blocked") return "#e07a3d";
+    if (result === "foul") return "#9b59b6";
+    if (result === "corner") return "#3498db";
     return "rgba(11,31,51,0.45)";
   }
 
@@ -1885,8 +2418,8 @@
         const period = eventPeriod(ev);
         const team = eventTeam(ev);
         const shot = toFullFieldPoint(ev.shot, period, team);
-        const stroke = team === "opp" ? "#c0392b" : ev.result === "missed" ? "#ffffff" : "#0b1f33";
-        const numFill = team === "opp" || ev.result === "missed" ? "#ffffff" : "#0b1f33";
+        const stroke = team === "opp" ? "#c0392b" : ev.result === "missed" || ev.result === "pk-missed" ? "#ffffff" : "#0b1f33";
+        const numFill = team === "opp" || ev.result === "missed" || ev.result === "pk-missed" ? "#ffffff" : "#0b1f33";
         let html = "";
         if (ev.assist) {
           const a = toFullFieldPoint(ev.assist, period, team);
@@ -2101,10 +2634,14 @@
         </form>
         ${
           rows
-            ? `<div class="tracker-toolbar">
+            ? `          <div class="tracker-toolbar">
             <span class="pill">Matches <strong>${rows.length}</strong></span>
             <button type="button" class="btn btn-ghost" id="hist-export" ${rows.length ? "" : "disabled"}>CSV of this view</button>
           </div>
+          <section class="tracker-units">
+            <h2>Units &amp; trends (Brighton)</h2>
+            ${unitsMarkup(rows.filter((e) => eventTeam(e) === "us"))}
+          </section>
           <div class="tracker-table-wrap">
             <table class="tracker-table">
               <thead>
@@ -2116,6 +2653,7 @@
                   <th>Player</th>
                   <th>Pos</th>
                   <th>Result</th>
+                  <th>Miss</th>
                   <th>Assisted by</th>
                   <th>Assist type</th>
                   <th>Shot location</th>

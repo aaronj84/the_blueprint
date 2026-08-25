@@ -1693,6 +1693,25 @@ body.coach-mode .coach-controls {
   stroke: #ffffff;
 }
 
+.tracker-shot-dot.foul {
+  fill: #9b59b6;
+}
+
+.tracker-shot-dot.corner {
+  fill: #3498db;
+}
+
+.tracker-shot-dot.pk-goal {
+  fill: #f0c14b;
+  stroke-width: 0.45;
+}
+
+.tracker-shot-dot.pk-missed {
+  fill: rgba(11, 31, 51, 0.4);
+  stroke: #f0c14b;
+  stroke-width: 0.4;
+}
+
 .tracker-event.is-opp .tracker-shot-dot {
   stroke: #c0392b;
   stroke-width: 0.45;
@@ -1943,6 +1962,26 @@ body.coach-mode .coach-controls {
   color: var(--text-muted);
 }
 
+.shot-result-pill.foul {
+  background: rgba(155, 89, 182, 0.18);
+  color: #6c3483;
+}
+
+.shot-result-pill.corner {
+  background: rgba(52, 152, 219, 0.18);
+  color: #1a5276;
+}
+
+.shot-result-pill.pk-goal {
+  background: rgba(240, 193, 75, 0.35);
+  color: #7a5a00;
+}
+
+.shot-result-pill.pk-missed {
+  background: var(--bg-soft);
+  color: var(--text-muted);
+}
+
 #shot-event-modal {
   padding: 0.55rem;
   place-items: stretch;
@@ -2122,8 +2161,82 @@ body.coach-mode .coach-controls {
   background: rgba(240, 193, 75, 0.22);
 }
 
+.shot-action-btn.is-foul {
+  background: rgba(155, 89, 182, 0.14);
+}
+
+.shot-action-btn.is-corner {
+  background: rgba(52, 152, 219, 0.14);
+}
+
+.shot-action-btn.is-pk-goal {
+  background: rgba(240, 193, 75, 0.28);
+}
+
+.shot-action-btn.is-pk-missed,
+.shot-action-btn.is-miss-dir {
+  background: rgba(11, 31, 51, 0.06);
+}
+
 .shot-action-btn:hover {
   border-color: var(--border-strong);
+}
+
+.lineup-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0.5rem 0 0.75rem;
+}
+
+.half-reminder {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.65rem;
+  margin: 0 0 0.85rem;
+  padding: 0.75rem 0.9rem;
+  border: 1px solid rgba(224, 122, 61, 0.45);
+  border-radius: 12px;
+  background: rgba(224, 122, 61, 0.12);
+}
+
+.half-reminder p {
+  margin: 0;
+  flex: 1;
+  min-width: 12rem;
+  font-size: 0.92rem;
+}
+
+.units-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  margin-top: 0.5rem;
+}
+
+.units-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.units-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.3rem 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.92rem;
+}
+
+.tracker-units {
+  margin: 1.25rem 0 0.5rem;
+}
+
+.tracker-units h2 {
+  margin: 0 0 0.35rem;
+  font-size: 1.1rem;
 }
 
 .shot-modal-panel .modal-actions {
