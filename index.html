@@ -7,7 +7,7 @@
   <meta name="theme-color" content="#f4f7fb" />
   <title>The Blueprint — Brighton Fresh/Soph Blue Team</title>
   <link rel="icon" href="assets/logo.svg" type="image/svg+xml" />
-  <link rel="stylesheet" href="styles.css?v=20260817f" />
+  <link rel="stylesheet" href="styles.css?v=20260819a" />
 </head>
 <body>
   <a class="sr-only" href="#main">Skip to content</a>
@@ -126,7 +126,8 @@
         <span id="shot-lineup-nudge-text">Positions aren’t set. This play will save without a player.</span>
         <button type="button" class="btn btn-ghost" id="shot-goto-lineup">Set positions</button>
       </p>
-      <p class="step-label shot-modal-heading" hidden>Player</p>
+      <p class="step-label shot-modal-heading" id="shot-modal-heading" hidden>Player</p>
+      <div class="shot-position-grid" id="shot-position-grid" hidden></div>
       <div class="shot-player-grid" id="shot-player-grid" hidden></div>
       <p class="step-label" id="shot-action-label" hidden>What happened?</p>
       <div class="shot-action-grid" id="shot-action-grid"></div>
@@ -141,7 +142,7 @@
     <div class="modal-backdrop" data-close-number-pick></div>
     <div class="modal-panel number-pick-panel">
       <h2 id="number-pick-title">Jersey number</h2>
-      <p class="muted">Spin to the number who came on. Gray numbers are already on the field.</p>
+      <p class="muted">Pick a jersey that isn’t already on this team’s season roster. Leave unknown from the previous screen if you couldn’t read it.</p>
       <label class="sr-only" for="number-pick-select">Jersey number</label>
       <select id="number-pick-select" class="number-pick-select" size="7"></select>
       <div class="modal-actions">
@@ -151,19 +152,56 @@
     </div>
   </div>
 
-  <div class="modal" id="lineup-sub-modal" hidden role="dialog" aria-modal="true" aria-labelledby="lineup-sub-title">
-    <div class="modal-backdrop" data-close-lineup-sub></div>
-    <div class="modal-panel shot-modal-panel">
-      <h2 id="lineup-sub-title">Who came on?</h2>
-      <p class="muted">Swap this position to another player on the same team.</p>
-      <div class="shot-player-grid" id="lineup-sub-list"></div>
+  <div class="modal" id="shot-edit-modal" hidden role="dialog" aria-modal="true" aria-labelledby="shot-edit-title">
+    <div class="modal-backdrop" data-close-shot-edit></div>
+    <div class="modal-panel">
+      <h2 id="shot-edit-title">Edit shot</h2>
+      <p class="muted">Silent overwrite — no edit history in this phase. Naming a player updates every shot with that player.</p>
+      <label class="shots-field">Result
+        <select id="shot-edit-result">
+          <option value="goal">Goal</option>
+          <option value="on-target">Shot on Goal</option>
+          <option value="blocked">Shot Blocked</option>
+          <option value="missed">Missed Shot</option>
+        </select>
+      </label>
+      <label class="shots-field">Position
+        <select id="shot-edit-position">
+          <option value="">—</option>
+          <option value="GK">GK</option>
+          <option value="RB">RB</option>
+          <option value="LB">LB</option>
+          <option value="RCB">RCB</option>
+          <option value="LCB">LCB</option>
+          <option value="DM">DM</option>
+          <option value="RW">RW</option>
+          <option value="CM">CM</option>
+          <option value="CF">CF</option>
+          <option value="AM">AM</option>
+          <option value="LW">LW</option>
+        </select>
+      </label>
+      <label class="shots-field">Player
+        <select id="shot-edit-player"></select>
+      </label>
+      <label class="shots-field">Player name
+        <input type="text" id="shot-edit-name" class="text-gate-input" autocomplete="off" placeholder="Full name (Veo review)" />
+      </label>
+      <label class="shots-field">Short name
+        <input type="text" id="shot-edit-short" class="text-gate-input" autocomplete="off" placeholder="Kate, Ari…" />
+      </label>
       <div class="modal-actions">
-        <button type="button" class="btn btn-secondary" data-close-lineup-sub>Cancel</button>
+        <button type="button" class="btn btn-ghost" data-close-shot-edit>Cancel</button>
+        <button type="button" class="btn btn-primary" id="shot-edit-save">Save</button>
       </div>
     </div>
   </div>
 
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="shots-config.js?v=20260819a"></script>
   <script src="scenarios.js?v=20260817a"></script>
-  <script src="app.js?v=20260817f"></script>
+  <script src="shots-api.js?v=20260819a"></script>
+  <script src="shots.js?v=20260819a"></script>
+  <script src="app.js?v=20260819a"></script>
 </body>
 </html>

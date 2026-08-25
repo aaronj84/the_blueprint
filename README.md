@@ -61,15 +61,26 @@ Coach mode shows scenario IDs, correct answers, target areas, cues, prev/next co
 | `#challenge` | Mixed challenge |
 | `#glossary` | Glossary |
 | `#attack-01` | Specific scenario (any scenario `id`) |
+| `#shots` | Varsity shot tracker (PIN + record) |
+| `#shots-games` | Shot tracker game list / schedule import |
+| `#shots-history` | Cross-game shot queries |
+| `#shots-map` | Full-field shot map for the selected game |
 
 ## Project structure
 
 ```text
 /
-  index.html      # App shell
-  styles.css      # Coaching-board UI
-  app.js          # Navigation, pitch, interactions, progress, coach, challenge
-  scenarios.js    # All tactical content (edit this)
+  index.html              # App shell
+  styles.css              # Coaching-board UI + shot tracker
+  app.js                  # Navigation, pitch, interactions, progress, coach, challenge
+  scenarios.js            # All tactical content (edit this)
+  shots-config.js         # Supabase URL, anon key, shared PIN
+  shots-config.example.js
+  shots-api.js            # Supabase access layer
+  shots.js                # Shot tracker UI
+  supabase/schema.sql     # Postgres tables, RLS, Brighton roster seed
+  supabase/sample_data.sql
+  supabase/sample_schedule.csv
   assets/logo.svg
   README.md
 ```
@@ -146,3 +157,31 @@ Each of Attack, Wide, Defense, and Corners opens with an **optional overview** o
 - Content is data-driven: change wording and coordinates without rewriting the renderer.
 - Challenge mode removes most labels/highlights and skips the first-hint path.
 - Mastery bands: Learning &lt;60%, Developing 60–79%, Ready 80–89%, Mastered ≥90%.
+
+## Varsity shot tracker (Phase 2)
+
+Mobile-first sideline chance tracker. Shared staff PIN (`KEPPA`) gates an anonymous Supabase session. There are **no per-coach accounts** — attribution is the player who took the shot, never who tapped the screen.
+
+Pickup notes for another machine (PIN, dashboard, `shots-config.js`): **[supabase/README.md](supabase/README.md)**.
+
+### One-time Supabase setup
+
+1. Create a Supabase project.
+2. SQL editor: run `supabase/schema.sql`, then optionally `supabase/sample_data.sql`.
+3. Authentication → Providers → **Anonymous** → Enable.
+4. Project Settings → API: copy Project URL and `anon` `public` key into `shots-config.js` (and into `supabase/README.md` if you are switching machines).
+
+Without URL/key, `#shots` shows a setup screen. After config is in place, open **Settings → Varsity shot tracker** or go to `#shots`.
+
+Schedule CSV (CRLF, exact column order):
+
+`date, home_team, away_team, season_label, game_type`
+
+`game_type` is one of: `preseason` / `region` / `playoffs` / `friendly` / `other`. Unknown team names require confirmation before rows are created.
+
+A localStorage game from Phase 1 (`brighton-varsity-shot-tracker`) can be imported into a new shared game. Import does **not** delete the device copy.
+
+### Out of scope (later)
+
+Per-coach attribution, shot edit-history, offline-first sync for spotty stadium wifi, realtime multi-device live updates, xG / video / formation drawing. Failed writes stay on screen as **not saved — check connection** with retry; they are not queued.
+

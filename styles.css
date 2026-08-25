@@ -344,6 +344,10 @@ body.shot-map-view .app-main {
   max-width: 42rem;
 }
 
+body.shots-admin-view .app-main {
+  max-width: 44rem;
+}
+
 body.tracker-view .brand-sub {
   display: none;
 }
@@ -1515,7 +1519,7 @@ body.coach-mode .coach-controls {
 }
 
 .tracker-stage {
-  min-height: calc(100dvh - var(--header-h) - 0.35rem);
+  min-height: auto;
   display: flex;
   flex-direction: column;
   gap: 0.4rem;
@@ -1624,7 +1628,7 @@ body.coach-mode .coach-controls {
   cursor: inherit;
   width: 100%;
   height: auto;
-  max-height: calc(100dvh - var(--header-h) - 6.75rem);
+  max-height: min(34vh, 20rem);
 }
 
 .tracker-cell {
@@ -2018,6 +2022,7 @@ body.coach-mode .coach-controls {
   gap: 0.5rem;
   margin-bottom: 0.65rem;
   min-height: 0;
+  overflow-y: auto;
 }
 
 .shot-player-btn {
@@ -2260,4 +2265,211 @@ body.coach-mode .coach-controls {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+/* Phase 2 shot tracker */
+.shots-subnav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-bottom: 0.65rem;
+}
+
+.shots-subnav .btn.is-on {
+  background: var(--brand);
+  border-color: var(--brand);
+  color: #fff;
+}
+
+.shots-game-label {
+  margin: 0 0 0.35rem;
+  font-size: 0.82rem;
+  font-weight: 650;
+  color: var(--text-muted);
+}
+
+.shots-gate {
+  padding: 1.25rem 0.25rem 2rem;
+}
+
+.shots-gate h1 {
+  margin: 0 0 0.5rem;
+}
+
+.shots-pin-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  max-width: 16rem;
+}
+
+.shots-error {
+  color: var(--incorrect);
+  font-weight: 650;
+}
+
+.shots-admin h1 {
+  margin: 0 0 0.35rem;
+  font-size: 1.45rem;
+}
+
+.shots-admin h2 {
+  margin: 1.35rem 0 0.4rem;
+  font-size: 1.05rem;
+}
+
+.shots-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.shots-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.82rem;
+  font-weight: 650;
+  margin: 0 0 0.65rem;
+}
+
+.shots-field select,
+.shots-field input[type="date"],
+.shots-field input[type="number"],
+.shots-field input[type="text"],
+#shot-edit-modal select {
+  min-height: 44px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  font: inherit;
+  font-size: 1rem;
+  padding: 0 0.55rem;
+}
+
+.shots-game-list {
+  list-style: none;
+  margin: 0.5rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.shots-game-btn {
+  width: 100%;
+  text-align: left;
+  min-height: 52px;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-panel);
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.shots-game-btn span {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.shots-confirm {
+  margin: 0.75rem 0;
+  padding: 0.85rem;
+  background: var(--bg-soft);
+  border-radius: var(--radius);
+}
+
+.tracker-pitches {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.tracker-pitch-block {
+  border-radius: calc(var(--radius) + 2px);
+  padding: 0.15rem 0.15rem 0.3rem;
+}
+
+.tracker-pitch-block.is-active {
+  outline: 3px solid var(--brand);
+  outline-offset: 2px;
+}
+
+.tracker-pitch-block.is-opp.is-active {
+  outline-color: #6b7280;
+}
+
+.tracker-pitch-caption {
+  margin: 0 0 0.15rem 0.15rem;
+  font-size: 0.72rem;
+  font-weight: 750;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.tracker-pitch-svg.is-opp-pitch {
+  background: #6b7280;
+}
+
+.tracker-pitch-svg.is-opp-pitch .grass-stripe {
+  fill: #4b5563;
+}
+
+.shot-position-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin: 0 0 0.55rem;
+}
+
+.shot-pos-btn {
+  min-height: 36px;
+  min-width: 2.6rem;
+  padding: 0.2rem 0.4rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-soft);
+  font-size: 0.75rem;
+  font-weight: 750;
+}
+
+.shot-pos-btn.is-on {
+  background: var(--brand);
+  border-color: var(--brand);
+  color: #fff;
+}
+
+.shot-quick-label {
+  grid-column: 1 / -1;
+  margin: 0.15rem 0 0;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.linkish {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--brand);
+  font: inherit;
+  font-weight: 650;
+  text-align: left;
+  min-height: 0;
+}
+
+tr.is-unsaved td {
+  background: rgba(155, 34, 38, 0.08);
+}
+
+.shots-retry {
+  display: block;
+  margin-top: 0.25rem;
+  min-height: 36px;
+  font-size: 0.75rem;
 }
