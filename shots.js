@@ -61,6 +61,20 @@
     { id: 10, code: "CF", group: "FWD" },
     { id: 11, code: "RW", group: "FWD" },
   ];
+  /** 4-3-3 pin map: attacking goal at top, % of pitch (card centers). */
+  const FORMATION_LAYOUT = [
+    { id: 9, code: "LW", x: 18, y: 11 },
+    { id: 10, code: "CF", x: 50, y: 7 },
+    { id: 11, code: "RW", x: 82, y: 11 },
+    { id: 7, code: "LM", x: 28, y: 31 },
+    { id: 8, code: "RM", x: 72, y: 31 },
+    { id: 6, code: "DM", x: 50, y: 43 },
+    { id: 2, code: "LB", x: 12, y: 61 },
+    { id: 3, code: "LCB", x: 36, y: 57 },
+    { id: 4, code: "RCB", x: 64, y: 57 },
+    { id: 5, code: "RB", x: 88, y: 61 },
+    { id: 1, code: "GK", x: 50, y: 87 },
+  ];
   const POSITION_GROUPS = [
     { id: "GK", label: "GK" },
     { id: "OB", label: "Outside backs" },
@@ -69,6 +83,28 @@
     { id: "FWD", label: "Forwards" },
   ];
   const GROUP_FOR_CODE = Object.fromEntries(POSITION_SLOTS.map((s) => [s.code, s.group]));
+  /** Jersey → position groups (for Sub / lineup dropdown ordering) */
+  const DEFAULT_POSITION_GROUPS = {
+    "1": ["GK"], // Lilah
+    "19": ["CB"], // Jane
+    "20": ["CB"], // Shai
+    "11": ["CB"], // Tae
+    "33": ["CB", "OB"], // Finley
+    "15": ["OB", "MID"], // Saige
+    "2": ["OB", "MID"], // Maddie
+    "8": ["OB", "FWD"], // Addison
+    "9": ["OB", "FWD"], // Georgia
+    "24": ["MID", "FWD"], // Savvy
+    "17": ["MID"], // Jackie
+    "26": ["MID"], // Sharky
+    "18": ["MID"], // Stella
+    "25": ["MID"], // Grace
+    "32": ["FWD"], // Ari
+    "13": ["FWD"], // Kailee
+    "29": ["FWD"], // Abby
+    "5": ["FWD"], // Kate
+    "27": ["FWD"], // Natalia
+  };
   /** Default 4-3-3 XI: back→front, left→right */
   const DEFAULT_XI_JERSEYS = [
     { slot: 1, code: "GK", number: "1" }, // Lilah
@@ -254,6 +290,7 @@
     action: null,
     position: "",
     missDirection: "",
+    subSlotId: null,
   };
 
   function normalizePeriod(p) {
@@ -334,6 +371,34 @@
       if (!p) return null;
       return Object.assign({ slot: slot.id, slotCode: slot.code, team }, p);
     }).filter(Boolean);
+  }
+
+  function formationPitchShell(cardsHtml, extrasHtml = "") {
+    return `
+      <div class="formation-pitch" role="group" aria-label="4-3-3 formation">
+        <div class="formation-pitch-lines" aria-hidden="true">
+          <span class="fp-outline"></span>
+          <span class="fp-halfway"></span>
+          <span class="fp-circle"></span>
+          <span class="fp-box fp-box-att"></span>
+          <span class="fp-six fp-six-att"></span>
+          <span class="fp-box fp-box-def"></span>
+          <span class="fp-six fp-six-def"></span>
+        </div>
+        ${cardsHtml}
+      </div>
+      ${extrasHtml || ""}`;
+  }
+
+  function formationCardStyle(layout) {
+    return `left:${layout.x}%;top:${layout.y}%`;
+  }
+
+  function formationMeta(slotCode, player) {
+    if (player && player.number != null && player.number !== "") {
+      return `${escapeHtml(String(player.number))} · ${escapeHtml(slotCode)}`;
+    }
+    return escapeHtml(slotCode);
   }
 
   function usedLineupNumbers(team, exceptSlot) {
@@ -418,18 +483,23 @@
 
   function rosterPlayers(team) {
     const rows = team === "opp" ? st.oppRoster : st.ourRoster;
-    return rows.map((r) => ({
-      id: r.player_id || r.player?.id,
-      rosterId: r.id,
-      number: r.jersey_number,
-      jersey_number: r.jersey_number,
-      name: r.player?.name || null,
-      short: r.player?.short_name || null,
-      short_name: r.player?.short_name || null,
-      squad: r.squad === "jv" ? "jv" : "varsity",
-      positionGroups: Array.isArray(r.player?.position_groups) ? r.player.position_groups.slice() : [],
-      team,
-    }));
+    return rows.map((r) => {
+      const number = String(r.jersey_number || "");
+      const fromDb = Array.isArray(r.player?.position_groups) ? r.player.position_groups.filter(Boolean) : [];
+      const fromDefaults = DEFAULT_POSITION_GROUPS[number] || [];
+      return {
+        id: r.player_id || r.player?.id,
+        rosterId: r.id,
+        number: r.jersey_number,
+        jersey_number: r.jersey_number,
+        name: r.player?.name || null,
+        short: r.player?.short_name || null,
+        short_name: r.player?.short_name || null,
+        squad: r.squad === "jv" ? "jv" : "varsity",
+        positionGroups: fromDb.length ? fromDb.slice() : fromDefaults.slice(),
+        team,
+      };
+    });
   }
 
   function sortPlayers(list) {
@@ -1350,6 +1420,7 @@
     shotModalDraft.action = null;
     shotModalDraft.position = "";
     shotModalDraft.missDirection = "";
+    shotModalDraft.subSlotId = null;
   }
 
   function closeShotModal() {
@@ -1360,6 +1431,7 @@
     shotModalDraft.location = null;
     shotModalDraft.position = "";
     shotModalDraft.missDirection = "";
+    shotModalDraft.subSlotId = null;
   }
 
   function dismissShotModal() {
@@ -1375,6 +1447,7 @@
     shotModalDraft.action = null;
     shotModalDraft.position = "";
     shotModalDraft.missDirection = "";
+    shotModalDraft.subSlotId = null;
     renderShotModal();
     shotModal.dataset.openedAt = String(Date.now());
     shotModal.hidden = false;
@@ -1432,12 +1505,14 @@
     const posGrid = $("#shot-position-grid");
     if (!shotModal || !playerGrid || !actionGrid) return;
     if (actionLabel) actionLabel.hidden = true;
+    playerGrid.classList.remove("is-formation");
 
     const step = shotModalDraft.step;
     const phase = shotModalDraft.phase;
     const loc = shotModalDraft.location;
     const locText = loc ? `${formatLoc(loc)}  ·  (${formatXY(loc)})` : "";
-    if (panel) panel.classList.toggle("is-player-phase", phase === "player" || phase === "miss-dir");
+    const inSubFlow = phase === "sub-slot" || phase === "sub-pick";
+    if (panel) panel.classList.toggle("is-player-phase", phase === "player" || phase === "miss-dir" || inSubFlow);
     if (backBtn) backBtn.hidden = phase === "action";
     if (posGrid) posGrid.hidden = phase !== "player";
 
@@ -1498,6 +1573,57 @@
       return;
     }
 
+    if (phase === "sub-slot") {
+      title.textContent = "Sub into which position?";
+      locEl.textContent = "Pick the slot to swap, then choose who comes in.";
+      if (playerHeading) playerHeading.hidden = true;
+      if (posGrid) posGrid.hidden = true;
+      actionGrid.hidden = true;
+      playerGrid.hidden = false;
+      playerGrid.classList.add("is-formation");
+      const cards = FORMATION_LAYOUT.map((layout) => {
+        const slot = POSITION_SLOTS.find((s) => s.id === layout.id);
+        const filled = slotPlayer("us", layout.id);
+        const who = filled ? playerDisplayName(filled) : "Empty";
+        return `
+          <button type="button" class="formation-card is-pick" style="${formationCardStyle(layout)}" data-sub-slot-pick="${layout.id}">
+            <span class="formation-card-name">${escapeHtml(who)}</span>
+            <span class="formation-card-meta">${formationMeta(slot?.code || layout.code, filled)}</span>
+          </button>`;
+      }).join("");
+      playerGrid.innerHTML = formationPitchShell(cards);
+      return;
+    }
+
+    if (phase === "sub-pick") {
+      const slot = POSITION_SLOTS.find((s) => s.id === Number(shotModalDraft.subSlotId));
+      const group = slot?.group || "";
+      const groupLabel = POSITION_GROUPS.find((g) => g.id === group)?.label || group;
+      title.textContent = `Who comes in at ${slot?.code || ""}?`;
+      locEl.textContent = `${groupLabel} first, then other varsity, then JV.`;
+      if (playerHeading) playerHeading.hidden = true;
+      if (posGrid) posGrid.hidden = true;
+      actionGrid.hidden = true;
+      playerGrid.hidden = false;
+      playerGrid.classList.remove("is-formation");
+      const used = usedLineupNumbers("us", shotModalDraft.subSlotId);
+      const all = sortPlayers(rosterPlayers("us")).filter((p) => !used.has(String(p.number)));
+      const preferred = all.filter((p) => p.squad !== "jv" && playerInGroup(p, group));
+      const varsityRest = all.filter((p) => p.squad !== "jv" && !playerInGroup(p, group));
+      const jv = all.filter((p) => p.squad === "jv");
+      const btn = (p, tag) => `
+        <button type="button" class="shot-player-btn" data-sub-pick-id="${escapeHtml(String(p.id || ""))}" data-sub-pick-number="${escapeHtml(String(p.number))}">
+          <span class="name">${escapeHtml(playerDisplayName(p))}</span>
+          <span class="num">#${escapeHtml(String(p.number))}${tag ? ` · ${tag}` : ""}</span>
+        </button>`;
+      playerGrid.innerHTML =
+        (preferred.length ? `<div class="shot-quick-label">${escapeHtml(groupLabel)}</div>${preferred.map((p) => btn(p, "")).join("")}` : "") +
+        (varsityRest.length ? `<div class="shot-quick-label">Other varsity</div>${varsityRest.map((p) => btn(p, "")).join("")}` : "") +
+        (jv.length ? `<div class="shot-quick-label">JV</div>${jv.map((p) => btn(p, "JV")).join("")}` : "") +
+        (!preferred.length && !varsityRest.length && !jv.length ? `<p class="muted">No available players.</p>` : "");
+      return;
+    }
+
     const chosen = shotModalDraft.action;
     const team = recordingTeam();
     title.textContent = playerWhoLabel(chosen);
@@ -1507,28 +1633,50 @@
     locEl.textContent = chosen
       ? `${actionShortLabel(chosen)}${chosen.kind === "assist" ? " assist" : ""}${missBit}  ·  ${locText}`
       : locText;
+    const onField = onFieldPlayers(team);
+    const showFormation = onField.length > 0;
     if (playerHeading) {
       playerHeading.hidden = false;
-      playerHeading.textContent = lineupIsSet()
-        ? "On-field players first. Position auto-fills from the lineup slot."
+      playerHeading.textContent = showFormation
+        ? "Tap a player on the pitch. Sub or switch team up top."
         : "Optional position, then player. Skip is a valid save.";
     }
     playerGrid.hidden = false;
     actionGrid.hidden = true;
     if (posGrid) {
-      posGrid.hidden = false;
-      posGrid.innerHTML = POSITION_CODES.map(
-        (code) =>
-          `<button type="button" class="shot-pos-btn ${shotModalDraft.position === code ? "is-on" : ""}" data-shot-pos="${code}">${code}</button>`
-      ).join("");
+      posGrid.hidden = showFormation;
+      if (!showFormation) {
+        posGrid.innerHTML = POSITION_CODES.map(
+          (code) =>
+            `<button type="button" class="shot-pos-btn ${shotModalDraft.position === code ? "is-on" : ""}" data-shot-pos="${code}">${code}</button>`
+        ).join("");
+      }
     }
 
-    const onField = lineupIsSet() ? onFieldPlayers(team) : [];
     const rosterList = sortPlayers(rosterPlayers(team));
     const onFieldNums = new Set(onField.map((p) => String(p.number)));
-    const rest = rosterList.filter((p) => !onFieldNums.has(String(p.number)));
-    const restVarsity = rest.filter((p) => p.squad !== "jv");
-    const restJv = rest.filter((p) => p.squad === "jv");
+    const oppLabel = opponentOf(st.game)?.name || "Opponent";
+
+    const toolbar = `
+      <div class="shot-team-bar">
+        <div class="half-toggle shot-team-toggle" role="tablist" aria-label="Recording team">
+          <button type="button" class="half-toggle-btn ${team === "us" ? "is-on" : ""}" data-shot-team="us">Brighton</button>
+          <button type="button" class="half-toggle-btn ${team === "opp" ? "is-on" : ""}" data-shot-team="opp">${escapeHtml(oppLabel)}</button>
+        </div>
+        <div class="shot-team-actions">
+          ${
+            team === "us"
+              ? `<button type="button" class="btn btn-ghost shot-bar-btn is-sub-in" data-sub-in="1">Sub player in</button>`
+              : ""
+          }
+          <button type="button" class="btn btn-ghost shot-bar-btn" data-player-skip="1">Unknown</button>
+          ${
+            team === "opp"
+              ? `<button type="button" class="btn btn-ghost shot-bar-btn" data-player-add="1">Add number</button>`
+              : ""
+          }
+        </div>
+      </div>`;
 
     const playerBtn = (p, extra = "") => {
       const label = team === "opp" && !p.name && !p.short ? `#${p.number}` : escapeHtml(playerDisplayName(p));
@@ -1540,38 +1688,56 @@
         </button>`;
     };
 
-    let html = "";
-    if (onField.length) {
-      html += `<div class="shot-quick-label">On the field</div>${onField.map((p) => playerBtn(p)).join("")}`;
-    }
-    if (team === "opp") {
+    const formationPickCards = (forTeam) =>
+      FORMATION_LAYOUT.map((layout) => {
+        const p = slotPlayer(forTeam, layout.id);
+        if (!p) {
+          return `
+            <div class="formation-card is-empty" style="${formationCardStyle(layout)}">
+              <span class="formation-card-name">Empty</span>
+              <span class="formation-card-meta">${escapeHtml(layout.code)}</span>
+            </div>`;
+        }
+        const label =
+          forTeam === "opp" && !p.name && !p.short
+            ? `#${escapeHtml(String(p.number))}`
+            : escapeHtml(playerDisplayName(p));
+        return `
+          <button type="button" class="formation-card is-pick" style="${formationCardStyle(layout)}" data-player-number="${escapeHtml(String(p.number))}" data-player-id="${escapeHtml(p.id || "")}" data-player-team="${forTeam}" data-slot-code="${escapeHtml(layout.code)}">
+            <span class="formation-card-name">${label}</span>
+            <span class="formation-card-meta">${formationMeta(layout.code, p)}</span>
+          </button>`;
+      }).join("");
+
+    let html = toolbar;
+    if (showFormation) {
+      html += formationPitchShell(formationPickCards(team));
+      if (team === "opp") {
+        const rest = rosterList.filter((p) => !onFieldNums.has(String(p.number)));
+        const quick = usedThisGameNumbers("opp").filter((num) => !onFieldNums.has(String(num)));
+        if (quick.length) {
+          html += `<div class="shot-quick-label">Also used this game</div>${quick
+            .map((num) => {
+              const p = rosterList.find((x) => String(x.number) === String(num)) || { number: num, id: "" };
+              return playerBtn(p, " · game");
+            })
+            .join("")}`;
+        }
+        if (rest.length) html += `<div class="shot-quick-label">Bench / roster</div>${rest.map((p) => playerBtn(p)).join("")}`;
+      }
+    } else if (team === "opp") {
       const quick = usedThisGameNumbers("opp")
-        .filter((num) => !onFieldNums.has(String(num)))
         .map((num) => {
           const p = rosterList.find((x) => String(x.number) === String(num)) || { number: num, id: "" };
           return playerBtn(p, " · game");
         })
         .join("");
       if (quick) html += `<div class="shot-quick-label">Used this game</div>${quick}`;
-    }
-    if (restVarsity.length) {
-      html += `${onField.length ? `<div class="shot-quick-label">Bench / varsity</div>` : ""}${restVarsity.map((p) => playerBtn(p)).join("")}`;
-    }
-    if (restJv.length) {
-      html += `<div class="shot-quick-label">JV</div>${restJv.map((p) => playerBtn(p, " · JV")).join("")}`;
-    }
-    if (!onField.length && !restVarsity.length && !restJv.length && team !== "opp") {
+      if (rosterList.length) html += `<div class="shot-quick-label">Roster</div>${rosterList.map((p) => playerBtn(p)).join("")}`;
+    } else {
       html += rosterList.map((p) => playerBtn(p)).join("");
     }
-    html +=
-      `<button type="button" class="shot-player-btn" data-player-skip="1">
-        <span class="name">Unknown</span>
-        <span class="num">no number</span>
-      </button>
-      <button type="button" class="shot-player-btn" data-player-add="1">
-        <span class="name">Add number</span>
-        <span class="num">new</span>
-      </button>`;
+    playerGrid.classList.toggle("is-formation", html.includes("formation-pitch"));
     playerGrid.innerHTML = html;
   }
 
@@ -1762,6 +1928,54 @@
         renderShotModal();
         return;
       }
+      const teamBtn = e.target.closest("[data-shot-team]");
+      if (teamBtn) {
+        const next = teamBtn.getAttribute("data-shot-team") === "opp" ? "opp" : "us";
+        if (st.team !== next) {
+          st.team = next;
+          saveUi();
+          shotModalDraft.player = null;
+          shotModalDraft.position = "";
+        }
+        renderShotModal();
+        return;
+      }
+      if (e.target.closest("[data-sub-in]")) {
+        shotModalDraft.phase = "sub-slot";
+        shotModalDraft.subSlotId = null;
+        renderShotModal();
+        return;
+      }
+      const subSlotBtn = e.target.closest("[data-sub-slot-pick]");
+      if (subSlotBtn) {
+        shotModalDraft.subSlotId = Number(subSlotBtn.getAttribute("data-sub-slot-pick"));
+        shotModalDraft.phase = "sub-pick";
+        renderShotModal();
+        return;
+      }
+      const subPickBtn = e.target.closest("[data-sub-pick-number]");
+      if (subPickBtn) {
+        const slotId = Number(shotModalDraft.subSlotId);
+        const slot = POSITION_SLOTS.find((s) => s.id === slotId);
+        const number = subPickBtn.getAttribute("data-sub-pick-number");
+        const playerId = subPickBtn.getAttribute("data-sub-pick-id");
+        const player = playerFromRoster("us", playerId, number);
+        if (!player || !slot) return;
+        assignSlot("us", slotId, {
+          id: player.id || "",
+          number: String(player.number),
+          name: player.name || "",
+          short: player.short || player.short_name || "",
+        });
+        st.lineup.set = true;
+        saveLineupBag();
+        shotModalDraft.position = slot.code;
+        shotModalDraft.phase = "player";
+        shotModalDraft.subSlotId = null;
+        showToast(`${playerDisplayName(player)} in at ${slot.code}`);
+        renderShotModal();
+        return;
+      }
       if (e.target.closest("[data-player-skip]")) {
         shotModalDraft.player = null;
         await completeShotModal();
@@ -1795,6 +2009,18 @@
       }
     });
     $("#shot-modal-back")?.addEventListener("click", () => {
+      if (shotModalDraft.phase === "sub-pick") {
+        shotModalDraft.phase = "sub-slot";
+        shotModalDraft.subSlotId = null;
+        renderShotModal();
+        return;
+      }
+      if (shotModalDraft.phase === "sub-slot") {
+        shotModalDraft.phase = "player";
+        shotModalDraft.subSlotId = null;
+        renderShotModal();
+        return;
+      }
       if (shotModalDraft.phase === "player" && needsMissDirection(shotModalDraft.action)) {
         shotModalDraft.phase = "miss-dir";
         shotModalDraft.player = null;
@@ -1813,6 +2039,7 @@
       shotModalDraft.player = null;
       shotModalDraft.action = null;
       shotModalDraft.missDirection = "";
+      shotModalDraft.subSlotId = null;
       renderShotModal();
     });
     $("#shot-goto-lineup")?.addEventListener("click", () => {
@@ -2245,17 +2472,17 @@
   function lineupEditorMarkup() {
     const team = st.lineup.edit === "opp" ? "opp" : "us";
     const count = onFieldPlayers(team).length;
-    const rows = POSITION_SLOTS.map((slot) => {
+    const cards = FORMATION_LAYOUT.map((layout) => {
+      const slot = POSITION_SLOTS.find((s) => s.id === layout.id) || layout;
       const filled = slotPlayer(team, slot.id);
-      const groupLabel = POSITION_GROUPS.find((g) => g.id === slot.group)?.label || slot.group;
       const select =
         team === "opp"
-          ? `<select class="lineup-select" data-lineup-team="opp" data-lineup-slot="${slot.id}">${oppSelectOptions(slot.id)}</select>`
-          : `<select class="lineup-select" data-lineup-team="us" data-lineup-slot="${slot.id}">${usSelectOptions(slot.id)}</select>`;
+          ? `<select class="lineup-select formation-card-select" data-lineup-team="opp" data-lineup-slot="${slot.id}" aria-label="${escapeHtml(slot.code)}">${oppSelectOptions(slot.id)}</select>`
+          : `<select class="lineup-select formation-card-select" data-lineup-team="us" data-lineup-slot="${slot.id}" aria-label="${escapeHtml(slot.code)}">${usSelectOptions(slot.id)}</select>`;
       return `
-        <div class="lineup-row">
-          <span class="lineup-pos"><strong>${slot.code}</strong><span class="muted"> ${escapeHtml(groupLabel)}</span></span>
+        <div class="formation-card is-editor" style="${formationCardStyle(layout)}">
           ${select}
+          <span class="formation-card-meta">${formationMeta(slot.code, filled)}</span>
           <button type="button" class="btn btn-ghost lineup-sub" data-sub-slot="${slot.id}" ${filled && team === "us" ? "" : "disabled"} title="Sub from position group">Sub</button>
         </div>`;
     }).join("");
@@ -2268,8 +2495,8 @@
         </div>
         <p class="muted lineup-help">${
           lineupIsSet()
-            ? "Sub prefers players in that position group (OB / CB / Mid / Fwd). JV listed at the bottom."
-            : "Assign the XI, then tap Use this lineup. Default XI is Lilah; Saige–Shai–Jane–Maddie; Savvy; Jackie–Sharky; Georgia–Kailee–Ari."
+            ? "Opening a position dropdown lists that group first (OB / CB / Mid / Fwd), then other varsity, then JV."
+            : "Assign the XI on the pitch, then tap Use this lineup."
         }</p>
         <div class="lineup-actions">
           <button type="button" class="btn btn-ghost" id="save-default-lineup" ${onFieldPlayers("us").length ? "" : "disabled"}>Save Brighton as default</button>
@@ -2281,33 +2508,8 @@
           <button type="button" class="half-toggle-btn ${team === "opp" ? "is-on" : ""}" data-lineup-edit="opp">${escapeHtml(opponentOf(st.game)?.name || "Opponent")}</button>
         </div>
         <p class="lineup-count">${count}/11 on the field</p>
-        <div class="lineup-list">${rows}</div>
-        ${team === "us" ? positionGroupsEditorMarkup() : ""}
+        ${formationPitchShell(cards)}
       </section>`;
-  }
-
-  function positionGroupsEditorMarkup() {
-    const players = sortPlayers(rosterPlayers("us").filter((p) => p.squad !== "jv"));
-    if (!players.length) return "";
-    const rows = players
-      .map((p) => {
-        const checks = POSITION_GROUPS.map((g) => {
-          const on = playerInGroup(p, g.id);
-          return `<label class="group-check"><input type="checkbox" data-group-player="${escapeHtml(p.id)}" data-group-code="${g.id}" ${on ? "checked" : ""}/> ${escapeHtml(g.label)}</label>`;
-        }).join("");
-        return `
-          <div class="group-row">
-            <span class="group-player">${escapeHtml(playerDisplayName(p))} <span class="muted">#${escapeHtml(String(p.number))}</span></span>
-            <div class="group-checks">${checks}</div>
-          </div>`;
-      })
-      .join("");
-    return `
-      <div class="position-groups-editor" id="position-groups-editor">
-        <h3>Primary position groups</h3>
-        <p class="muted">Used when you Sub — same-group players appear first. A player can be in multiple groups.</p>
-        <div class="group-list">${rows}</div>
-      </div>`;
   }
 
   function openSubPicker(slotId) {
@@ -2406,23 +2608,6 @@
     });
     $$("[data-sub-slot]").forEach((btn) => {
       btn.addEventListener("click", () => openSubPicker(Number(btn.getAttribute("data-sub-slot"))));
-    });
-    $$("[data-group-player]").forEach((input) => {
-      input.addEventListener("change", async () => {
-        const playerId = input.getAttribute("data-group-player");
-        if (!playerId) return;
-        const boxes = $$(`[data-group-player="${CSS.escape(playerId)}"]`);
-        const groups = boxes.filter((el) => el.checked).map((el) => el.getAttribute("data-group-code"));
-        try {
-          await API.updatePlayer(playerId, { position_groups: groups });
-          const row = st.ourRoster.find((r) => r.player_id === playerId);
-          if (row?.player) row.player.position_groups = groups;
-          showToast("Groups saved");
-        } catch (err) {
-          showToast(err.message || "Could not save groups");
-          input.checked = !input.checked;
-        }
-      });
     });
   }
 
