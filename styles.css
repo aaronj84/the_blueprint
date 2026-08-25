@@ -2391,7 +2391,10 @@ button.formation-card.is-empty {
 .shot-player-grid .formation-extras,
 .shot-player-grid .shot-team-bar,
 .shot-player-grid .shot-empty-roster,
-.shot-player-grid .shot-quick-label {
+.shot-player-grid .shot-quick-label,
+.shot-player-grid .shot-dual-pitches,
+.shot-player-grid .shot-dual-pitch-block,
+.shot-player-grid .shot-dual-actions {
   grid-column: 1 / -1;
 }
 
@@ -2401,13 +2404,18 @@ button.formation-card.is-empty {
 }
 
 .shot-player-grid.is-formation {
-  align-content: start;
+  display: flex;
+  flex-direction: column;
+  align-content: stretch;
+  gap: 0.45rem;
 }
 
-.shot-modal-panel.is-player-phase .formation-pitch {
+.shot-modal-panel.is-player-phase .formation-pitch,
+.shot-player-grid .shot-dual-pitch-block .formation-pitch {
+  width: 100%;
   max-width: none;
   aspect-ratio: 68 / 92;
-  margin-top: 0.25rem;
+  margin: 0.25rem 0 0;
 }
 
 @media (max-width: 420px) {
@@ -3067,6 +3075,7 @@ button.formation-card.is-empty {
 }
 
 .shot-dual-pitch-block {
+  width: 100%;
   border-radius: calc(var(--radius) + 2px);
   padding: 0.1rem 0.1rem 0.25rem;
 }
