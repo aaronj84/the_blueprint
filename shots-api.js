@@ -42,6 +42,7 @@
   const SHOT_SELECT = `
     *,
     player:players!shots_player_id_fkey (id, name, short_name),
+    fouler:players!shots_fouler_player_id_fkey (id, name, short_name),
     assist_player:players!shots_assist_player_id_fkey (id, name, short_name)
   `;
 

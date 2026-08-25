@@ -212,7 +212,7 @@
 
     const brandSub = $("#brand-sub");
     if (brandSub) {
-      brandSub.textContent = shots ? "Shot Tracker" : view === "home" ? "The Blueprint · Shot Tracker" : "The Blueprint";
+      brandSub.textContent = shots ? "Shot Tracker" : view === "home" ? "BHS Blueprint · Shot Tracker" : "BHS Blueprint";
     }
 
     const blueprintNav = $(".nav-blueprint");
@@ -548,7 +548,7 @@
       </section>
       <section class="hub-grid" aria-label="App areas">
         <a class="hub-card" href="#blueprint">
-          <h2>The Blueprint</h2>
+          <h2>BHS Blueprint</h2>
           <p>Tactical learning for attacking shape, wide patterns, supporting runs, defense, and set pieces.</p>
           <span class="hub-card-cta">Open modules</span>
         </a>
@@ -626,7 +626,7 @@
 
     root.innerHTML = `
       <section class="hero">
-        <h1>The Blueprint</h1>
+        <h1>BHS Blueprint</h1>
         <p>See it, choose it, explain it. Train attacking shape, wide patterns, supporting runs, defensive shape, and set pieces.</p>
         <div class="hero-meta">
           <span class="pill">Progress <strong>${overall.done}/${overall.total}</strong></span>
@@ -856,7 +856,7 @@
       <div class="scenario-shell">
         <div class="scenario-toolbar">
           <div class="breadcrumb">
-            <a href="#blueprint">The Blueprint</a><span>/</span>
+            <a href="#blueprint">BHS Blueprint</a><span>/</span>
             <a href="#${escapeHtml(mod.hash)}">${escapeHtml(mod.title)}</a><span>/</span>
             <span>${escapeHtml(s.title)}</span>
           </div>

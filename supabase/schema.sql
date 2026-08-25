@@ -86,6 +86,9 @@ create table if not exists public.shots (
     miss_direction is null
     or miss_direction in ('over', 'short', 'wide-left', 'wide-right')
   ),
+  -- Free Kick: player_id is the infringer. PK: player_id is the taker; fouler_* is the infringer.
+  fouler_player_id uuid references public.players (id),
+  fouler_jersey_number_at_time text,
   assist_player_id uuid references public.players (id),
   assist_type text check (assist_type is null or assist_type in ('pass', 'gap', 'cross')),
   assist_position text check (
@@ -104,6 +107,7 @@ create table if not exists public.shots (
 
 create index if not exists shots_game_id_idx on public.shots (game_id);
 create index if not exists shots_player_id_idx on public.shots (player_id);
+create index if not exists shots_fouler_player_id_idx on public.shots (fouler_player_id);
 create index if not exists shots_team_id_idx on public.shots (team_id);
 create index if not exists games_season_id_idx on public.games (season_id);
 create index if not exists games_date_idx on public.games (date desc);

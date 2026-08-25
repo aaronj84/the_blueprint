@@ -7,7 +7,7 @@
   "use strict";
   const CONFIG = {
     teamName: "Brighton Fresh/Soph Blue",
-    appName: "The Blueprint",
+    appName: "BHS Blueprint",
     storageKey: "brighton-soccer-iq-progress",
     colors: {
       ours: "#1a4d7c",

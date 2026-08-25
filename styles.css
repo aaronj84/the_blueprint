@@ -119,17 +119,20 @@ a {
   text-decoration: none;
   color: var(--text);
   flex-shrink: 0;
+  min-width: 0;
 }
 
 .brand img {
   width: 36px;
   height: 36px;
+  flex-shrink: 0;
 }
 
 .brand-text {
   display: flex;
   flex-direction: column;
   line-height: 1.15;
+  min-width: 0;
 }
 
 .brand-name {
@@ -265,6 +268,7 @@ a {
   display: flex;
   gap: 0.4rem;
   align-items: center;
+  flex-shrink: 0;
 }
 
 .icon-btn {
@@ -1016,6 +1020,46 @@ body.coach-mode .coach-banner {
 }
 
 @media (max-width: 719px) {
+  .app-header {
+    gap: 0.4rem;
+    padding: 0.45rem 0.55rem;
+  }
+
+  .brand-name {
+    display: none;
+  }
+
+  body.tracker-view .brand-text {
+    display: none;
+  }
+
+  .brand {
+    gap: 0;
+  }
+
+  .area-switch {
+    flex: 1 1 auto;
+    min-width: 0;
+    justify-content: center;
+  }
+
+  .area-switch-btn {
+    flex: 1 1 0;
+    text-align: center;
+    padding: 0.32rem 0.4rem;
+    font-size: 0.7rem;
+  }
+
+  .header-actions {
+    margin-left: 0;
+    gap: 0.3rem;
+  }
+
+  .icon-btn {
+    width: 38px;
+    height: 38px;
+  }
+
   .pitch-wrap {
     /* Leave side gutters so thumbs can scroll past the diagram */
     width: 86%;

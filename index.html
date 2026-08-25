@@ -3,11 +3,11 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="description" content="Brighton Girls — The Blueprint tactical learning and Varsity Shot Tracker." />
+  <meta name="description" content="Brighton Girls — BHS Blueprint tactical learning and Varsity Shot Tracker." />
   <meta name="theme-color" content="#f4f7fb" />
   <title>Brighton Girls</title>
   <link rel="icon" href="assets/logo.svg" type="image/svg+xml" />
-  <link rel="stylesheet" href="styles.css?v=20260825d" />
+  <link rel="stylesheet" href="styles.css?v=20260825e" />
 </head>
 <body>
   <a class="sr-only" href="#main">Skip to content</a>
@@ -17,16 +17,16 @@
       <img src="assets/logo.svg" width="36" height="36" alt="" />
       <span class="brand-text">
         <span class="brand-name">Brighton Girls</span>
-        <span class="brand-sub" id="brand-sub">The Blueprint · Shot Tracker</span>
+        <span class="brand-sub" id="brand-sub">BHS Blueprint · Shot Tracker</span>
       </span>
     </a>
 
     <div class="area-switch" role="tablist" aria-label="App area">
-      <a class="area-switch-btn" href="#blueprint" data-area="blueprint" data-nav="blueprint-area">The Blueprint</a>
+      <a class="area-switch-btn" href="#blueprint" data-area="blueprint" data-nav="blueprint-area">BHS Blueprint</a>
       <a class="area-switch-btn" href="#shots" data-area="shots" data-nav="shots-area">Shot Tracker</a>
     </div>
 
-    <nav class="nav-desktop nav-blueprint" aria-label="The Blueprint">
+    <nav class="nav-desktop nav-blueprint" aria-label="BHS Blueprint">
       <a class="nav-link" href="#blueprint" data-nav="blueprint">Modules</a>
       <a class="nav-link" href="#basics" data-nav="basics">Basic 4-3-3</a>
 
@@ -89,11 +89,11 @@
       <a href="#home" data-nav="hub" data-close-drawer>Home</a>
 
       <p class="nav-drawer-heading">Areas</p>
-      <a href="#blueprint" data-area="blueprint" data-nav="blueprint-area" data-close-drawer>The Blueprint</a>
+      <a href="#blueprint" data-area="blueprint" data-nav="blueprint-area" data-close-drawer>BHS Blueprint</a>
       <a href="#shots" data-area="shots" data-nav="shots-area" data-close-drawer>Shot Tracker</a>
 
       <div class="drawer-blueprint">
-        <p class="nav-drawer-heading">The Blueprint</p>
+        <p class="nav-drawer-heading">BHS Blueprint</p>
         <a href="#blueprint" data-nav="blueprint" data-close-drawer>Modules</a>
         <a href="#basics" data-nav="basics" data-close-drawer>Basic 4-3-3</a>
         <a href="#attack" data-nav="attack" data-close-drawer>Attacking Shape</a>
@@ -185,7 +185,7 @@
           <option value="on-target">Shot on Goal</option>
           <option value="blocked">Shot Blocked</option>
           <option value="missed">Missed Shot</option>
-          <option value="foul">Foul</option>
+          <option value="foul">Free Kick</option>
           <option value="corner">Corner</option>
           <option value="pk-goal">PK Goal</option>
           <option value="pk-missed">PK Missed</option>
@@ -219,6 +219,9 @@
       <label class="shots-field">Player
         <select id="shot-edit-player"></select>
       </label>
+      <label class="shots-field" id="shot-edit-fouler-wrap">Fouler (infringement)
+        <select id="shot-edit-fouler"></select>
+      </label>
       <label class="shots-field">Player name
         <input type="text" id="shot-edit-name" class="text-gate-input" autocomplete="off" placeholder="Full name (Veo review)" />
       </label>
@@ -246,9 +249,9 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="shots-config.js?v=20260825c"></script>
-  <script src="scenarios.js?v=20260825c"></script>
-  <script src="shots-api.js?v=20260825c"></script>
-  <script src="shots.js?v=20260825d"></script>
-  <script src="app.js?v=20260825d"></script>
+  <script src="scenarios.js?v=20260825e"></script>
+  <script src="shots-api.js?v=20260825e"></script>
+  <script src="shots.js?v=20260825e"></script>
+  <script src="app.js?v=20260825e"></script>
 </body>
 </html>
