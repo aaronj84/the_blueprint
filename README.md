@@ -183,5 +183,5 @@ A localStorage game from Phase 1 (`brighton-varsity-shot-tracker`) can be import
 
 ### Out of scope (later)
 
-Per-coach attribution, shot edit-history, offline-first sync for spotty stadium wifi, realtime multi-device live updates, xG / video / formation drawing. Failed writes stay on screen as **not saved — check connection** with retry; they are not queued.
+Per-coach attribution, shot edit-history, offline-first queue for spotty stadium wifi, realtime multi-device live updates, xG / video / formation drawing. Shots still save on each tap. **Sync** retries any failed saves on this device, then reloads the open game from Supabase so another phone’s shots appear. Failed writes stay on screen as **not saved — check connection** with Retry or Sync; they are not queued offline.
 

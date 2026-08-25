@@ -6,12 +6,12 @@
  * Out of scope (do not add here):
  *   - Per-coach accounts / attribution (PIN is shared access-gating only)
  *   - Audit trail / edit history on shots (silent overwrite is fine)
- *   - Offline-first sync / conflict resolution for spotty connectivity
- *   - Real-time multi-device live updates
+ *   - Offline-first queue / conflict resolution for spotty connectivity
+ *   - Real-time multi-device live updates (manual Sync only)
  *   - xG, video integration, formation drawing
  *
  * Known gap: if a write fails, the play stays marked "not saved — check
- * connection" with a retry. Writes are not queued for later.
+ * connection" with Retry or Sync. Writes are not queued offline.
  */
 (function (global) {
   "use strict";
@@ -63,17 +63,17 @@
   ];
   /** 4-3-3 pin map: attacking goal at top, % of pitch (card centers). */
   const FORMATION_LAYOUT = [
-    { id: 9, code: "LW", x: 18, y: 11 },
-    { id: 10, code: "CF", x: 50, y: 7 },
-    { id: 11, code: "RW", x: 82, y: 11 },
-    { id: 7, code: "LM", x: 28, y: 31 },
-    { id: 8, code: "RM", x: 72, y: 31 },
-    { id: 6, code: "DM", x: 50, y: 43 },
-    { id: 2, code: "LB", x: 12, y: 61 },
-    { id: 3, code: "LCB", x: 36, y: 57 },
-    { id: 4, code: "RCB", x: 64, y: 57 },
-    { id: 5, code: "RB", x: 88, y: 61 },
-    { id: 1, code: "GK", x: 50, y: 87 },
+    { id: 9, code: "LW", x: 18, y: 26 },
+    { id: 10, code: "CF", x: 50, y: 22 },
+    { id: 11, code: "RW", x: 82, y: 26 },
+    { id: 7, code: "LM", x: 28, y: 46 },
+    { id: 8, code: "RM", x: 72, y: 46 },
+    { id: 6, code: "DM", x: 50, y: 56 },
+    { id: 2, code: "LB", x: 12, y: 68 },
+    { id: 3, code: "LCB", x: 36, y: 78 },
+    { id: 4, code: "RCB", x: 64, y: 78 },
+    { id: 5, code: "RB", x: 88, y: 68 },
+    { id: 1, code: "GK", x: 50, y: 90 },
   ];
   const POSITION_GROUPS = [
     { id: "GK", label: "GK" },
@@ -269,6 +269,7 @@
     oppRoster: [],
     shots: [],
     namedPlayers: [],
+    syncing: false,
     mode: "idle",
     pending: null,
     showGrid: savedUi.showGrid !== false,
@@ -1969,6 +1970,51 @@
     draw({ keepScroll: true });
   }
 
+  /** Retry every unsaved insert on this device. */
+  async function retryFailedShots() {
+    const failed = st.shots.filter((s) => s.saveFailed && s.pendingPayload);
+    let saved = 0;
+    let stillFailed = 0;
+    for (const ev of failed) {
+      const result = await API.insertShot(ev.pendingPayload);
+      if (!result.ok) {
+        stillFailed += 1;
+        continue;
+      }
+      saved += 1;
+      const idx = st.shots.findIndex((s) => s.id === ev.id);
+      if (idx >= 0) st.shots[idx] = mapShot(result.data);
+    }
+    return { attempted: failed.length, saved, stillFailed };
+  }
+
+  /**
+   * Push pending failed saves, then replace the list from Supabase.
+   * Keeps any rows that still failed to save so they are not lost on pull.
+   */
+  async function syncGameShots() {
+    if (!st.gameId || st.syncing) return;
+    st.syncing = true;
+    draw({ keepScroll: true });
+    try {
+      const push = await retryFailedShots();
+      const pendingKeep = st.shots.filter((s) => s.saveFailed && s.pendingPayload);
+      await loadGameContext();
+      const remoteIds = new Set(st.shots.map((s) => s.id));
+      const orphans = pendingKeep.filter((s) => !remoteIds.has(s.id));
+      if (orphans.length) st.shots = [...orphans, ...st.shots];
+      const n = st.shots.length;
+      if (push.stillFailed) showToast(`Synced — ${n} shots · ${push.stillFailed} not saved`);
+      else if (push.saved) showToast(`Synced — ${n} shots · saved ${push.saved}`);
+      else showToast(`Synced — ${n} shots`);
+    } catch (err) {
+      showToast(err.message || "Sync failed — check connection");
+    } finally {
+      st.syncing = false;
+      draw({ keepScroll: true });
+    }
+  }
+
   function bindShotModal() {
     if (!shotModal || shotModal.dataset.bound === "1") return;
     shotModal.dataset.bound = "1";
@@ -2138,7 +2184,8 @@
         if (!shotModal.hidden) return;
         const now = Date.now();
         const p = svgEventPoint(svg, evt);
-        const pitch = pitchFromSvgPoint(p.x, p.y, st.swapSides);
+        const pitchSwapped = team === "opp" ? !st.swapSides : !!st.swapSides;
+        const pitch = pitchFromSvgPoint(p.x, p.y, pitchSwapped);
         const loc = locatePitchPoint(pitch.x, pitch.y);
         const nearPrev = Math.hypot(p.x - lastTapX, p.y - lastTapY) < 8;
         const isDouble = now - lastTapAt < 420 && nearPrev;
@@ -2707,16 +2754,18 @@
     const etTwo = events.filter((e) => eventPeriod(e) === "ET2");
     const showEtLog = etMode || etOne.length > 0 || etTwo.length > 0;
     const awaitingShot = st.mode === "awaiting-shot-location";
-    const goalSide = st.swapSides ? "left" : "right";
-    let status = `Double-tap a spot on either pitch to start a play. ${periodLabel(period)} · goal on the ${goalSide}.`;
+    const usActive = recordingTeam() === "us";
+    const usSwapped = !!st.swapSides;
+    const oppSwapped = !usSwapped;
+    const pitchOpts = { showGrid: st.showGrid, period };
+    const goalSide = usSwapped ? "left" : "right";
+    let status = `Double-tap a spot on either pitch to start a play. ${periodLabel(period)} · Brighton goal on the ${goalSide}, opponent opposite.`;
     if (awaitingShot) {
       const a = st.pending?.assist;
       status = a
         ? `Assist: ${playerLabel(a.player ? Object.assign({ team: recordingTeam() }, a.player) : null)} (${ASSIST_TYPE_LABELS[a.type]}). Tap the shot on the ${teamLabel(recordingTeam())} pitch.`
         : `Tap where the shot was taken on the ${teamLabel(recordingTeam())} pitch.`;
     }
-    const usActive = recordingTeam() === "us";
-    const pitchOpts = { showGrid: st.showGrid, period, swapped: st.swapSides };
 
     root().innerHTML = `
       <div class="tracker-page">
@@ -2740,6 +2789,7 @@
                 ? `<button type="button" class="btn btn-secondary" id="tracker-cancel-record">Cancel assist</button>`
                 : ""
             }
+            <button type="button" class="btn btn-secondary" id="tracker-sync" ${st.syncing ? "disabled" : ""}>${st.syncing ? "Syncing…" : "Sync"}</button>
             <button type="button" class="btn btn-ghost" id="tracker-swap">${st.swapSides ? "Goal left" : "Swap sides"}</button>
             <button type="button" class="btn btn-ghost" id="tracker-export" ${events.length ? "" : "disabled"}>CSV</button>
             <button type="button" class="btn btn-ghost" id="tracker-toggle-grid">${st.showGrid ? "Hide zones" : "Zones"}</button>
@@ -2748,11 +2798,11 @@
           <div class="tracker-pitches">
             <div class="tracker-pitch-block ${usActive || !awaitingShot ? "is-active" : ""}">
               <p class="tracker-pitch-caption">Brighton · double-tap to record</p>
-              <div class="pitch-wrap tracker-pitch-wrap" id="tracker-pitch-us">${halfPitchMarkup(events, Object.assign({ team: "us" }, pitchOpts))}</div>
+              <div class="pitch-wrap tracker-pitch-wrap" id="tracker-pitch-us">${halfPitchMarkup(events, Object.assign({ team: "us", swapped: usSwapped }, pitchOpts))}</div>
             </div>
             <div class="tracker-pitch-block is-opp ${!usActive || !awaitingShot ? "is-active" : ""}">
               <p class="tracker-pitch-caption">${escapeHtml(opponentOf(st.game)?.name || "Opponent")} · double-tap to record</p>
-              <div class="pitch-wrap tracker-pitch-wrap" id="tracker-pitch-opp">${halfPitchMarkup(events, Object.assign({ team: "opp" }, pitchOpts))}</div>
+              <div class="pitch-wrap tracker-pitch-wrap" id="tracker-pitch-opp">${halfPitchMarkup(events, Object.assign({ team: "opp", swapped: oppSwapped }, pitchOpts))}</div>
             </div>
           </div>
         </section>
@@ -2803,6 +2853,7 @@
       draw({ keepScroll: true });
     });
     $("#tracker-export")?.addEventListener("click", () => exportShotsCsv(events));
+    $("#tracker-sync")?.addEventListener("click", () => syncGameShots());
     bindTrackerPitches();
     bindLineupEditor();
     bindLineupSubModal();

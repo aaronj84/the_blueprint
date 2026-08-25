@@ -6,7 +6,7 @@
  * can retry. Offline-first / conflict resolution is out of scope.
  *
  * Also out of scope: per-coach attribution, shot audit trail, realtime
- * multi-device live updates, xG / video / formation drawing.
+ * multi-device live updates (UI has manual Sync), xG / video / formation drawing.
  */
 (function (global) {
   "use strict";
