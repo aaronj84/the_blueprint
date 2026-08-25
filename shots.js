@@ -484,6 +484,23 @@
     assignSlot(team, slotB, a);
   }
 
+  /** Put this player into the shot's position on the live lineup (moves them if needed). */
+  function assignPlayerToShotPosition(team, player, positionCode = shotModalDraft.position) {
+    if (!player || !positionCode) return false;
+    const slot = POSITION_SLOTS.find((s) => s.code === positionCode);
+    if (!slot) return false;
+    const payload = lineupPlayerPayload(player);
+    if (!payload?.number) return false;
+    const elsewhere = slotIdForNumber(team, payload.number);
+    if (elsewhere && Number(elsewhere) !== Number(slot.id)) {
+      assignSlot(team, elsewhere, null);
+    }
+    const current = slotPlayer(team, slot.id);
+    if (current && String(current.number) === String(payload.number)) return true;
+    assignSlot(team, slot.id, payload);
+    return true;
+  }
+
   function cancelLineupGesture() {
     if (lineupGesture?.mode === "place" && lineupGesture.snapshot) {
       restoreLineupBag(lineupGesture.team || "us", lineupGesture.snapshot);
@@ -1662,8 +1679,11 @@
           : escapeHtml(playerDisplayName(p))
         : "Empty";
       const meta = p ? formationMeta(layout.code, p) : escapeHtml(layout.code);
+      const playerAttrs = p
+        ? ` data-player-number="${escapeHtml(String(p.number))}" data-player-id="${escapeHtml(p.id || "")}"`
+        : "";
       return `
-        <button type="button" class="formation-card is-pick ${p ? "" : "is-empty"}" style="${formationCardStyle(layout)}" data-pick-position="${escapeHtml(layout.code)}">
+        <button type="button" class="formation-card is-pick ${p ? "" : "is-empty"}" style="${formationCardStyle(layout)}" data-pick-position="${escapeHtml(layout.code)}"${playerAttrs}>
           <span class="formation-card-name">${who}</span>
           <span class="formation-card-meta">${meta}</span>
         </button>`;
@@ -1770,7 +1790,7 @@
         : locText;
       if (playerHeading) {
         playerHeading.hidden = false;
-        playerHeading.textContent = "Tap the spot on the pitch. Required before naming the player.";
+        playerHeading.textContent = "Tap a player to save. Tap Empty for unknown at that spot.";
       }
       actionGrid.hidden = true;
       playerGrid.hidden = false;
@@ -1782,14 +1802,18 @@
             <button type="button" class="half-toggle-btn ${team === "us" ? "is-on" : ""}" data-shot-team="us">Brighton</button>
             <button type="button" class="half-toggle-btn ${team === "opp" ? "is-on" : ""}" data-shot-team="opp">${escapeHtml(oppLabel)}</button>
           </div>
+          <div class="shot-team-actions">
+            <button type="button" class="btn btn-secondary shot-bar-btn is-sub-in" data-make-change="1">Make a Change</button>
+          </div>
         </div>
         ${formationPitchShell(positionPhaseCards(team))}`;
       return;
     }
 
     if (phase === "sub-slot") {
-      title.textContent = "Sub into which position?";
-      locEl.textContent = "Pick the slot to swap, then choose who comes in.";
+      const team = recordingTeam();
+      title.textContent = "Change which position?";
+      locEl.textContent = "Pick the spot to fill or replace, then choose who comes in.";
       if (playerHeading) playerHeading.hidden = true;
       if (posGrid) posGrid.hidden = true;
       actionGrid.hidden = true;
@@ -1797,11 +1821,15 @@
       playerGrid.classList.add("is-formation");
       const cards = FORMATION_LAYOUT.map((layout) => {
         const slot = POSITION_SLOTS.find((s) => s.id === layout.id);
-        const filled = slotPlayer("us", layout.id);
-        const who = filled ? playerDisplayName(filled) : "Empty";
+        const filled = slotPlayer(team, layout.id);
+        const who = filled
+          ? team === "opp" && !filled.name && !filled.short
+            ? `#${escapeHtml(String(filled.number))}`
+            : escapeHtml(playerDisplayName(filled))
+          : "Empty";
         return `
-          <button type="button" class="formation-card is-pick" style="${formationCardStyle(layout)}" data-sub-slot-pick="${layout.id}">
-            <span class="formation-card-name">${escapeHtml(who)}</span>
+          <button type="button" class="formation-card is-pick ${filled ? "" : "is-empty"}" style="${formationCardStyle(layout)}" data-sub-slot-pick="${layout.id}">
+            <span class="formation-card-name">${who}</span>
             <span class="formation-card-meta">${formationMeta(slot?.code || layout.code, filled)}</span>
           </button>`;
       }).join("");
@@ -1810,31 +1838,59 @@
     }
 
     if (phase === "sub-pick") {
+      const team = recordingTeam();
       const slot = POSITION_SLOTS.find((s) => s.id === Number(shotModalDraft.subSlotId));
       const group = slot?.group || "";
       const groupLabel = POSITION_GROUPS.find((g) => g.id === group)?.label || group;
       title.textContent = `Who comes in at ${slot?.code || ""}?`;
-      locEl.textContent = `${groupLabel} first, then other varsity, then JV.`;
+      locEl.textContent =
+        team === "us" ? `${groupLabel} first, then bench, then on-field elsewhere.` : "Pick a number, or add a new one.";
       if (playerHeading) playerHeading.hidden = true;
       if (posGrid) posGrid.hidden = true;
       actionGrid.hidden = true;
       playerGrid.hidden = false;
       playerGrid.classList.remove("is-formation");
-      const used = usedLineupNumbers("us", shotModalDraft.subSlotId);
-      const all = sortPlayers(rosterPlayers("us")).filter((p) => !used.has(String(p.number)));
-      const preferred = all.filter((p) => p.squad !== "jv" && playerInGroup(p, group));
-      const varsityRest = all.filter((p) => p.squad !== "jv" && !playerInGroup(p, group));
-      const jv = all.filter((p) => p.squad === "jv");
+      const used = usedLineupNumbers(team, shotModalDraft.subSlotId);
+      const all = sortPlayers(rosterPlayers(team));
+      const available = all.filter((p) => !used.has(String(p.number)));
       const btn = (p, tag) => `
         <button type="button" class="shot-player-btn" data-sub-pick-id="${escapeHtml(String(p.id || ""))}" data-sub-pick-number="${escapeHtml(String(p.number))}">
-          <span class="name">${escapeHtml(playerDisplayName(p))}</span>
+          <span class="name">${team === "opp" && !p.name && !p.short ? `#${escapeHtml(String(p.number))}` : escapeHtml(playerDisplayName(p))}</span>
           <span class="num">#${escapeHtml(String(p.number))}${tag ? ` · ${tag}` : ""}</span>
         </button>`;
-      playerGrid.innerHTML =
-        (preferred.length ? `<div class="shot-quick-label">${escapeHtml(groupLabel)}</div>${preferred.map((p) => btn(p, "")).join("")}` : "") +
-        (varsityRest.length ? `<div class="shot-quick-label">Other varsity</div>${varsityRest.map((p) => btn(p, "")).join("")}` : "") +
-        (jv.length ? `<div class="shot-quick-label">JV</div>${jv.map((p) => btn(p, "JV")).join("")}` : "") +
-        (!preferred.length && !varsityRest.length && !jv.length ? `<p class="muted">No available players.</p>` : "");
+      let body = "";
+      if (team === "us") {
+        const preferred = available.filter((p) => p.squad !== "jv" && playerInGroup(p, group));
+        const varsityBench = available.filter(
+          (p) => p.squad !== "jv" && !playerInGroup(p, group) && !slotIdForNumber(team, p.number)
+        );
+        const varsityOnField = available.filter((p) => {
+          const sid = slotIdForNumber(team, p.number);
+          return p.squad !== "jv" && sid && Number(sid) !== Number(slot?.id);
+        });
+        const jv = available.filter((p) => p.squad === "jv");
+        body =
+          (preferred.length ? `<div class="shot-quick-label">${escapeHtml(groupLabel)}</div>${preferred.map((p) => btn(p, "")).join("")}` : "") +
+          (varsityBench.length ? `<div class="shot-quick-label">Varsity Bench</div>${varsityBench.map((p) => btn(p, "")).join("")}` : "") +
+          (varsityOnField.length
+            ? `<div class="shot-quick-label">Varsity On-Field</div>${varsityOnField
+                .map((p) => btn(p, slotCodeForId(slotIdForNumber(team, p.number))))
+                .join("")}`
+            : "") +
+          (jv.length ? `<div class="shot-quick-label">JV</div>${jv.map((p) => btn(p, "JV")).join("")}` : "");
+      } else {
+        body = available.length
+          ? `<div class="shot-quick-label">Roster</div>${available.map((p) => btn(p, "")).join("")}`
+          : "";
+      }
+      if (!body) body = `<p class="muted">No available players — add a number.</p>`;
+      playerGrid.innerHTML = `
+        <div class="shot-team-bar">
+          <div class="shot-team-actions">
+            <button type="button" class="btn btn-ghost shot-bar-btn" data-player-add="1">Add number</button>
+          </div>
+        </div>
+        ${body}`;
       return;
     }
 
@@ -2074,7 +2130,35 @@
         const player =
           playerFromRoster(team, row?.player_id || row?.player?.id, num) || playerFromRosterRow(team, row, num);
         if (!player) throw new Error("Number saved but not on roster yet");
+        player.team = team;
         shotModalDraft.justAddedNumber = String(num);
+
+        if (shotModalDraft.phase === "fouler") {
+          showToast(`#${num} added — tap to use`);
+          renderShotModal();
+          return;
+        }
+
+        if (shotModalDraft.phase === "sub-pick" && shotModalDraft.subSlotId) {
+          const slot = POSITION_SLOTS.find((s) => s.id === Number(shotModalDraft.subSlotId));
+          if (!slot) throw new Error("No position selected");
+          assignPlayerToShotPosition(team, player, slot.code);
+          shotModalDraft.position = slot.code;
+          shotModalDraft.player = player;
+          shotModalDraft.subSlotId = null;
+          showToast(`#${num} in at ${slot.code}`);
+          await completeShotModal();
+          return;
+        }
+
+        if (shotModalDraft.position) {
+          assignPlayerToShotPosition(team, player);
+          shotModalDraft.player = player;
+          showToast(`#${num} in at ${shotModalDraft.position}`);
+          await completeShotModal();
+          return;
+        }
+
         showToast(`#${num} added — tap to use`);
         renderShotModal();
       } catch (err) {
@@ -2260,9 +2344,31 @@
     shotModal.addEventListener("click", async (e) => {
       const pickPos = e.target.closest("[data-pick-position]");
       if (pickPos) {
-        shotModalDraft.position = pickPos.getAttribute("data-pick-position") || "";
-        shotModalDraft.phase = "player";
+        const code = pickPos.getAttribute("data-pick-position") || "";
+        const number = pickPos.getAttribute("data-player-number");
+        const playerId = pickPos.getAttribute("data-player-id") || "";
+        shotModalDraft.position = code;
         shotModalDraft.justAddedNumber = "";
+        if (number != null && number !== "") {
+          const team = recordingTeam();
+          const picked = playerFromRoster(team, playerId, number) || {
+            id: playerId,
+            number: String(number),
+            name: null,
+            short: null,
+            team,
+          };
+          picked.team = team;
+          shotModalDraft.player = picked;
+        } else {
+          shotModalDraft.player = null;
+        }
+        await completeShotModal();
+        return;
+      }
+      if (e.target.closest("[data-make-change]")) {
+        shotModalDraft.phase = "sub-slot";
+        shotModalDraft.subSlotId = null;
         renderShotModal();
         return;
       }
@@ -2318,23 +2424,23 @@
       }
       const subPickBtn = e.target.closest("[data-sub-pick-number]");
       if (subPickBtn) {
+        const team = recordingTeam();
         const slotId = Number(shotModalDraft.subSlotId);
         const slot = POSITION_SLOTS.find((s) => s.id === slotId);
         const number = subPickBtn.getAttribute("data-sub-pick-number");
         const playerId = subPickBtn.getAttribute("data-sub-pick-id");
-        const player = playerFromRoster("us", playerId, number);
+        const player = playerFromRoster(team, playerId, number);
         if (!player || !slot) return;
-        assignSlot("us", slotId, {
-          id: player.id || "",
-          number: String(player.number),
-          name: player.name || "",
-          short: player.short || player.short_name || "",
-        });
+        const payload = lineupPlayerPayload(player);
+        const elsewhere = slotIdForNumber(team, payload.number);
+        if (elsewhere && Number(elsewhere) !== Number(slotId)) assignSlot(team, elsewhere, null);
+        assignSlot(team, slotId, payload);
         shotModalDraft.position = slot.code;
-        shotModalDraft.phase = "player";
+        shotModalDraft.player = Object.assign({ team }, player);
         shotModalDraft.subSlotId = null;
-        showToast(`${playerDisplayName(player)} in at ${slot.code}`);
-        renderShotModal();
+        shotModalDraft.justAddedNumber = "";
+        showToast(`${playerDisplayName(player) || `#${player.number}`} in at ${slot.code}`);
+        await completeShotModal();
         return;
       }
       if (e.target.closest("[data-player-skip]")) {
@@ -2393,6 +2499,7 @@
           renderShotModal();
           return;
         }
+        assignPlayerToShotPosition(team, picked);
         await completeShotModal();
         return;
       }
@@ -2416,7 +2523,7 @@
         return;
       }
       if (shotModalDraft.phase === "sub-slot") {
-        shotModalDraft.phase = "player";
+        shotModalDraft.phase = "position";
         shotModalDraft.subSlotId = null;
         renderShotModal();
         return;
