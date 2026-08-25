@@ -1818,13 +1818,14 @@
 
     if (phase === "position") {
       const chosen = shotModalDraft.action;
+      const team = recordingTeam();
       const missBit = shotModalDraft.missDirection
         ? ` · ${MISS_DIRECTION_LABELS[shotModalDraft.missDirection]}`
         : "";
-      const foulerBit =
-        shotModalDraft.foulerPicked
-          ? ` · foul: ${playerLabel(shotModalDraft.fouler ? Object.assign({ team: shotModalDraft.fouler.team || oppositeTeam(recordingTeam()) }, shotModalDraft.fouler) : null)}`
-          : "";
+      const foulerBit = shotModalDraft.foulerPicked
+        ? ` · foul: ${playerLabel(shotModalDraft.fouler ? Object.assign({ team: shotModalDraft.fouler.team || oppositeTeam(recordingTeam()) }, shotModalDraft.fouler) : null)}`
+        : "";
+      const teamLabel = team === "opp" ? opponentOf(st.game)?.name || "Opponent" : "Brighton";
       title.textContent = "Which position?";
       locEl.textContent = chosen
         ? `${actionShortLabel(chosen)}${chosen.kind === "assist" ? " assist" : ""}${missBit}${foulerBit}  ·  ${locText}`
@@ -1834,13 +1835,22 @@
         playerHeading.textContent = "Tap a player to save. Tap Empty for unknown at that spot.";
       }
       if (nudge) {
-        const showNudge = recordingTeam() === "us" && !lineupHasXi("us") && !lineupHasXi("opp");
-        nudge.hidden = !showNudge;
+        nudge.hidden = !(team === "us" && !lineupHasXi("us"));
+        if (!nudge.hidden && nudgeText) {
+          nudgeText.textContent = "No XI yet — still pick the position for this play. Add numbers below anytime.";
+        }
       }
       actionGrid.hidden = true;
       playerGrid.hidden = false;
       playerGrid.classList.add("is-formation");
-      playerGrid.innerHTML = dualLineupPitches({ pick: "data-pick-position", showMakeChange: true });
+      playerGrid.innerHTML = `
+        <div class="shot-dual-pitch-block ${team === "opp" ? "is-opp" : ""}">
+          <div class="shot-dual-pitch-head">
+            <p class="tracker-pitch-caption">${escapeHtml(teamLabel)}</p>
+            <button type="button" class="btn btn-ghost shot-bar-btn is-sub-in" data-make-change="${team}">Make a Change</button>
+          </div>
+          ${formationPitchShell(positionPhaseCards(team, { pick: "data-pick-position" }), "", { team })}
+        </div>`;
       return;
     }
 
@@ -3200,19 +3210,16 @@
     return "";
   }
 
-  function lineupEditorMarkup() {
-    const team = st.lineup.edit === "opp" ? "opp" : "us";
-    const count = onFieldPlayers(team).length;
+  function lineupEditorCards(team) {
     const gestureOn = !!lineupGesture && team === "us";
-    const cards = FORMATION_LAYOUT.map((layout) => {
+    return FORMATION_LAYOUT.map((layout) => {
       const slot = POSITION_SLOTS.find((s) => s.id === layout.id) || layout;
       const filled = slotPlayer(team, slot.id);
-      const who =
-        filled
-          ? team === "opp" && !filled.name && !filled.short
-            ? `#${escapeHtml(String(filled.number))}`
-            : escapeHtml(playerDisplayName(filled))
-          : "—";
+      const who = filled
+        ? team === "opp" && !filled.name && !filled.short
+          ? `#${escapeHtml(String(filled.number))}`
+          : escapeHtml(playerDisplayName(filled))
+        : "—";
       const select =
         team === "opp"
           ? `<select class="lineup-select formation-card-select" data-lineup-team="opp" data-lineup-slot="${slot.id}" aria-label="${escapeHtml(slot.code)}">${oppSelectOptions(slot.id)}</select>`
@@ -3251,12 +3258,18 @@
           ${hitOverlay}
         </div>`;
     }).join("");
+  }
+
+  function lineupEditorMarkup() {
+    const usCount = onFieldPlayers("us").length;
+    const oppCount = onFieldPlayers("opp").length;
+    const gestureOn = !!lineupGesture;
+    const oppLabel = opponentOf(st.game)?.name || "Opponent";
     const defaultCount = defaultLineupCount();
     const help = (() => {
-      if (team !== "us") return "Assign opponent numbers on each position.";
       if (lineupGesture?.mode === "swap") return "Tap the player she should trade places with.";
       if (lineupGesture?.mode === "place") return "Tap the next position in the chain, then Bench when someone comes off.";
-      return "Dropdown to sub or reassign. Swap to trade two players on the field.";
+      return "Brighton on top, opponent below. Dropdown to assign — Swap on Brighton to trade spots.";
     })();
     return `
       <section class="lineup-section ${gestureOn ? "is-gesturing" : ""}" id="lineup-section">
@@ -3265,14 +3278,24 @@
         </div>
         <p class="muted lineup-help">${help}</p>
         ${lineupGestureBanner()}
-        <div class="half-toggle lineup-team-toggle" role="tablist" aria-label="Lineup team">
-          <button type="button" class="half-toggle-btn ${team === "us" ? "is-on" : ""}" data-lineup-edit="us">Brighton</button>
-          <button type="button" class="half-toggle-btn ${team === "opp" ? "is-on" : ""}" data-lineup-edit="opp">${escapeHtml(opponentOf(st.game)?.name || "Opponent")}</button>
+        <div class="lineup-dual-pitches">
+          <div class="lineup-dual-block ${gestureOn ? "is-gesturing-pitch" : ""}">
+            <div class="lineup-dual-head">
+              <p class="tracker-pitch-caption">Brighton</p>
+              <p class="lineup-count">${usCount}/11 on the field</p>
+            </div>
+            ${formationPitchShell(lineupEditorCards("us"), "", { team: "us" })}
+          </div>
+          <div class="lineup-dual-block is-opp">
+            <div class="lineup-dual-head">
+              <p class="tracker-pitch-caption">${escapeHtml(oppLabel)}</p>
+              <p class="lineup-count">${oppCount}/11 on the field</p>
+            </div>
+            ${formationPitchShell(lineupEditorCards("opp"), "", { team: "opp" })}
+          </div>
         </div>
-        <p class="lineup-count">${count}/11 on the field</p>
-        ${formationPitchShell(cards, "", { team })}
         <div class="lineup-actions">
-          <button type="button" class="btn btn-ghost" id="save-default-lineup" ${onFieldPlayers("us").length ? "" : "disabled"}>Save as default</button>
+          <button type="button" class="btn btn-ghost" id="save-default-lineup" ${usCount ? "" : "disabled"}>Save as default</button>
           <button type="button" class="btn btn-ghost" id="restore-default-lineup">Restore default${defaultCount ? ` (${defaultCount})` : ""}</button>
         </div>
       </section>`;
@@ -3322,14 +3345,6 @@
   }
 
   function bindLineupEditor() {
-    $$("[data-lineup-edit]").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        if (lineupGesture) cancelLineupGesture();
-        st.lineup.edit = btn.getAttribute("data-lineup-edit") === "opp" ? "opp" : "us";
-        saveLineupBag();
-        draw({ keepScroll: true });
-      });
-    });
     $("#save-default-lineup")?.addEventListener("click", () => {
       saveCurrentAsDefault();
       draw({ keepScroll: true });

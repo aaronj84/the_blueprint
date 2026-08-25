@@ -2061,10 +2061,45 @@ body.coach-mode .coach-controls {
   cursor: pointer;
 }
 
-.lineup-section.is-gesturing .formation-pitch {
+.lineup-dual-pitches {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  margin-top: 0.35rem;
+}
+
+.lineup-dual-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin: 0 0.1rem 0.2rem;
+}
+
+.lineup-dual-head .tracker-pitch-caption {
+  margin: 0;
+}
+
+.lineup-dual-head .lineup-count {
+  margin: 0;
+  font-size: 0.82rem;
+}
+
+.lineup-dual-pitches .formation-pitch {
+  max-width: none;
+  margin-top: 0.2rem;
+  aspect-ratio: 68 / 100;
+}
+
+.lineup-section.is-gesturing .lineup-dual-block.is-gesturing-pitch .formation-pitch {
   outline: 2px dashed rgba(26, 77, 124, 0.35);
   outline-offset: 4px;
   border-radius: 12px;
+}
+
+.lineup-section.is-gesturing .lineup-dual-block.is-opp {
+  opacity: 0.45;
+  pointer-events: none;
 }
 
 /* 4-3-3 formation card pitch (attacking goal on top) */
