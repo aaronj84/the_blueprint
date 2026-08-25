@@ -1649,9 +1649,14 @@
   function usedThisGameNumbers(team) {
     const nums = new Set();
     st.shots.forEach((ev) => {
-      if (eventTeam(ev) !== team) return;
-      if (ev.shooterNumber) nums.add(String(ev.shooterNumber));
-      if (ev.assist?.number) nums.add(String(ev.assist.number));
+      if (eventTeam(ev) === team) {
+        if (ev.shooterNumber) nums.add(String(ev.shooterNumber));
+        if (ev.assist?.number) nums.add(String(ev.assist.number));
+      }
+      if (RESULTS_NEEDING_FOULER.has(ev.result) && ev.foulerNumber) {
+        const foulerTeam = oppositeTeam(eventTeam(ev));
+        if (foulerTeam === team) nums.add(String(ev.foulerNumber));
+      }
     });
     return [...nums].sort((a, b) => Number(a) - Number(b));
   }
@@ -3162,24 +3167,49 @@
     const used = usedLineupNumbers("opp", slotId);
     const opts = [`<option value="">—</option>`];
     const roster = sortPlayers(rosterPlayers("opp"));
-    if (roster.length) {
-      roster.forEach((p) => {
-        const taken = used.has(String(p.number));
-        const selected = current && String(current.number) === String(p.number);
-        opts.push(
-          `<option value="${escapeHtml(String(p.id || p.number))}" data-number="${escapeHtml(String(p.number))}" ${taken && !selected ? "disabled" : ""} ${selected ? "selected" : ""}>${
-            p.name || p.short ? escapeHtml(playerDisplayName(p)) + ` (#${escapeHtml(String(p.number))})` : `#${escapeHtml(String(p.number))}`
-          }</option>`
-        );
-      });
-    } else {
-      jerseyChoices().forEach((num) => {
-        const taken = used.has(num);
-        const selected = current && String(current.number) === num;
-        opts.push(
-          `<option value="n-${num}" data-number="${num}" ${taken && !selected ? "disabled" : ""} ${selected ? "selected" : ""}>${num}</option>`
-        );
-      });
+    const byNumber = new Map(roster.map((p) => [String(p.number), p]));
+
+    const onPitch = [];
+    POSITION_SLOTS.forEach((slot) => {
+      const p = slotPlayer("opp", slot.id);
+      if (!p) return;
+      onPitch.push({ number: String(p.number), code: slot.code, player: p });
+    });
+    onPitch.sort((a, b) => Number(a.number) - Number(b.number));
+    const onPitchNums = new Set(onPitch.map((row) => row.number));
+
+    const gameUsed = usedThisGameNumbers("opp").filter((num) => !onPitchNums.has(String(num)));
+    const gameUsedSet = new Set(gameUsed.map(String));
+    const rest = jerseyChoices().filter((num) => !onPitchNums.has(String(num)) && !gameUsedSet.has(String(num)));
+
+    const pushNum = (num, extra = "") => {
+      const p = byNumber.get(String(num));
+      const taken = used.has(String(num));
+      const selected = current && String(current.number) === String(num);
+      const value = p ? String(p.id || p.number) : `n-${num}`;
+      const base =
+        p && (p.name || p.short)
+          ? `${escapeHtml(playerDisplayName(p))} (#${escapeHtml(String(num))})`
+          : `#${escapeHtml(String(num))}`;
+      opts.push(
+        `<option value="${escapeHtml(value)}" data-number="${escapeHtml(String(num))}" ${taken && !selected ? "disabled" : ""} ${selected ? "selected" : ""}>${base}${extra}</option>`
+      );
+    };
+
+    if (onPitch.length) {
+      opts.push(`<optgroup label="On the Pitch">`);
+      onPitch.forEach((row) => pushNum(row.number, ` · ${escapeHtml(row.code)}`));
+      opts.push(`</optgroup>`);
+    }
+    if (gameUsed.length) {
+      opts.push(`<optgroup label="Bench (used this game)">`);
+      gameUsed.forEach((num) => pushNum(num));
+      opts.push(`</optgroup>`);
+    }
+    if (rest.length) {
+      opts.push(`<optgroup label="Other numbers">`);
+      rest.forEach((num) => pushNum(num));
+      opts.push(`</optgroup>`);
     }
     return opts.join("");
   }
