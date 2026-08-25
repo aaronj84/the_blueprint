@@ -291,6 +291,7 @@
     position: "",
     missDirection: "",
     subSlotId: null,
+    justAddedNumber: "",
   };
 
   function normalizePeriod(p) {
@@ -434,10 +435,15 @@
   }
 
   function restoreDefaultLineup() {
-    const bag = st.defaultLineup.us || {};
+    let bag = st.defaultLineup.us || {};
     if (!Object.keys(bag).length) {
-      showToast("No default lineup saved yet");
-      return;
+      bag = buildDefaultXiFromRoster();
+      if (Object.keys(bag).length < 11) {
+        showToast("No default lineup saved yet");
+        return;
+      }
+      st.defaultLineup = { us: Object.assign({}, bag) };
+      saveDefaultLineupBag(bag);
     }
     st.lineup.us = {};
     Object.keys(bag).forEach((k) => {
@@ -1421,6 +1427,7 @@
     shotModalDraft.position = "";
     shotModalDraft.missDirection = "";
     shotModalDraft.subSlotId = null;
+    shotModalDraft.justAddedNumber = "";
   }
 
   function closeShotModal() {
@@ -1432,6 +1439,7 @@
     shotModalDraft.position = "";
     shotModalDraft.missDirection = "";
     shotModalDraft.subSlotId = null;
+    shotModalDraft.justAddedNumber = "";
   }
 
   function dismissShotModal() {
@@ -1448,6 +1456,7 @@
     shotModalDraft.position = "";
     shotModalDraft.missDirection = "";
     shotModalDraft.subSlotId = null;
+    shotModalDraft.justAddedNumber = "";
     renderShotModal();
     shotModal.dataset.openedAt = String(Date.now());
     shotModal.hidden = false;
@@ -1656,6 +1665,9 @@
     const rosterList = sortPlayers(rosterPlayers(team));
     const onFieldNums = new Set(onField.map((p) => String(p.number)));
     const oppLabel = opponentOf(st.game)?.name || "Opponent";
+    const justAdded = shotModalDraft.justAddedNumber
+      ? rosterList.find((p) => String(p.number) === String(shotModalDraft.justAddedNumber))
+      : null;
 
     const toolbar = `
       <div class="shot-team-bar">
@@ -1670,19 +1682,15 @@
               : ""
           }
           <button type="button" class="btn btn-ghost shot-bar-btn" data-player-skip="1">Unknown</button>
-          ${
-            team === "opp"
-              ? `<button type="button" class="btn btn-ghost shot-bar-btn" data-player-add="1">Add number</button>`
-              : ""
-          }
+          <button type="button" class="btn btn-ghost shot-bar-btn" data-player-add="1">Add number</button>
         </div>
       </div>`;
 
-    const playerBtn = (p, extra = "") => {
+    const playerBtn = (p, extra = "", selected = false) => {
       const label = team === "opp" && !p.name && !p.short ? `#${p.number}` : escapeHtml(playerDisplayName(p));
       const posHint = p.slotCode ? ` · ${p.slotCode}` : "";
       return `
-        <button type="button" class="shot-player-btn" data-player-number="${escapeHtml(String(p.number))}" data-player-id="${escapeHtml(p.id || "")}" data-player-team="${team}" data-slot-code="${escapeHtml(p.slotCode || "")}">
+        <button type="button" class="shot-player-btn ${selected ? "is-selected" : ""}" data-player-number="${escapeHtml(String(p.number))}" data-player-id="${escapeHtml(p.id || "")}" data-player-team="${team}" data-slot-code="${escapeHtml(p.slotCode || "")}">
           <span class="name">${label}</span>
           <span class="num">${escapeHtml(String(p.number))}${posHint}${extra}</span>
         </button>`;
@@ -1710,11 +1718,18 @@
       }).join("");
 
     let html = toolbar;
+    if (justAdded) {
+      html += `<div class="shot-quick-label">Just added</div>${playerBtn(justAdded, " · new", true)}`;
+    }
     if (showFormation) {
       html += formationPitchShell(formationPickCards(team));
       if (team === "opp") {
-        const rest = rosterList.filter((p) => !onFieldNums.has(String(p.number)));
-        const quick = usedThisGameNumbers("opp").filter((num) => !onFieldNums.has(String(num)));
+        const rest = rosterList.filter(
+          (p) => !onFieldNums.has(String(p.number)) && String(p.number) !== String(shotModalDraft.justAddedNumber || "")
+        );
+        const quick = usedThisGameNumbers("opp").filter(
+          (num) => !onFieldNums.has(String(num)) && String(num) !== String(shotModalDraft.justAddedNumber || "")
+        );
         if (quick.length) {
           html += `<div class="shot-quick-label">Also used this game</div>${quick
             .map((num) => {
@@ -1727,15 +1742,24 @@
       }
     } else if (team === "opp") {
       const quick = usedThisGameNumbers("opp")
+        .filter((num) => String(num) !== String(shotModalDraft.justAddedNumber || ""))
         .map((num) => {
           const p = rosterList.find((x) => String(x.number) === String(num)) || { number: num, id: "" };
           return playerBtn(p, " · game");
         })
         .join("");
       if (quick) html += `<div class="shot-quick-label">Used this game</div>${quick}`;
-      if (rosterList.length) html += `<div class="shot-quick-label">Roster</div>${rosterList.map((p) => playerBtn(p)).join("")}`;
+      const rest = rosterList.filter((p) => String(p.number) !== String(shotModalDraft.justAddedNumber || ""));
+      if (rest.length) html += `<div class="shot-quick-label">Roster</div>${rest.map((p) => playerBtn(p)).join("")}`;
+      if (!justAdded && !quick && !rest.length) {
+        html += `<p class="muted shot-empty-roster">No numbers yet — tap Add number.</p>`;
+      }
     } else {
-      html += rosterList.map((p) => playerBtn(p)).join("");
+      const rest = rosterList.filter((p) => String(p.number) !== String(shotModalDraft.justAddedNumber || ""));
+      html += rest.map((p) => playerBtn(p)).join("");
+      if (!justAdded && !rest.length) {
+        html += `<p class="muted shot-empty-roster">No roster loaded — tap Add number.</p>`;
+      }
     }
     playerGrid.classList.toggle("is-formation", html.includes("formation-pitch"));
     playerGrid.innerHTML = html;
@@ -1779,24 +1803,59 @@
       if (picked) onPick(picked);
     };
     confirmBtn.onclick = () => {
-      const opt = select.selectedOptions[0];
-      if (!select.value || opt?.disabled) return;
-      finish(select.value);
+      const value = String(select.value || "");
+      if (!value) {
+        showToast("Pick a jersey number");
+        return;
+      }
+      const opt = Array.from(select.options).find((o) => o.value === value);
+      if (opt?.disabled) {
+        showToast("That number is already on the roster");
+        return;
+      }
+      finish(value);
     };
     cancelBtns.forEach((el) => {
       el.onclick = () => finish(null);
     });
   }
 
+  function playerFromRosterRow(team, row, number) {
+    if (!row && (number == null || number === "")) return null;
+    return {
+      id: row?.player_id || row?.player?.id || "",
+      number: String(row?.jersey_number ?? number),
+      name: row?.player?.name || null,
+      short: row?.player?.short_name || null,
+      short_name: row?.player?.short_name || null,
+      team,
+    };
+  }
+
+  async function refreshRecordingRoster() {
+    const team = recordingTeam();
+    const teamId = recordingTeamId();
+    if (!teamId || !st.game?.season_id) throw new Error("No team/season for roster");
+    const rows = await API.roster(teamId, st.game.season_id);
+    if (team === "us") st.ourRoster = rows;
+    else st.oppRoster = rows;
+    return rows;
+  }
+
   async function pickNewJersey() {
     openNumberPicker(async (num) => {
       try {
+        const team = recordingTeam();
         const teamId = recordingTeamId();
-        const roster = await API.ensureRosterPlayer(teamId, st.game.season_id, num, null);
-        if (recordingTeam() === "us") st.ourRoster = await API.roster(brighton().id, st.game.season_id);
-        else st.oppRoster = await API.roster(opponentOf(st.game).id, st.game.season_id);
-        shotModalDraft.player = playerFromRoster(recordingTeam(), roster.player_id, num);
-        await completeShotModal();
+        if (!teamId) throw new Error("No team selected");
+        const row = await API.ensureRosterPlayer(teamId, st.game.season_id, num, null);
+        await refreshRecordingRoster();
+        const player =
+          playerFromRoster(team, row?.player_id || row?.player?.id, num) || playerFromRosterRow(team, row, num);
+        if (!player) throw new Error("Number saved but not on roster yet");
+        shotModalDraft.justAddedNumber = String(num);
+        showToast(`#${num} added — tap to use`);
+        renderShotModal();
       } catch (err) {
         showToast(err.message || "Could not add number");
       }
@@ -1936,6 +1995,7 @@
           saveUi();
           shotModalDraft.player = null;
           shotModalDraft.position = "";
+          shotModalDraft.justAddedNumber = "";
         }
         renderShotModal();
         return;
@@ -1991,7 +2051,14 @@
         const number = playerBtn.getAttribute("data-player-number");
         const playerId = playerBtn.getAttribute("data-player-id");
         const slotCode = playerBtn.getAttribute("data-slot-code") || "";
-        shotModalDraft.player = playerFromRoster(team, playerId, number);
+        shotModalDraft.player = playerFromRoster(team, playerId, number) || {
+          id: playerId || "",
+          number: String(number),
+          name: null,
+          short: null,
+          team,
+        };
+        shotModalDraft.justAddedNumber = "";
         if (slotCode && !shotModalDraft.position) shotModalDraft.position = slotCode;
         else if (shotModalDraft.player?.slotCode && !shotModalDraft.position) {
           shotModalDraft.position = shotModalDraft.player.slotCode;
@@ -2495,20 +2562,19 @@
         </div>
         <p class="muted lineup-help">${
           lineupIsSet()
-            ? "Opening a position dropdown lists that group first (OB / CB / Mid / Fwd), then other varsity, then JV."
+            ? "Tap Sub on a card to swap. Dropdowns list that position group first."
             : "Assign the XI on the pitch, then tap Use this lineup."
         }</p>
-        <div class="lineup-actions">
-          <button type="button" class="btn btn-ghost" id="save-default-lineup" ${onFieldPlayers("us").length ? "" : "disabled"}>Save Brighton as default</button>
-          <button type="button" class="btn btn-ghost" id="restore-default-lineup" ${defaultCount ? "" : "disabled"}>Restore default starting lineup${defaultCount ? ` (${defaultCount})` : ""}</button>
-          <button type="button" class="btn btn-ghost" id="apply-seed-xi">Load Ryan’s 4-3-3</button>
-        </div>
         <div class="half-toggle lineup-team-toggle" role="tablist" aria-label="Lineup team">
           <button type="button" class="half-toggle-btn ${team === "us" ? "is-on" : ""}" data-lineup-edit="us">Brighton</button>
           <button type="button" class="half-toggle-btn ${team === "opp" ? "is-on" : ""}" data-lineup-edit="opp">${escapeHtml(opponentOf(st.game)?.name || "Opponent")}</button>
         </div>
         <p class="lineup-count">${count}/11 on the field</p>
         ${formationPitchShell(cards)}
+        <div class="lineup-actions">
+          <button type="button" class="btn btn-ghost" id="save-default-lineup" ${onFieldPlayers("us").length ? "" : "disabled"}>Save as default</button>
+          <button type="button" class="btn btn-ghost" id="restore-default-lineup">Restore default${defaultCount ? ` (${defaultCount})` : ""}</button>
+        </div>
       </section>`;
   }
 
@@ -2561,20 +2627,6 @@
       draw({ keepScroll: true });
     });
     $("#restore-default-lineup")?.addEventListener("click", () => restoreDefaultLineup());
-    $("#apply-seed-xi")?.addEventListener("click", () => {
-      const bag = buildDefaultXiFromRoster();
-      if (Object.keys(bag).length < 11) {
-        showToast("Roster incomplete — run the JV/groups SQL migration first");
-        return;
-      }
-      st.lineup.us = bag;
-      st.lineup.set = true;
-      st.defaultLineup = { us: Object.assign({}, bag) };
-      saveLineupBag();
-      saveDefaultLineupBag(bag);
-      showToast("Loaded 4-3-3 starting XI");
-      draw({ keepScroll: true });
-    });
     $$(".lineup-select").forEach((sel) => {
       sel.addEventListener("change", () => {
         const team = sel.getAttribute("data-lineup-team") === "opp" ? "opp" : "us";

@@ -2171,8 +2171,14 @@ button.formation-card:active {
 .shot-player-grid .formation-pitch,
 .shot-player-grid .formation-extras,
 .shot-player-grid .shot-team-bar,
-.shot-player-grid.is-formation > .shot-quick-label {
+.shot-player-grid .shot-empty-roster,
+.shot-player-grid .shot-quick-label {
   grid-column: 1 / -1;
+}
+
+.shot-empty-roster {
+  margin: 0.35rem 0 0;
+  font-size: 0.85rem;
 }
 
 .shot-player-grid.is-formation {
@@ -2208,51 +2214,6 @@ button.formation-card:active {
   .formation-card-select {
     font-size: 0.6rem;
   }
-}
-
-.position-groups-editor {
-  margin-top: 1.25rem;
-  padding-top: 1rem;
-  border-top: 1px solid var(--border);
-}
-
-.position-groups-editor h3 {
-  margin: 0 0 0.35rem;
-  font-size: 1rem;
-}
-
-.group-list {
-  display: grid;
-  gap: 0.55rem;
-  margin-top: 0.65rem;
-}
-
-.group-row {
-  display: grid;
-  gap: 0.35rem;
-}
-
-.group-player {
-  font-weight: 650;
-  font-size: 0.92rem;
-}
-
-.group-checks {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.45rem 0.75rem;
-}
-
-.group-check {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.3rem;
-  font-size: 0.82rem;
-  color: var(--text-muted);
-}
-
-.group-check input {
-  margin: 0;
 }
 
 .lineup-pos {
@@ -2603,7 +2564,7 @@ button.formation-card:active {
   display: flex;
   flex-wrap: wrap;
   gap: 0.4rem;
-  margin: 0.5rem 0 0.75rem;
+  margin: 0.85rem 0 0;
 }
 
 .units-grid {
