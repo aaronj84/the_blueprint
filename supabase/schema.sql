@@ -1,5 +1,6 @@
 -- Brighton Shot Tracker — Phase 2 schema
--- Run this in the Supabase SQL editor (once per project).
+-- Safe to re-run: idempotent, additive, non-data-destructive.
+-- Does not drop tables, truncate data, or overwrite coach-edited fields.
 --
 -- Dashboard steps after this script:
 --   1. Authentication → Providers → Anonymous → Enable
@@ -9,6 +10,10 @@
 --   per-coach accounts/attribution, shot edit-history, offline sync, realtime.
 
 create extension if not exists pgcrypto;
+
+-- ---------------------------------------------------------------------------
+-- Tables (create only if missing — never replace)
+-- ---------------------------------------------------------------------------
 
 create table if not exists public.teams (
   id uuid primary key default gen_random_uuid(),
@@ -62,41 +67,19 @@ create table if not exists public.shots (
   team_id uuid not null references public.teams (id),
   player_id uuid references public.players (id),
   jersey_number_at_time text,
-  position text check (
-    position is null
-    or position in ('GK', 'RB', 'LB', 'RCB', 'LCB', 'DM', 'RW', 'RM', 'CF', 'LM', 'LW')
-  ),
+  position text,
   x numeric not null,
   y numeric not null,
   zone_id text,
   zone_label text,
-  result text not null check (
-    result in (
-      'goal',
-      'on-target',
-      'blocked',
-      'missed',
-      'foul',
-      'corner',
-      'pk-goal',
-      'pk-missed'
-    )
-  ),
-  miss_direction text check (
-    miss_direction is null
-    or miss_direction in ('over', 'short', 'wide-left', 'wide-right')
-  ),
+  result text not null,
+  miss_direction text,
   -- Free Kick: player_id is the infringer. PK: player_id is the taker; fouler_* is the infringer.
   fouler_player_id uuid references public.players (id),
   fouler_jersey_number_at_time text,
   assist_player_id uuid references public.players (id),
-  assist_type text check (assist_type is null or assist_type in ('pass', 'gap', 'cross')),
-  assist_position text check (
-    assist_position is null
-    or assist_position in (
-      'GK', 'RB', 'LB', 'RCB', 'LCB', 'DM', 'RW', 'RM', 'CF', 'LM', 'LW'
-    )
-  ),
+  assist_type text,
+  assist_position text,
   assist_x numeric,
   assist_y numeric,
   assist_zone_id text,
@@ -104,6 +87,126 @@ create table if not exists public.shots (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+-- ---------------------------------------------------------------------------
+-- Additive upgrades for existing projects (no-ops when already present)
+-- ---------------------------------------------------------------------------
+
+alter table public.players
+  add column if not exists position_groups text[] not null default '{}';
+
+alter table public.rosters
+  add column if not exists squad text not null default 'varsity';
+
+alter table public.shots
+  add column if not exists period text;
+alter table public.shots
+  add column if not exists jersey_number_at_time text;
+alter table public.shots
+  add column if not exists position text;
+alter table public.shots
+  add column if not exists zone_id text;
+alter table public.shots
+  add column if not exists zone_label text;
+alter table public.shots
+  add column if not exists miss_direction text;
+alter table public.shots
+  add column if not exists fouler_player_id uuid references public.players (id);
+alter table public.shots
+  add column if not exists fouler_jersey_number_at_time text;
+alter table public.shots
+  add column if not exists assist_player_id uuid references public.players (id);
+alter table public.shots
+  add column if not exists assist_type text;
+alter table public.shots
+  add column if not exists assist_position text;
+alter table public.shots
+  add column if not exists assist_x numeric;
+alter table public.shots
+  add column if not exists assist_y numeric;
+alter table public.shots
+  add column if not exists assist_zone_id text;
+alter table public.shots
+  add column if not exists assist_zone_label text;
+alter table public.shots
+  add column if not exists created_at timestamptz not null default now();
+alter table public.shots
+  add column if not exists updated_at timestamptz not null default now();
+
+-- Named checks: drop/re-add so allowed values can widen safely. Fails only if
+-- existing rows violate the new check (never deletes rows).
+do $$
+begin
+  if exists (
+    select 1 from information_schema.tables
+    where table_schema = 'public' and table_name = 'rosters'
+  ) then
+    alter table public.rosters drop constraint if exists rosters_squad_check;
+    alter table public.rosters
+      add constraint rosters_squad_check
+      check (squad in ('varsity', 'jv'));
+  end if;
+
+  if exists (
+    select 1 from information_schema.tables
+    where table_schema = 'public' and table_name = 'shots'
+  ) then
+    alter table public.shots drop constraint if exists shots_period_check;
+    alter table public.shots
+      add constraint shots_period_check
+      check (period in ('1', '2', 'ET1', 'ET2'));
+
+    alter table public.shots drop constraint if exists shots_position_check;
+    alter table public.shots
+      add constraint shots_position_check
+      check (
+        position is null
+        or position in (
+          'GK', 'RB', 'LB', 'RCB', 'LCB', 'DM', 'RW', 'RM', 'CM', 'CF', 'LM', 'AM', 'LW'
+        )
+      );
+
+    alter table public.shots drop constraint if exists shots_result_check;
+    alter table public.shots
+      add constraint shots_result_check
+      check (
+        result in (
+          'goal',
+          'on-target',
+          'blocked',
+          'missed',
+          'foul',
+          'corner',
+          'pk-goal',
+          'pk-missed'
+        )
+      );
+
+    alter table public.shots drop constraint if exists shots_miss_direction_check;
+    alter table public.shots
+      add constraint shots_miss_direction_check
+      check (
+        miss_direction is null
+        or miss_direction in ('over', 'short', 'wide-left', 'wide-right')
+      );
+
+    alter table public.shots drop constraint if exists shots_assist_type_check;
+    alter table public.shots
+      add constraint shots_assist_type_check
+      check (assist_type is null or assist_type in ('pass', 'gap', 'cross'));
+
+    alter table public.shots drop constraint if exists shots_assist_position_check;
+    alter table public.shots
+      add constraint shots_assist_position_check
+      check (
+        assist_position is null
+        or assist_position in (
+          'GK', 'RB', 'LB', 'RCB', 'LCB', 'DM', 'RW', 'RM', 'CM', 'CF', 'LM', 'AM', 'LW'
+        )
+      );
+  end if;
+end;
+$$;
 
 create index if not exists shots_game_id_idx on public.shots (game_id);
 create index if not exists shots_player_id_idx on public.shots (player_id);
@@ -158,7 +261,10 @@ grant usage on schema public to authenticated, anon;
 grant select, insert, update, delete on all tables in schema public to authenticated;
 revoke all on all tables in schema public from anon;
 
--- Seed Brighton + 2026 Fall varsity roster (jersey numbers are per-roster-row).
+-- ---------------------------------------------------------------------------
+-- Seed (insert-only / fill empty defaults — never clobber existing rows)
+-- ---------------------------------------------------------------------------
+
 insert into public.teams (name, is_brighton)
 values ('Brighton', true)
 on conflict (name) do nothing;
@@ -268,12 +374,22 @@ join public.players p on p.name = j.name
 where t.is_brighton
 on conflict (team_id, season_id, jersey_number) do nothing;
 
--- Default position groups for varsity
-update public.players set position_groups = array['GK'] where name = 'Lilah Sligting';
-update public.players set position_groups = array['CB'] where name in ('Jane Thackeray', 'Shai Farrer', 'Tae Hansen');
-update public.players set position_groups = array['CB', 'OB'] where name = 'Finley Thomas';
-update public.players set position_groups = array['OB', 'MID'] where name in ('Saige Thurgood', 'Madeline Nate');
-update public.players set position_groups = array['OB', 'FWD'] where name in ('Addison Despain', 'Georgia Mikell');
-update public.players set position_groups = array['MID', 'FWD'] where name = 'Savanna Zenger';
-update public.players set position_groups = array['MID'] where name in ('Jaqueline Scott', 'Charlotte Jacobsen', 'Stella Bollinger', 'Grace Slagle');
-update public.players set position_groups = array['FWD'] where name in ('Ariana Mlikota', 'Kailee Deeds', 'Abigail Platz', 'Kate Coccimiglio', 'Natalia Shepherd');
+-- Default position groups only when still empty (do not overwrite edits).
+update public.players set position_groups = array['GK']
+where name = 'Lilah Sligting' and position_groups = '{}';
+update public.players set position_groups = array['CB']
+where name in ('Jane Thackeray', 'Shai Farrer', 'Tae Hansen') and position_groups = '{}';
+update public.players set position_groups = array['CB', 'OB']
+where name = 'Finley Thomas' and position_groups = '{}';
+update public.players set position_groups = array['OB', 'MID']
+where name in ('Saige Thurgood', 'Madeline Nate') and position_groups = '{}';
+update public.players set position_groups = array['OB', 'FWD']
+where name in ('Addison Despain', 'Georgia Mikell') and position_groups = '{}';
+update public.players set position_groups = array['MID', 'FWD']
+where name = 'Savanna Zenger' and position_groups = '{}';
+update public.players set position_groups = array['MID']
+where name in ('Jaqueline Scott', 'Charlotte Jacobsen', 'Stella Bollinger', 'Grace Slagle')
+  and position_groups = '{}';
+update public.players set position_groups = array['FWD']
+where name in ('Ariana Mlikota', 'Kailee Deeds', 'Abigail Platz', 'Kate Coccimiglio', 'Natalia Shepherd')
+  and position_groups = '{}';

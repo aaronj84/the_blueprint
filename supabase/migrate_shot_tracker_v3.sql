@@ -1,5 +1,6 @@
 -- Shot tracker enhancements: fouls, corners, PKs, miss direction, assist position.
--- Run in the Supabase SQL editor after schema.sql (safe to re-run).
+-- Prefer re-running schema.sql (now covers this). Kept for older runbooks.
+-- Safe to re-run.
 
 alter table public.shots drop constraint if exists shots_result_check;
 alter table public.shots

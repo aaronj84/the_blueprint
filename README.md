@@ -78,7 +78,7 @@ Coach mode shows scenario IDs, correct answers, target areas, cues, prev/next co
   shots-config.example.js
   shots-api.js            # Supabase access layer
   shots.js                # Shot tracker UI
-  supabase/schema.sql     # Postgres tables, RLS, Brighton roster seed
+  supabase/schema.sql     # Postgres tables, RLS, Brighton roster seed (idempotent)
   supabase/sample_data.sql
   supabase/sample_schedule.csv
   assets/logo.svg
@@ -167,7 +167,7 @@ Pickup notes for another machine (PIN, dashboard, `shots-config.js`): **[supabas
 ### One-time Supabase setup
 
 1. Create a Supabase project.
-2. SQL editor: run `supabase/schema.sql`, then optionally `supabase/sample_data.sql`. For an existing project, also run `supabase/migrate_shot_tracker_v3.sql` (fouls, corners, PKs, miss direction, assist position) and `supabase/migrate_fouler.sql` (who committed the infringement on PKs).
+2. SQL editor: run `supabase/schema.sql` (safe to re-run; additive / non-destructive), then optionally `supabase/sample_data.sql`.
 3. Authentication → Providers → **Anonymous** → Enable.
 4. Project Settings → API: copy Project URL and `anon` `public` key into `shots-config.js` (and into `supabase/README.md` if you are switching machines).
 

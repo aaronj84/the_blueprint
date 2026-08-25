@@ -1,5 +1,6 @@
 -- Free-kick / PK infringement: who committed the foul.
--- Run in the Supabase SQL editor after schema.sql (safe to re-run).
+-- Prefer re-running schema.sql (now covers this). Kept for older runbooks.
+-- Safe to re-run.
 -- Free Kick events still use player_id for the infringer.
 -- PK Goal / PK Missed use player_id for the taker and fouler_* for the infringer.
 
