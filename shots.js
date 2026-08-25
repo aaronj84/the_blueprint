@@ -168,7 +168,6 @@
         swapSides: st.swapSides,
         seasonId: st.seasonId,
         gameId: st.gameId,
-        halfReminderDismissed: st.halfReminderDismissed,
       })
     );
     if (st.seasonId) sessionStorage.setItem("shots-season-id", st.seasonId);
@@ -240,7 +239,6 @@
     period: normalizePeriod(savedUi.period || "1"),
     team: savedUi.team === "opp" ? "opp" : "us",
     swapSides: !!savedUi.swapSides,
-    halfReminderDismissed: !!savedUi.halfReminderDismissed,
     lineup: savedLineup,
     defaultLineup: loadDefaultLineup(),
     csvPending: null,
@@ -397,11 +395,6 @@
 
   function needsMissDirection(action) {
     return !!(action && RESULTS_NEEDING_MISS_DIR.has(action.result));
-  }
-
-  function isOlympusGame(game) {
-    const opp = opponentOf(game || st.game);
-    return !!(opp && /olympus/i.test(opp.name || ""));
   }
 
   function firstName(full) {
@@ -594,10 +587,6 @@
     seedDefaultLineupIfEmpty();
     const rows = await API.shotsForGame(st.gameId);
     st.shots = rows.map(mapShot);
-    if (st._loadedGameId !== st.gameId) {
-      st._loadedGameId = st.gameId;
-      st.halfReminderDismissed = false;
-    }
     saveUi();
   }
 
@@ -2468,15 +2457,6 @@
     });
   }
 
-  function halfReminderMarkup() {
-    if (!isOlympusGame() || st.halfReminderDismissed) return "";
-    return `
-      <div class="half-reminder" role="status">
-        <p><strong>Olympus reminder:</strong> at halftime switch to <em>2nd Half</em> and tap <em>Swap sides</em> so attack direction matches the field.</p>
-        <button type="button" class="btn btn-ghost" id="dismiss-half-reminder">Got it</button>
-      </div>`;
-  }
-
   function renderRecorder(opts = {}) {
     bindShotModal();
     bindEditModal();
@@ -2505,7 +2485,6 @@
       <div class="tracker-page">
         ${trackerNav("shots")}
         <p class="shots-game-label">${escapeHtml(gameTitle(st.game))}</p>
-        ${halfReminderMarkup()}
         <section class="tracker-stage">
           <div class="half-toggle" role="tablist" aria-label="Match period">
             ${
@@ -2558,20 +2537,11 @@
       resetTrackerDraft();
       draw();
     });
-    $("#dismiss-half-reminder")?.addEventListener("click", () => {
-      st.halfReminderDismissed = true;
-      saveUi();
-      draw({ keepScroll: true });
-    });
     $$("[data-set-period]").forEach((btn) => {
       btn.addEventListener("click", () => {
         const next = normalizePeriod(btn.getAttribute("data-set-period"));
         if (next === st.period) return;
-        const wasFirst = st.period === "1";
         st.period = next;
-        if (wasFirst && next === "2" && isOlympusGame()) {
-          showToast("Olympus: switch half — consider Swap sides too");
-        }
         saveUi();
         resetTrackerDraft();
         closeShotModal();
