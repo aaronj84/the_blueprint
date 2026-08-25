@@ -157,7 +157,7 @@
   ];
   const TRACKER_FIRST_ACTIONS = [...TRACKER_ASSIST_ACTIONS, ...TRACKER_SHOT_ACTIONS, ...TRACKER_OTHER_ACTIONS];
   const RESULTS_NEEDING_MISS_DIR = new Set(["missed", "pk-missed"]);
-  const RESULTS_NEEDING_FOULER = new Set(["pk-goal", "pk-missed"]);
+  const RESULTS_NEEDING_FOULER = new Set(["foul", "pk-goal", "pk-missed"]);
   const LS_EVENTS = CONFIG.shotsStorageKey || "brighton-varsity-shot-tracker";
   const LS_UI_V1 = "brighton-varsity-shot-tracker-ui";
   const LS_UI_V2 = "brighton-varsity-shot-tracker-ui-v2";
@@ -381,9 +381,10 @@
     }).filter(Boolean);
   }
 
-  function formationPitchShell(cardsHtml, extrasHtml = "") {
+  function formationPitchShell(cardsHtml, extrasHtml = "", opts = {}) {
+    const team = opts.team === "opp" ? "opp" : "us";
     return `
-      <div class="formation-pitch" role="group" aria-label="4-3-3 formation">
+      <div class="formation-pitch ${team === "opp" ? "is-opp-pitch" : "is-us-pitch"}" role="group" aria-label="4-3-3 formation">
         <div class="formation-pitch-lines" aria-hidden="true">
           <span class="fp-outline"></span>
           <span class="fp-halfway"></span>
@@ -603,7 +604,7 @@
 
   function playerWhoLabel(action) {
     if (!action) return "Who?";
-    if (action.result === "foul") return "Who committed the infringement?";
+    if (action.result === "foul") return "Who took the free kick?";
     if (action.result === "corner") return "Who took the corner?";
     if (action.result === "pk-goal" || action.result === "pk-missed") return "Who took the PK?";
     if (action.kind === "assist") return "Who assisted?";
@@ -1657,20 +1658,22 @@
 
   function advanceAfterAction() {
     const action = shotModalDraft.action;
-    if (needsMissDirection(action) && !shotModalDraft.missDirection) {
-      shotModalDraft.phase = "miss-dir";
-    } else if (needsFoulerStep(action) && !shotModalDraft.foulerPicked) {
+    // Foul happens before the restart: ask infringer first, then miss dir, then taker/position.
+    if (needsFoulerStep(action) && !shotModalDraft.foulerPicked) {
       shotModalDraft.phase = "fouler";
       if (!shotModalDraft.foulerPickTeam) {
         shotModalDraft.foulerPickTeam = oppositeTeam(recordingTeam());
       }
+    } else if (needsMissDirection(action) && !shotModalDraft.missDirection) {
+      shotModalDraft.phase = "miss-dir";
     } else {
       shotModalDraft.phase = "position";
     }
     renderShotModal();
   }
 
-  function positionPhaseCards(team) {
+  function positionPhaseCards(team, attrs = {}) {
+    const pickAttr = attrs.pick || "data-pick-position";
     return FORMATION_LAYOUT.map((layout) => {
       const p = slotPlayer(team, layout.id);
       const who = p
@@ -1683,11 +1686,46 @@
         ? ` data-player-number="${escapeHtml(String(p.number))}" data-player-id="${escapeHtml(p.id || "")}"`
         : "";
       return `
-        <button type="button" class="formation-card is-pick ${p ? "" : "is-empty"}" style="${formationCardStyle(layout)}" data-pick-position="${escapeHtml(layout.code)}"${playerAttrs}>
+        <button type="button" class="formation-card is-pick ${p ? "" : "is-empty"}" style="${formationCardStyle(layout)}" ${pickAttr}="${escapeHtml(layout.code)}" data-player-team="${team}"${playerAttrs}>
           <span class="formation-card-name">${who}</span>
           <span class="formation-card-meta">${meta}</span>
         </button>`;
     }).join("");
+  }
+
+  function dualLineupPitches(opts = {}) {
+    const pick = opts.pick || "data-pick-position";
+    const showMakeChange = !!opts.showMakeChange;
+    const showUnknown = !!opts.showUnknown;
+    const oppLabel = opponentOf(st.game)?.name || "Opponent";
+    const changeBtn = (team) =>
+      showMakeChange
+        ? `<button type="button" class="btn btn-ghost shot-bar-btn is-sub-in" data-make-change="${team}">Make a Change</button>`
+        : "";
+    return `
+      <div class="shot-dual-pitches">
+        <div class="shot-dual-pitch-block">
+          <div class="shot-dual-pitch-head">
+            <p class="tracker-pitch-caption">Brighton</p>
+            ${changeBtn("us")}
+          </div>
+          ${formationPitchShell(positionPhaseCards("us", { pick }), "", { team: "us" })}
+        </div>
+        <div class="shot-dual-pitch-block is-opp">
+          <div class="shot-dual-pitch-head">
+            <p class="tracker-pitch-caption">${escapeHtml(oppLabel)}</p>
+            ${changeBtn("opp")}
+          </div>
+          ${formationPitchShell(positionPhaseCards("opp", { pick }), "", { team: "opp" })}
+        </div>
+        ${
+          showUnknown
+            ? `<div class="shot-team-actions shot-dual-actions">
+                <button type="button" class="btn btn-ghost shot-bar-btn" data-player-skip="1">Unknown</button>
+              </div>`
+            : ""
+        }
+      </div>`;
   }
 
   function renderShotModal() {
@@ -1780,33 +1818,47 @@
 
     if (phase === "position") {
       const chosen = shotModalDraft.action;
-      const team = recordingTeam();
       const missBit = shotModalDraft.missDirection
         ? ` · ${MISS_DIRECTION_LABELS[shotModalDraft.missDirection]}`
         : "";
+      const foulerBit =
+        shotModalDraft.foulerPicked
+          ? ` · foul: ${playerLabel(shotModalDraft.fouler ? Object.assign({ team: shotModalDraft.fouler.team || oppositeTeam(recordingTeam()) }, shotModalDraft.fouler) : null)}`
+          : "";
       title.textContent = "Which position?";
       locEl.textContent = chosen
-        ? `${actionShortLabel(chosen)}${chosen.kind === "assist" ? " assist" : ""}${missBit}  ·  ${locText}`
+        ? `${actionShortLabel(chosen)}${chosen.kind === "assist" ? " assist" : ""}${missBit}${foulerBit}  ·  ${locText}`
         : locText;
       if (playerHeading) {
         playerHeading.hidden = false;
         playerHeading.textContent = "Tap a player to save. Tap Empty for unknown at that spot.";
       }
+      if (nudge) {
+        const showNudge = recordingTeam() === "us" && !lineupHasXi("us") && !lineupHasXi("opp");
+        nudge.hidden = !showNudge;
+      }
       actionGrid.hidden = true;
       playerGrid.hidden = false;
       playerGrid.classList.add("is-formation");
-      const oppLabel = opponentOf(st.game)?.name || "Opponent";
-      playerGrid.innerHTML = `
-        <div class="shot-team-bar">
-          <div class="half-toggle shot-team-toggle" role="tablist" aria-label="Recording team">
-            <button type="button" class="half-toggle-btn ${team === "us" ? "is-on" : ""}" data-shot-team="us">Brighton</button>
-            <button type="button" class="half-toggle-btn ${team === "opp" ? "is-on" : ""}" data-shot-team="opp">${escapeHtml(oppLabel)}</button>
-          </div>
-          <div class="shot-team-actions">
-            <button type="button" class="btn btn-secondary shot-bar-btn is-sub-in" data-make-change="1">Make a Change</button>
-          </div>
-        </div>
-        ${formationPitchShell(positionPhaseCards(team))}`;
+      playerGrid.innerHTML = dualLineupPitches({ pick: "data-pick-position", showMakeChange: true });
+      return;
+    }
+
+    if (phase === "fouler") {
+      const chosen = shotModalDraft.action;
+      title.textContent = "Who committed the infringement?";
+      locEl.textContent = chosen
+        ? `${actionShortLabel(chosen)}  ·  ${locText}`
+        : locText;
+      if (playerHeading) {
+        playerHeading.hidden = false;
+        playerHeading.textContent = "Tap the fouler on either lineup. Unknown is fine.";
+      }
+      if (nudge) nudge.hidden = true;
+      actionGrid.hidden = true;
+      playerGrid.hidden = false;
+      playerGrid.classList.add("is-formation");
+      playerGrid.innerHTML = dualLineupPitches({ pick: "data-pick-fouler", showUnknown: true });
       return;
     }
 
@@ -1833,7 +1885,7 @@
             <span class="formation-card-meta">${formationMeta(slot?.code || layout.code, filled)}</span>
           </button>`;
       }).join("");
-      playerGrid.innerHTML = formationPitchShell(cards);
+      playerGrid.innerHTML = formationPitchShell(cards, "", { team });
       return;
     }
 
@@ -1993,7 +2045,7 @@
       html += `<div class="shot-quick-label">Just added</div>${playerBtn(justAdded, " · new", true)}`;
     }
     if (showFormation) {
-      html += formationPitchShell(formationPickCards(team));
+      html += formationPitchShell(formationPickCards(team), "", { team });
       if (team === "opp") {
         const rest = rosterList.filter(
           (p) => !onFieldNums.has(String(p.number)) && String(p.number) !== String(shotModalDraft.justAddedNumber || "")
@@ -2345,12 +2397,16 @@
       const pickPos = e.target.closest("[data-pick-position]");
       if (pickPos) {
         const code = pickPos.getAttribute("data-pick-position") || "";
+        const team = pickPos.getAttribute("data-player-team") === "opp" ? "opp" : "us";
         const number = pickPos.getAttribute("data-player-number");
         const playerId = pickPos.getAttribute("data-player-id") || "";
+        if (st.team !== team) {
+          st.team = team;
+          saveUi();
+        }
         shotModalDraft.position = code;
         shotModalDraft.justAddedNumber = "";
         if (number != null && number !== "") {
-          const team = recordingTeam();
           const picked = playerFromRoster(team, playerId, number) || {
             id: playerId,
             number: String(number),
@@ -2366,7 +2422,37 @@
         await completeShotModal();
         return;
       }
-      if (e.target.closest("[data-make-change]")) {
+      const pickFouler = e.target.closest("[data-pick-fouler]");
+      if (pickFouler) {
+        const team = pickFouler.getAttribute("data-player-team") === "opp" ? "opp" : "us";
+        const number = pickFouler.getAttribute("data-player-number");
+        const playerId = pickFouler.getAttribute("data-player-id") || "";
+        shotModalDraft.foulerPickTeam = team;
+        shotModalDraft.justAddedNumber = "";
+        if (number != null && number !== "") {
+          const picked = playerFromRoster(team, playerId, number) || {
+            id: playerId,
+            number: String(number),
+            name: null,
+            short: null,
+            team,
+          };
+          picked.team = team;
+          shotModalDraft.fouler = picked;
+        } else {
+          shotModalDraft.fouler = null;
+        }
+        shotModalDraft.foulerPicked = true;
+        advanceAfterAction();
+        return;
+      }
+      const makeChange = e.target.closest("[data-make-change]");
+      if (makeChange) {
+        const team = makeChange.getAttribute("data-make-change");
+        if (team === "opp" || team === "us") {
+          st.team = team;
+          saveUi();
+        }
         shotModalDraft.phase = "sub-slot";
         shotModalDraft.subSlotId = null;
         renderShotModal();
@@ -2536,18 +2622,18 @@
         renderShotModal();
         return;
       }
+      if (shotModalDraft.phase === "position" && needsMissDirection(shotModalDraft.action)) {
+        shotModalDraft.phase = "miss-dir";
+        shotModalDraft.position = "";
+        shotModalDraft.missDirection = "";
+        renderShotModal();
+        return;
+      }
       if (shotModalDraft.phase === "position" && needsFoulerStep(shotModalDraft.action)) {
         shotModalDraft.phase = "fouler";
         shotModalDraft.position = "";
         shotModalDraft.foulerPicked = false;
         shotModalDraft.fouler = null;
-        renderShotModal();
-        return;
-      }
-      if (shotModalDraft.phase === "position" && needsMissDirection(shotModalDraft.action)) {
-        shotModalDraft.phase = "miss-dir";
-        shotModalDraft.position = "";
-        shotModalDraft.missDirection = "";
         renderShotModal();
         return;
       }
@@ -2558,11 +2644,11 @@
         renderShotModal();
         return;
       }
-      if (shotModalDraft.phase === "fouler" && needsMissDirection(shotModalDraft.action)) {
-        shotModalDraft.phase = "miss-dir";
-        shotModalDraft.fouler = null;
-        shotModalDraft.foulerPicked = false;
+      if (shotModalDraft.phase === "miss-dir" && needsFoulerStep(shotModalDraft.action)) {
+        shotModalDraft.phase = "fouler";
         shotModalDraft.missDirection = "";
+        shotModalDraft.foulerPicked = false;
+        shotModalDraft.fouler = null;
         renderShotModal();
         return;
       }
@@ -3184,7 +3270,7 @@
           <button type="button" class="half-toggle-btn ${team === "opp" ? "is-on" : ""}" data-lineup-edit="opp">${escapeHtml(opponentOf(st.game)?.name || "Opponent")}</button>
         </div>
         <p class="lineup-count">${count}/11 on the field</p>
-        ${formationPitchShell(cards)}
+        ${formationPitchShell(cards, "", { team })}
         <div class="lineup-actions">
           <button type="button" class="btn btn-ghost" id="save-default-lineup" ${onFieldPlayers("us").length ? "" : "disabled"}>Save as default</button>
           <button type="button" class="btn btn-ghost" id="restore-default-lineup">Restore default${defaultCount ? ` (${defaultCount})` : ""}</button>

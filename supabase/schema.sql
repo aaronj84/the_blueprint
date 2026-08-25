@@ -74,7 +74,7 @@ create table if not exists public.shots (
   zone_label text,
   result text not null,
   miss_direction text,
-  -- Free Kick: player_id is the infringer. PK: player_id is the taker; fouler_* is the infringer.
+  -- Free Kick / PK: player_id is the taker; fouler_* is the infringer.
   fouler_player_id uuid references public.players (id),
   fouler_jersey_number_at_time text,
   assist_player_id uuid references public.players (id),

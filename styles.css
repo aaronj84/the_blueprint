@@ -2085,6 +2085,16 @@ body.coach-mode .coach-controls {
   box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.35), var(--shadow);
 }
 
+.formation-pitch.is-opp-pitch {
+  background:
+    repeating-linear-gradient(
+      180deg,
+      #6b7280 0 18px,
+      #4b5563 18px 36px
+    );
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.22), var(--shadow);
+}
+
 .lineup-section .formation-pitch {
   max-width: none;
   aspect-ratio: 68 / 100;
@@ -3012,6 +3022,47 @@ button.formation-card.is-empty {
   padding: 0.85rem;
   background: var(--bg-soft);
   border-radius: var(--radius);
+}
+
+.shot-dual-pitches {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  width: 100%;
+}
+
+.shot-dual-pitch-block {
+  border-radius: calc(var(--radius) + 2px);
+  padding: 0.1rem 0.1rem 0.25rem;
+}
+
+.shot-dual-pitch-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin: 0 0.15rem 0.15rem;
+}
+
+.shot-dual-pitch-head .tracker-pitch-caption {
+  margin: 0;
+}
+
+.shot-dual-pitch-head .shot-bar-btn {
+  flex: none;
+  min-height: 34px;
+  padding: 0 0.65rem;
+  font-size: 0.78rem;
+}
+
+.shot-dual-actions {
+  margin-top: 0.15rem;
+}
+
+.shot-dual-pitches .formation-pitch {
+  max-width: none;
+  margin-top: 0.25rem;
+  aspect-ratio: 68 / 92;
 }
 
 .tracker-pitches {
