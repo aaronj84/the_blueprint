@@ -1648,13 +1648,26 @@
         shotModalDraft.foulerPickTeam = oppositeTeam(recordingTeam());
       }
     } else {
-      shotModalDraft.phase = "player";
-      if (!shotModalDraft.position && lineupHasXi(recordingTeam())) {
-        const onField = onFieldPlayers(recordingTeam());
-        if (onField.length === 1) shotModalDraft.position = onField[0].slotCode;
-      }
+      shotModalDraft.phase = "position";
     }
     renderShotModal();
+  }
+
+  function positionPhaseCards(team) {
+    return FORMATION_LAYOUT.map((layout) => {
+      const p = slotPlayer(team, layout.id);
+      const who = p
+        ? team === "opp" && !p.name && !p.short
+          ? `#${escapeHtml(String(p.number))}`
+          : escapeHtml(playerDisplayName(p))
+        : "Empty";
+      const meta = p ? formationMeta(layout.code, p) : escapeHtml(layout.code);
+      return `
+        <button type="button" class="formation-card is-pick ${p ? "" : "is-empty"}" style="${formationCardStyle(layout)}" data-pick-position="${escapeHtml(layout.code)}">
+          <span class="formation-card-name">${who}</span>
+          <span class="formation-card-meta">${meta}</span>
+        </button>`;
+    }).join("");
   }
 
   function renderShotModal() {
@@ -1678,15 +1691,20 @@
     const loc = shotModalDraft.location;
     const locText = loc ? `${formatLoc(loc)}  ·  (${formatXY(loc)})` : "";
     const inSubFlow = phase === "sub-slot" || phase === "sub-pick";
-    if (panel) panel.classList.toggle("is-player-phase", phase === "player" || phase === "fouler" || phase === "miss-dir" || inSubFlow);
+    if (panel) {
+      panel.classList.toggle(
+        "is-player-phase",
+        phase === "player" || phase === "position" || phase === "fouler" || phase === "miss-dir" || inSubFlow
+      );
+    }
     if (backBtn) backBtn.hidden = phase === "action";
-    if (posGrid) posGrid.hidden = phase !== "player";
+    if (posGrid) posGrid.hidden = true;
 
     if (nudge) {
-      const showNudge = phase === "player" && recordingTeam() === "us" && !lineupHasXi("us");
+      const showNudge = phase === "position" && recordingTeam() === "us" && !lineupHasXi("us");
       nudge.hidden = !showNudge;
       if (nudgeText && showNudge) {
-        nudgeText.textContent = "No players on the field yet — assign the XI below the pitch for faster tagging.";
+        nudgeText.textContent = "No XI yet — still pick the position for this play. Add numbers below anytime.";
       }
     }
 
@@ -1694,6 +1712,7 @@
       title.textContent = step === "shot" ? "Shot result?" : "What happened?";
       locEl.textContent = locText;
       if (playerHeading) playerHeading.hidden = true;
+      if (nudge) nudge.hidden = true;
       playerGrid.hidden = true;
       actionGrid.hidden = false;
       const shotBtns = TRACKER_SHOT_ACTIONS.map(
@@ -1736,6 +1755,35 @@
               `<button type="button" class="shot-action-btn is-miss-dir" data-miss-dir="${d}">${escapeHtml(MISS_DIRECTION_LABELS[d])}</button>`
           ).join("")}
         </div>`;
+      return;
+    }
+
+    if (phase === "position") {
+      const chosen = shotModalDraft.action;
+      const team = recordingTeam();
+      const missBit = shotModalDraft.missDirection
+        ? ` · ${MISS_DIRECTION_LABELS[shotModalDraft.missDirection]}`
+        : "";
+      title.textContent = "Which position?";
+      locEl.textContent = chosen
+        ? `${actionShortLabel(chosen)}${chosen.kind === "assist" ? " assist" : ""}${missBit}  ·  ${locText}`
+        : locText;
+      if (playerHeading) {
+        playerHeading.hidden = false;
+        playerHeading.textContent = "Tap the spot on the pitch. Required before naming the player.";
+      }
+      actionGrid.hidden = true;
+      playerGrid.hidden = false;
+      playerGrid.classList.add("is-formation");
+      const oppLabel = opponentOf(st.game)?.name || "Opponent";
+      playerGrid.innerHTML = `
+        <div class="shot-team-bar">
+          <div class="half-toggle shot-team-toggle" role="tablist" aria-label="Recording team">
+            <button type="button" class="half-toggle-btn ${team === "us" ? "is-on" : ""}" data-shot-team="us">Brighton</button>
+            <button type="button" class="half-toggle-btn ${team === "opp" ? "is-on" : ""}" data-shot-team="opp">${escapeHtml(oppLabel)}</button>
+          </div>
+        </div>
+        ${formationPitchShell(positionPhaseCards(team))}`;
       return;
     }
 
@@ -1806,25 +1854,18 @@
       : locText;
     const onField = onFieldPlayers(team);
     const showFormation = onField.length > 0;
+    const lockedPos = shotModalDraft.position || "";
     if (playerHeading) {
       playerHeading.hidden = false;
       playerHeading.textContent = pickingFouler
         ? "Usually the other team. Unknown is fine."
-        : showFormation
-          ? "Pick position if you know it, then a player — or Unknown to save position only."
-          : "Pick position and/or player. Unknown saves without a number.";
+        : lockedPos
+          ? `Who at ${lockedPos}? Tap a player, or Unknown to save without a number.`
+          : "Who? Tap a player or Unknown.";
     }
     playerGrid.hidden = false;
     actionGrid.hidden = true;
-    if (posGrid) {
-      posGrid.hidden = pickingFouler;
-      if (!posGrid.hidden) {
-        posGrid.innerHTML = POSITION_CODES.map(
-          (code) =>
-            `<button type="button" class="shot-pos-btn ${shotModalDraft.position === code ? "is-on" : ""}" data-shot-pos="${code}">${code}</button>`
-        ).join("");
-      }
-    }
+    if (posGrid) posGrid.hidden = true;
 
     const rosterList = sortPlayers(rosterPlayers(team));
     const onFieldNums = new Set(onField.map((p) => String(p.number)));
@@ -1833,12 +1874,21 @@
       ? rosterList.find((p) => String(p.number) === String(shotModalDraft.justAddedNumber))
       : null;
 
+    const posLockBar =
+      !pickingFouler && lockedPos
+        ? `<div class="shot-pos-lock">
+            <span>Position <strong>${escapeHtml(lockedPos)}</strong></span>
+            <button type="button" class="btn btn-ghost shot-bar-btn" data-change-position="1">Change</button>
+          </div>`
+        : "";
+
     const toolbar = `
       <div class="shot-team-bar">
         <div class="half-toggle shot-team-toggle" role="tablist" aria-label="${pickingFouler ? "Fouler team" : "Recording team"}">
           <button type="button" class="half-toggle-btn ${team === "us" ? "is-on" : ""}" data-shot-team="us">Brighton</button>
           <button type="button" class="half-toggle-btn ${team === "opp" ? "is-on" : ""}" data-shot-team="opp">${escapeHtml(oppLabel)}</button>
         </div>
+        ${posLockBar}
         <div class="shot-team-actions">
           ${
             team === "us" && !pickingFouler
@@ -1863,21 +1913,20 @@
     const formationPickCards = (forTeam) =>
       FORMATION_LAYOUT.map((layout) => {
         const p = slotPlayer(forTeam, layout.id);
+        const isLockedSlot = !pickingFouler && lockedPos === layout.code;
         if (!p) {
-          const selected = !pickingFouler && shotModalDraft.position === layout.code;
           return `
-            <button type="button" class="formation-card is-empty is-pick ${selected ? "is-pos-on" : ""}" style="${formationCardStyle(layout)}" data-shot-pos="${escapeHtml(layout.code)}" title="Record as ${escapeHtml(layout.code)}">
+            <div class="formation-card is-empty ${isLockedSlot ? "is-pos-on" : ""}" style="${formationCardStyle(layout)}">
               <span class="formation-card-name">Empty</span>
               <span class="formation-card-meta">${escapeHtml(layout.code)}</span>
-            </button>`;
+            </div>`;
         }
         const label =
           forTeam === "opp" && !p.name && !p.short
             ? `#${escapeHtml(String(p.number))}`
             : escapeHtml(playerDisplayName(p));
-        const posSelected = !pickingFouler && shotModalDraft.position === layout.code;
         return `
-          <button type="button" class="formation-card is-pick ${posSelected ? "is-pos-on" : ""}" style="${formationCardStyle(layout)}" data-player-number="${escapeHtml(String(p.number))}" data-player-id="${escapeHtml(p.id || "")}" data-player-team="${forTeam}" data-slot-code="${escapeHtml(layout.code)}">
+          <button type="button" class="formation-card is-pick ${isLockedSlot ? "is-pos-on" : ""}" style="${formationCardStyle(layout)}" data-player-number="${escapeHtml(String(p.number))}" data-player-id="${escapeHtml(p.id || "")}" data-player-team="${forTeam}" data-slot-code="${escapeHtml(layout.code)}">
             <span class="formation-card-name">${label}</span>
             <span class="formation-card-meta">${formationMeta(layout.code, p)}</span>
           </button>`;
@@ -2209,10 +2258,19 @@
     if (!shotModal || shotModal.dataset.bound === "1") return;
     shotModal.dataset.bound = "1";
     shotModal.addEventListener("click", async (e) => {
-      const posBtn = e.target.closest("[data-shot-pos]");
-      if (posBtn) {
-        const code = posBtn.getAttribute("data-shot-pos");
-        shotModalDraft.position = shotModalDraft.position === code ? "" : code;
+      const pickPos = e.target.closest("[data-pick-position]");
+      if (pickPos) {
+        shotModalDraft.position = pickPos.getAttribute("data-pick-position") || "";
+        shotModalDraft.phase = "player";
+        shotModalDraft.justAddedNumber = "";
+        renderShotModal();
+        return;
+      }
+      if (e.target.closest("[data-change-position]")) {
+        shotModalDraft.phase = "position";
+        shotModalDraft.position = "";
+        shotModalDraft.player = null;
+        shotModalDraft.justAddedNumber = "";
         renderShotModal();
         return;
       }
@@ -2240,6 +2298,7 @@
           shotModalDraft.player = null;
           shotModalDraft.position = "";
           shotModalDraft.justAddedNumber = "";
+          if (shotModalDraft.phase === "player") shotModalDraft.phase = "position";
         }
         renderShotModal();
         return;
@@ -2286,6 +2345,12 @@
           advanceAfterAction();
           return;
         }
+        if (!shotModalDraft.position) {
+          showToast("Pick a position first");
+          shotModalDraft.phase = "position";
+          renderShotModal();
+          return;
+        }
         shotModalDraft.player = null;
         await completeShotModal();
         return;
@@ -2317,9 +2382,16 @@
           return;
         }
         shotModalDraft.player = picked;
-        if (slotCode && !shotModalDraft.position) shotModalDraft.position = slotCode;
-        else if (shotModalDraft.player?.slotCode && !shotModalDraft.position) {
+        if (!shotModalDraft.position && slotCode) shotModalDraft.position = slotCode;
+        else if (!shotModalDraft.position && shotModalDraft.player?.slotCode) {
           shotModalDraft.position = shotModalDraft.player.slotCode;
+        }
+        if (!shotModalDraft.position) {
+          showToast("Pick a position first");
+          shotModalDraft.phase = "position";
+          shotModalDraft.player = null;
+          renderShotModal();
+          return;
         }
         await completeShotModal();
         return;
@@ -2349,18 +2421,33 @@
         renderShotModal();
         return;
       }
-      if (shotModalDraft.phase === "player" && needsFoulerStep(shotModalDraft.action)) {
-        shotModalDraft.phase = "fouler";
+      if (shotModalDraft.phase === "player") {
+        shotModalDraft.phase = "position";
+        shotModalDraft.position = "";
         shotModalDraft.player = null;
+        shotModalDraft.justAddedNumber = "";
+        renderShotModal();
+        return;
+      }
+      if (shotModalDraft.phase === "position" && needsFoulerStep(shotModalDraft.action)) {
+        shotModalDraft.phase = "fouler";
+        shotModalDraft.position = "";
         shotModalDraft.foulerPicked = false;
         shotModalDraft.fouler = null;
         renderShotModal();
         return;
       }
-      if (shotModalDraft.phase === "player" && needsMissDirection(shotModalDraft.action)) {
+      if (shotModalDraft.phase === "position" && needsMissDirection(shotModalDraft.action)) {
         shotModalDraft.phase = "miss-dir";
-        shotModalDraft.player = null;
+        shotModalDraft.position = "";
         shotModalDraft.missDirection = "";
+        renderShotModal();
+        return;
+      }
+      if (shotModalDraft.phase === "position") {
+        shotModalDraft.phase = "action";
+        shotModalDraft.action = null;
+        shotModalDraft.position = "";
         renderShotModal();
         return;
       }

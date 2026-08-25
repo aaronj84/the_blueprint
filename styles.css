@@ -3051,6 +3051,25 @@ button.formation-card.is-empty {
   fill: #4b5563;
 }
 
+.shot-pos-lock {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.35rem 0.55rem;
+  border: 1px solid rgba(26, 77, 124, 0.28);
+  border-radius: 8px;
+  background: rgba(26, 77, 124, 0.08);
+  font-size: 0.88rem;
+}
+
+.shot-pos-lock .shot-bar-btn {
+  flex: none;
+  min-height: 34px;
+  padding: 0 0.65rem;
+}
+
 .shot-position-grid {
   display: flex;
   flex-wrap: wrap;
