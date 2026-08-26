@@ -305,6 +305,33 @@
       throwIfError(error, "Could not load players");
       return data || [];
     },
+
+    /**
+     * Natural-language explore via Edge Function explore-shots.
+     * Requires staff PIN session. OPENAI_API_KEY must be set as a Supabase secret.
+     */
+    async explore(question, history) {
+      const sb = getClient();
+      if (!sb) return { ok: false, error: "Supabase is not configured" };
+      const { data, error } = await sb.functions.invoke("explore-shots", {
+        body: {
+          question: String(question || "").trim(),
+          history: Array.isArray(history) ? history : [],
+        },
+      });
+      const payload = data && typeof data === "object" ? data : null;
+      if (error) {
+        const msg =
+          (payload && payload.error) ||
+          error.message ||
+          "Explore request failed. Deploy explore-shots and set OPENAI_API_KEY.";
+        return { ok: false, error: msg, data: payload };
+      }
+      if (payload && payload.error) {
+        return { ok: false, error: payload.error, data: payload };
+      }
+      return { ok: true, data: payload };
+    },
   };
 
   global.ShotAPI = api;

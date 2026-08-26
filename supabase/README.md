@@ -29,6 +29,30 @@ window.SHOTS_CONFIG = {
 2. Authentication → Providers → **Anonymous** → Enable.
 3. RLS is in `schema.sql`: `authenticated` can read/write; the PIN only gates sign-in on the client.
 
+## Explore tab (optional AI)
+
+Natural-language questions over shot data (`#shots-explore`). Uses a Supabase Edge Function + OpenAI — **not** your ChatGPT desktop subscription.
+
+1. SQL editor: run `migrate_explore.sql` (creates `explore_readonly` RPC, service_role only).
+2. Create an [OpenAI API](https://platform.openai.com) key. Set a low monthly spend limit (e.g. $5–10).
+3. Store the key as a project secret (CLI or Dashboard → Edge Functions → Secrets):
+
+```bash
+supabase secrets set OPENAI_API_KEY=sk-...
+```
+
+4. Deploy the function:
+
+```bash
+supabase functions deploy explore-shots
+```
+
+Or paste `functions/explore-shots/index.ts` via the Dashboard → Edge Functions → Create.
+
+5. Confirm the function allows JWT verification (default). The browser sends the anonymous staff session; the function rejects unauthenticated callers.
+
+Cost note: `gpt-4o-mini` is typically cents per hundred coach questions. Edge Function invocations stay within the free quota at this volume.
+
 ## Other machine checklist
 
 1. Pull this repo.
@@ -36,4 +60,4 @@ window.SHOTS_CONFIG = {
 3. Serve the site (`python3 -m http.server 8080`) and open `#shots`.
 4. Log in with `KEPPA`.
 
-Hashes: `#shots` record · `#shots-games` schedule · `#shots-history` queries · `#shots-map` game map.
+Hashes: `#shots` record · `#shots-games` schedule · `#shots-history` queries · `#shots-explore` AI explore · `#shots-map` game map.

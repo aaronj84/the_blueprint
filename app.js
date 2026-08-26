@@ -230,6 +230,7 @@
     if (raw === "shots-map") return { view: "shots-map" };
     if (raw === "shots-games") return { view: "shots-games" };
     if (raw === "shots-history") return { view: "shots-history" };
+    if (raw === "shots-explore") return { view: "shots-explore" };
 
     const mod = MODULES.find((m) => m.hash === raw || m.id === raw);
     if (mod) {
@@ -274,7 +275,10 @@
     document.body.classList.toggle("blueprint-view", blueprintArea || cfcArea);
     document.body.classList.toggle("hub-view", view === "home");
     document.body.classList.toggle("shot-map-view", view === "shots-map");
-    document.body.classList.toggle("shots-admin-view", view === "shots-games" || view === "shots-history");
+    document.body.classList.toggle(
+      "shots-admin-view",
+      view === "shots-games" || view === "shots-history" || view === "shots-explore"
+    );
 
     const brandSub = $("#brand-sub");
     if (brandSub) {
@@ -334,6 +338,7 @@
         (view === "shots" && key === "shots") ||
         (view === "shots-games" && key === "shots-games") ||
         (view === "shots-history" && key === "shots-history") ||
+        (view === "shots-explore" && key === "shots-explore") ||
         (view === "shots-map" && key === "shots-map") ||
         (isShotsView(view) && key === "shots-area");
       if (current) el.setAttribute("aria-current", "page");
@@ -648,7 +653,7 @@
         </a>
         <a class="hub-card hub-card-cfc" href="#cfc-red">
           <h2>CFC Red</h2>
-          <p>U12 boys 9v9 — 4-1-2-1 base, 2-3-3 attack, 4-3-1 defense, same corner language.</p>
+          <p>U12 boys 9v9 — 4-1-2-1 (6 distinct from 8/10), 2-3-3 attack, same corner language.</p>
           <span class="hub-card-cta">Open modules</span>
         </a>
         <a class="hub-card hub-card-shots" href="#shots">
@@ -727,7 +732,7 @@
 
     const blurb =
       packId === "cfcRed"
-        ? "See it, choose it, explain it. Train the 4-1-2-1 game model — 2-3-3 attack, 4-3-1 defense, and corners."
+        ? "See it, choose it, explain it. Train the 4-1-2-1 game model — 2-3-3 in attack, and corners."
         : "See it, choose it, explain it. Train attacking shape, wide patterns, supporting runs, defensive shape, and set pieces.";
 
     root.innerHTML = `
@@ -1395,13 +1400,18 @@
   function matchDefenderIds(pair) {
     if (pair.defenderIds && pair.defenderIds.length) return pair.defenderIds;
     if (pair.defenderId) return [pair.defenderId];
+    if (pair.playerId) return [pair.playerId];
     return [];
+  }
+
+  function matchAttackerId(pair) {
+    return pair.attackerId || pair.codeId || null;
   }
 
   function isCorrectMatchPair(defenderId, attackerId) {
     const needed = state.session.scenario.matchPairs || [];
     return needed.some(
-      (n) => n.attackerId === attackerId && matchDefenderIds(n).includes(defenderId)
+      (n) => matchAttackerId(n) === attackerId && matchDefenderIds(n).includes(defenderId)
     );
   }
 
@@ -1409,7 +1419,7 @@
     const selections = state.session.matchSelections;
     if (selections.some((m) => m.defenderId === playerId)) return true;
     const neededSlots = (state.session.scenario.matchPairs || []).filter(
-      (n) => n.attackerId === playerId
+      (n) => matchAttackerId(n) === playerId
     ).length;
     if (neededSlots > 0) {
       const filled = selections.filter((m) => m.attackerId === playerId).length;
@@ -1506,7 +1516,7 @@
       const needed = session.scenario.matchPairs || [];
       const done = needed.every((n) =>
         session.matchSelections.some(
-          (g) => g.attackerId === n.attackerId && matchDefenderIds(n).includes(g.defenderId)
+          (g) => g.attackerId === matchAttackerId(n) && matchDefenderIds(n).includes(g.defenderId)
         )
       );
       if (done) {
@@ -1546,7 +1556,7 @@
       needed.length > 0 &&
       needed.every((n) =>
         got.some(
-          (g) => g.attackerId === n.attackerId && matchDefenderIds(n).includes(g.defenderId)
+          (g) => g.attackerId === matchAttackerId(n) && matchDefenderIds(n).includes(g.defenderId)
         )
       ) &&
       got.length === needed.length;
@@ -1556,8 +1566,20 @@
   function selectDecision(answerId) {
     if (state.session.locked || state.session.stage !== "decision") return;
     const s = state.session.scenario;
-    const ok = answerId === s.correctAnswer;
+    const ok = answerId === resolveCorrectAnswer(s);
     commitDecision(answerId, ok);
+  }
+
+  function resolveCorrectAnswer(s) {
+    if (s.correctAnswer != null && s.correctAnswer !== "") return s.correctAnswer;
+    const hit = (s.options || []).find((o) => o.correct);
+    return hit ? hit.id : undefined;
+  }
+
+  function resolveCorrectRationale(s) {
+    if (s.correctRationale != null && s.correctRationale !== "") return s.correctRationale;
+    const hit = (s.rationaleOptions || []).find((o) => o.correct);
+    return hit ? hit.id : undefined;
   }
 
   function commitDecision(answerId, ok) {
@@ -1631,7 +1653,7 @@
     if (session.stage !== "rationale") return;
     const s = session.scenario;
     session.selectedRationale = id;
-    const ok = id === s.correctRationale;
+    const ok = id === resolveCorrectRationale(s);
     session.rationaleCorrect = ok;
     session.locked = true;
     finishScenario(session.decisionCorrect, true, ok);
@@ -1688,10 +1710,12 @@
 
     // Highlight correct option
     if (reveal) {
+      const correctOpt = resolveCorrectAnswer(s);
+      const correctRat = resolveCorrectRationale(s);
       $$(".option-btn").forEach((btn) => {
         const id = btn.getAttribute("data-option") || btn.getAttribute("data-rationale");
         if (!id) return;
-        if (id === s.correctAnswer || id === s.correctRationale) btn.classList.add("is-correct");
+        if (id === correctOpt || id === correctRat) btn.classList.add("is-correct");
         if (
           (btn.getAttribute("data-option") === session.selected && !decisionOk) ||
           (btn.getAttribute("data-rationale") === session.selectedRationale && rationaleOk === false)
@@ -1700,7 +1724,7 @@
         }
       });
       $$(".hotspot-zone").forEach((z) => {
-        if (z.getAttribute("data-zone-id") === s.correctAnswer) z.classList.add("is-correct");
+        if (z.getAttribute("data-zone-id") === correctOpt) z.classList.add("is-correct");
       });
     }
   }
@@ -1720,7 +1744,7 @@
     const slot = $("#feedback-slot");
     if (!slot) return;
     const title =
-      kind === "correct" ? "Strong read" : kind === "hint" ? "Hint" : "Not this picture";
+      kind === "correct" ? "Strong read" : kind === "hint" ? "Hint" : "Not quite";
     slot.innerHTML = `
       <div class="feedback is-${kind}">
         <h3>${title}</h3>

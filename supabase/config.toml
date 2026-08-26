@@ -1,0 +1,10 @@
+# Deploy Explore: link the project, set OPENAI_API_KEY, then deploy explore-shots.
+#   supabase link --project-ref <ref>
+#   supabase secrets set OPENAI_API_KEY=sk-...
+#   supabase functions deploy explore-shots
+# SQL prerequisite: run migrate_explore.sql in the dashboard SQL editor.
+
+project_id = "the_blueprint"
+
+[functions.explore-shots]
+verify_jwt = true

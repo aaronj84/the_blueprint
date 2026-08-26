@@ -157,7 +157,7 @@
   ];
   const TRACKER_FIRST_ACTIONS = [...TRACKER_ASSIST_ACTIONS, ...TRACKER_SHOT_ACTIONS, ...TRACKER_OTHER_ACTIONS];
   const RESULTS_NEEDING_MISS_DIR = new Set(["missed", "pk-missed"]);
-  const RESULTS_NEEDING_FOULER = new Set(["foul", "pk-goal", "pk-missed"]);
+  const RESULTS_NEEDING_FOULER = new Set(["pk-goal", "pk-missed"]);
   const LS_EVENTS = CONFIG.shotsStorageKey || "brighton-varsity-shot-tracker";
   const LS_UI_V1 = "brighton-varsity-shot-tracker-ui";
   const LS_UI_V2 = "brighton-varsity-shot-tracker-ui-v2";
@@ -280,6 +280,13 @@
     csvPending: null,
     importOpen: false,
     history: { seasonId: "", playerId: "", opponentId: "", depth: "", rows: null, loading: false },
+    explore: {
+      messages: [],
+      draft: "",
+      loading: false,
+      lastResult: null,
+      error: "",
+    },
   };
 
   const shotModalDraft = {
@@ -293,6 +300,7 @@
     action: null,
     position: "",
     missDirection: "",
+    fkOutcome: "",
     subSlotId: null,
     justAddedNumber: "",
   };
@@ -503,69 +511,36 @@
   }
 
   function cancelLineupGesture() {
-    if (lineupGesture?.mode === "place" && lineupGesture.snapshot) {
-      restoreLineupBag(lineupGesture.team || "us", lineupGesture.snapshot);
-    }
     clearLineupGesture();
   }
 
-  function startSwapGesture(slotId) {
-    const filled = slotPlayer("us", slotId);
+  function startSwapGesture(team, slotId) {
+    const t = team === "opp" ? "opp" : "us";
+    const filled = slotPlayer(t, slotId);
     if (!filled) return;
-    lineupGesture = { mode: "swap", fromSlot: Number(slotId), team: "us" };
-  }
-
-  function startPlaceGesture(team, holding, snapshot) {
-    if (!holding) return;
-    lineupGesture = {
-      mode: "place",
-      team: team === "opp" ? "opp" : "us",
-      holding: lineupPlayerPayload(holding),
-      snapshot: snapshot || copyLineupBag(team),
-    };
+    lineupGesture = { mode: "swap", fromSlot: Number(slotId), team: t };
   }
 
   function completeSwapGesture(toSlotId) {
     if (!lineupGesture || lineupGesture.mode !== "swap") return false;
+    const team = lineupGesture.team === "opp" ? "opp" : "us";
     const from = Number(lineupGesture.fromSlot);
     const to = Number(toSlotId);
     if (!to || from === to) {
       clearLineupGesture();
       return true;
     }
-    const other = slotPlayer("us", to);
+    const other = slotPlayer(team, to);
     if (!other) {
       showToast("Pick a player on the field to swap with");
       return false;
     }
-    swapSlots("us", from, to);
+    swapSlots(team, from, to);
     const a = slotCodeForId(from);
     const b = slotCodeForId(to);
     clearLineupGesture();
     showToast(`Swapped ${a} ↔ ${b}`);
     return true;
-  }
-
-  function placeHoldingOnSlot(slotId) {
-    if (!lineupGesture || lineupGesture.mode !== "place" || !lineupGesture.holding) return false;
-    const team = lineupGesture.team || "us";
-    const to = Number(slotId);
-    const displaced = slotPlayer(team, to);
-    assignSlot(team, to, lineupGesture.holding);
-    if (displaced) {
-      lineupGesture.holding = lineupPlayerPayload(displaced);
-      return true;
-    }
-    clearLineupGesture();
-    showToast("Position updated");
-    return true;
-  }
-
-  function benchHoldingPlayer() {
-    if (!lineupGesture || lineupGesture.mode !== "place") return;
-    const name = playerDisplayName(lineupGesture.holding);
-    clearLineupGesture();
-    showToast(name ? `${name} to the bench` : "Player to the bench");
   }
 
   function defaultLineupCount() {
@@ -612,11 +587,19 @@
   }
 
   function needsMissDirection(action) {
-    return !!(action && RESULTS_NEEDING_MISS_DIR.has(action.result));
+    const result = action?.result === "foul" ? shotModalDraft.fkOutcome || "" : action?.result;
+    return !!(result && RESULTS_NEEDING_MISS_DIR.has(result));
   }
 
   function needsFoulerStep(action) {
     return !!(action && RESULTS_NEEDING_FOULER.has(action.result));
+  }
+
+  function effectiveShotResult() {
+    if (shotModalDraft.action?.result === "foul" && shotModalDraft.fkOutcome) {
+      return shotModalDraft.fkOutcome;
+    }
+    return shotModalDraft.action?.result || "";
   }
 
   function oppositeTeam(team) {
@@ -1538,7 +1521,11 @@
     }
     const numRot = swapped ? 90 : -90;
     const markers = events
-      .filter((ev) => eventPeriod(ev) === (opts.period || st.period) && eventTeam(ev) === team)
+      .filter((ev) => {
+        if (eventTeam(ev) !== team) return false;
+        if (opts.allPeriods) return true;
+        return eventPeriod(ev) === (opts.period || st.period);
+      })
       .map((ev) => {
         let html = "";
         if (ev.assist) {
@@ -1591,6 +1578,7 @@
     shotModalDraft.action = null;
     shotModalDraft.position = "";
     shotModalDraft.missDirection = "";
+    shotModalDraft.fkOutcome = "";
     shotModalDraft.subSlotId = null;
     shotModalDraft.justAddedNumber = "";
   }
@@ -1605,6 +1593,7 @@
     shotModalDraft.location = null;
     shotModalDraft.position = "";
     shotModalDraft.missDirection = "";
+    shotModalDraft.fkOutcome = "";
     shotModalDraft.subSlotId = null;
     shotModalDraft.justAddedNumber = "";
   }
@@ -1625,6 +1614,7 @@
     shotModalDraft.action = null;
     shotModalDraft.position = "";
     shotModalDraft.missDirection = "";
+    shotModalDraft.fkOutcome = "";
     shotModalDraft.subSlotId = null;
     shotModalDraft.justAddedNumber = "";
     renderShotModal();
@@ -1757,7 +1747,12 @@
     if (panel) {
       panel.classList.toggle(
         "is-player-phase",
-        phase === "player" || phase === "position" || phase === "fouler" || phase === "miss-dir" || inSubFlow
+        phase === "player" ||
+          phase === "position" ||
+          phase === "fouler" ||
+          phase === "miss-dir" ||
+          phase === "fk-result" ||
+          inSubFlow
       );
     }
     if (backBtn) backBtn.hidden = phase === "action";
@@ -1806,8 +1801,11 @@
 
     if (phase === "miss-dir") {
       const chosen = shotModalDraft.action;
+      const outcome = effectiveShotResult();
       title.textContent = "Where did it miss?";
-      locEl.textContent = chosen ? `${actionShortLabel(chosen)}  ·  ${locText}` : locText;
+      locEl.textContent = chosen
+        ? `${actionShortLabel(chosen)}${outcome && outcome !== chosen.result ? ` → ${SHOT_RESULT_LABELS[outcome] || outcome}` : ""}  ·  ${locText}`
+        : locText;
       if (playerHeading) playerHeading.hidden = true;
       playerGrid.hidden = true;
       actionGrid.hidden = false;
@@ -1817,6 +1815,34 @@
             (d) =>
               `<button type="button" class="shot-action-btn is-miss-dir" data-miss-dir="${d}">${escapeHtml(MISS_DIRECTION_LABELS[d])}</button>`
           ).join("")}
+        </div>`;
+      return;
+    }
+
+    if (phase === "fk-result") {
+      const chosen = shotModalDraft.action;
+      const taker = shotModalDraft.player
+        ? playerLabel(Object.assign({ team: recordingTeam() }, shotModalDraft.player))
+        : shotModalDraft.position
+          ? `untagged · ${shotModalDraft.position}`
+          : "untagged";
+      title.textContent = "Free kick result?";
+      locEl.textContent = chosen ? `${actionShortLabel(chosen)} · ${taker}  ·  ${locText}` : locText;
+      if (playerHeading) {
+        playerHeading.hidden = false;
+        playerHeading.textContent = "What happened from the restart?";
+      }
+      if (nudge) nudge.hidden = true;
+      playerGrid.hidden = true;
+      actionGrid.hidden = false;
+      const shotBtns = TRACKER_SHOT_ACTIONS.map(
+        (a) =>
+          `<button type="button" class="shot-action-btn is-${a.result}" data-fk-result="${escapeHtml(a.result)}">${escapeHtml(actionShortLabel(a))}</button>`
+      ).join("");
+      actionGrid.innerHTML = `
+        <div class="shot-action-row shot-action-row-fill">${shotBtns}</div>
+        <div class="shot-action-row shot-action-row-fill" style="margin-top:0.55rem">
+          <button type="button" class="shot-action-btn is-foul" data-fk-result="foul">No shot — free kick only</button>
         </div>`;
       return;
     }
@@ -1837,7 +1863,10 @@
         : locText;
       if (playerHeading) {
         playerHeading.hidden = false;
-        playerHeading.textContent = "Tap a player to save. Tap Empty for unknown at that spot.";
+        playerHeading.textContent =
+          chosen?.result === "foul"
+            ? "Who took the free kick? Tap Empty for unknown at that spot."
+            : "Tap a player to save. Tap Empty for unknown at that spot.";
       }
       if (nudge) {
         nudge.hidden = !(team === "us" && !lineupHasXi("us"));
@@ -2214,7 +2243,7 @@
           shotModalDraft.player = player;
           shotModalDraft.subSlotId = null;
           showToast(`#${num} in at ${slot.code}`);
-          await completeShotModal();
+          await afterTakerPicked();
           return;
         }
 
@@ -2222,7 +2251,7 @@
           assignPlayerToShotPosition(team, player);
           shotModalDraft.player = player;
           showToast(`#${num} in at ${shotModalDraft.position}`);
-          await completeShotModal();
+          await afterTakerPicked();
           return;
         }
 
@@ -2232,6 +2261,17 @@
         showToast(err.message || "Could not add number");
       }
     }, team);
+  }
+
+  async function afterTakerPicked() {
+    if (shotModalDraft.action?.result === "foul") {
+      shotModalDraft.fkOutcome = "";
+      shotModalDraft.missDirection = "";
+      shotModalDraft.phase = "fk-result";
+      renderShotModal();
+      return;
+    }
+    await completeShotModal();
   }
 
   async function completeShotModal() {
@@ -2256,7 +2296,8 @@
     }
     if (action.kind === "shot") {
       const assist = shotModalDraft.step === "shot" ? st.pending?.assist : null;
-      await commitShotEvent(action.result, player, assist || null);
+      const result = effectiveShotResult() || action.result;
+      await commitShotEvent(result, player, assist || null);
     }
   }
 
@@ -2434,7 +2475,7 @@
         } else {
           shotModalDraft.player = null;
         }
-        await completeShotModal();
+        await afterTakerPicked();
         return;
       }
       const pickFouler = e.target.closest("[data-pick-fouler]");
@@ -2484,7 +2525,23 @@
       const missBtn = e.target.closest("[data-miss-dir]");
       if (missBtn) {
         shotModalDraft.missDirection = missBtn.getAttribute("data-miss-dir") || "";
+        if (shotModalDraft.fkOutcome && shotModalDraft.position) {
+          await completeShotModal();
+          return;
+        }
         advanceAfterAction();
+        return;
+      }
+      const fkResultBtn = e.target.closest("[data-fk-result]");
+      if (fkResultBtn) {
+        shotModalDraft.fkOutcome = fkResultBtn.getAttribute("data-fk-result") || "foul";
+        shotModalDraft.missDirection = "";
+        if (RESULTS_NEEDING_MISS_DIR.has(shotModalDraft.fkOutcome)) {
+          shotModalDraft.phase = "miss-dir";
+          renderShotModal();
+          return;
+        }
+        await completeShotModal();
         return;
       }
       const teamBtn = e.target.closest("[data-shot-team]");
@@ -2541,7 +2598,7 @@
         shotModalDraft.subSlotId = null;
         shotModalDraft.justAddedNumber = "";
         showToast(`${playerDisplayName(player) || `#${player.number}`} in at ${slot.code}`);
-        await completeShotModal();
+        await afterTakerPicked();
         return;
       }
       if (e.target.closest("[data-player-skip]")) {
@@ -2559,7 +2616,7 @@
           return;
         }
         shotModalDraft.player = null;
-        await completeShotModal();
+        await afterTakerPicked();
         return;
       }
       if (e.target.closest("[data-player-add]")) {
@@ -2601,7 +2658,7 @@
           return;
         }
         assignPlayerToShotPosition(team, picked);
-        await completeShotModal();
+        await afterTakerPicked();
         return;
       }
       const actionBtn = e.target.closest("[data-action-id]");
@@ -2610,6 +2667,7 @@
         if (!action) return;
         shotModalDraft.action = action;
         shotModalDraft.missDirection = "";
+        shotModalDraft.fkOutcome = "";
         shotModalDraft.fouler = null;
         shotModalDraft.foulerPicked = false;
         shotModalDraft.foulerPickTeam = oppositeTeam(recordingTeam());
@@ -2637,6 +2695,21 @@
         renderShotModal();
         return;
       }
+      if (shotModalDraft.phase === "fk-result") {
+        shotModalDraft.phase = "position";
+        shotModalDraft.fkOutcome = "";
+        shotModalDraft.missDirection = "";
+        shotModalDraft.position = "";
+        shotModalDraft.player = null;
+        renderShotModal();
+        return;
+      }
+      if (shotModalDraft.phase === "miss-dir" && shotModalDraft.action?.result === "foul" && shotModalDraft.fkOutcome) {
+        shotModalDraft.phase = "fk-result";
+        shotModalDraft.missDirection = "";
+        renderShotModal();
+        return;
+      }
       if (shotModalDraft.phase === "position" && needsMissDirection(shotModalDraft.action)) {
         shotModalDraft.phase = "miss-dir";
         shotModalDraft.position = "";
@@ -2656,6 +2729,7 @@
         shotModalDraft.phase = "action";
         shotModalDraft.action = null;
         shotModalDraft.position = "";
+        shotModalDraft.fkOutcome = "";
         renderShotModal();
         return;
       }
@@ -2671,6 +2745,7 @@
         shotModalDraft.phase = "action";
         shotModalDraft.action = null;
         shotModalDraft.missDirection = "";
+        shotModalDraft.fkOutcome = "";
         shotModalDraft.fouler = null;
         shotModalDraft.foulerPicked = false;
         renderShotModal();
@@ -2682,6 +2757,7 @@
       shotModalDraft.foulerPicked = false;
       shotModalDraft.action = null;
       shotModalDraft.missDirection = "";
+      shotModalDraft.fkOutcome = "";
       shotModalDraft.subSlotId = null;
       renderShotModal();
     });
@@ -2894,8 +2970,8 @@
             ${extra}
             <td><span class="team-chip ${team === "opp" ? "is-opp" : "is-us"}">${escapeHtml(teamLabel(team, ev))}</span></td>
             <td><button type="button" class="linkish" data-edit-shot="${escapeHtml(ev.id)}">${playerCell}</button></td>
-            <td>${escapeHtml(ev.position || "—")}</td>
-            <td><span class="shot-result-pill ${escapeHtml(ev.result)}">${escapeHtml(resultLabel)}</span></td>
+            <td><button type="button" class="linkish" data-edit-shot="${escapeHtml(ev.id)}">${escapeHtml(ev.position || "—")}</button></td>
+            <td><button type="button" class="linkish" data-edit-shot="${escapeHtml(ev.id)}"><span class="shot-result-pill ${escapeHtml(ev.result)}">${escapeHtml(resultLabel)}</span></button></td>
             <td>${escapeHtml(missLabel)}</td>
             <td>${escapeHtml(assistBy)}${escapeHtml(assistPos)}</td>
             <td>${escapeHtml(assistType)}</td>
@@ -3011,6 +3087,8 @@
         team,
       });
     }
+    const title = $("#shot-edit-title");
+    if (title) title.textContent = "Edit player & position";
     $("#shot-edit-result").value = ev.result;
     $("#shot-edit-position").value = ev.position || "";
     const missSel = $("#shot-edit-miss");
@@ -3217,7 +3295,8 @@
   function lineupGestureBanner() {
     if (!lineupGesture) return "";
     if (lineupGesture.mode === "swap") {
-      const from = slotPlayer("us", lineupGesture.fromSlot);
+      const team = lineupGesture.team === "opp" ? "opp" : "us";
+      const from = slotPlayer(team, lineupGesture.fromSlot);
       const name = escapeHtml(playerDisplayName(from) || "Player");
       const code = escapeHtml(slotCodeForId(lineupGesture.fromSlot));
       return `
@@ -3226,22 +3305,12 @@
           <button type="button" class="btn btn-secondary" data-lineup-gesture-cancel>Cancel</button>
         </div>`;
     }
-    if (lineupGesture.mode === "place") {
-      const name = escapeHtml(playerDisplayName(lineupGesture.holding) || "Player");
-      return `
-        <div class="lineup-gesture-banner" role="status">
-          <p><strong>Place ${name}</strong> — tap her new spot, or Bench to take her off.</p>
-          <div class="lineup-gesture-actions">
-            <button type="button" class="btn btn-primary" data-lineup-gesture-bench>Bench</button>
-            <button type="button" class="btn btn-secondary" data-lineup-gesture-cancel>Cancel</button>
-          </div>
-        </div>`;
-    }
     return "";
   }
 
   function lineupEditorCards(team) {
-    const gestureOn = !!lineupGesture && team === "us";
+    const gestureTeam = lineupGesture?.team === "opp" ? "opp" : lineupGesture ? "us" : null;
+    const gestureOn = !!lineupGesture && gestureTeam === team;
     return FORMATION_LAYOUT.map((layout) => {
       const slot = POSITION_SLOTS.find((s) => s.id === layout.id) || layout;
       const filled = slotPlayer(team, slot.id);
@@ -3252,29 +3321,25 @@
         : "—";
       const select =
         team === "opp"
-          ? `<select class="lineup-select formation-card-select" data-lineup-team="opp" data-lineup-slot="${slot.id}" aria-label="${escapeHtml(slot.code)}">${oppSelectOptions(slot.id)}</select>`
+          ? `<select class="lineup-select formation-card-select" data-lineup-team="opp" data-lineup-slot="${slot.id}" aria-label="${escapeHtml(slot.code)}" ${gestureOn ? "disabled" : ""}>${oppSelectOptions(slot.id)}</select>`
           : `<select class="lineup-select formation-card-select" data-lineup-team="us" data-lineup-slot="${slot.id}" aria-label="${escapeHtml(slot.code)}" ${gestureOn ? "disabled" : ""}>${usSelectOptions(slot.id)}</select>`;
       const isSwapFrom =
-        lineupGesture?.mode === "swap" && Number(lineupGesture.fromSlot) === Number(slot.id);
-      const isPlaceTarget = lineupGesture?.mode === "place" && team === "us";
+        lineupGesture?.mode === "swap" && gestureOn && Number(lineupGesture.fromSlot) === Number(slot.id);
       const isSwapTarget =
-        lineupGesture?.mode === "swap" && team === "us" && !!filled && !isSwapFrom;
+        lineupGesture?.mode === "swap" && gestureOn && !!filled && !isSwapFrom;
       const cardClass = [
         "formation-card",
         "is-editor",
         isSwapFrom ? "is-swap-from" : "",
-        isSwapTarget || isPlaceTarget ? "is-gesture-target" : "",
+        isSwapTarget ? "is-gesture-target" : "",
       ]
         .filter(Boolean)
         .join(" ");
-      const swapDisabled = team !== "us" || !filled || lineupGesture?.mode === "place";
-      const swapBtn =
-        team === "us"
-          ? `<button type="button" class="btn btn-ghost lineup-swap ${isSwapFrom ? "is-on" : ""}" data-swap-slot="${slot.id}" ${swapDisabled ? "disabled" : ""} title="Swap with another on-field player">Swap</button>`
-          : "";
+      const swapDisabled = !filled || (!!lineupGesture && !gestureOn);
+      const swapBtn = `<button type="button" class="btn btn-ghost lineup-swap ${isSwapFrom ? "is-on" : ""}" data-swap-slot="${slot.id}" data-swap-team="${team}" ${swapDisabled ? "disabled" : ""} title="Swap with another on-field player">Swap</button>`;
       const hitOverlay =
-        gestureOn && (isSwapTarget || isPlaceTarget || isSwapFrom)
-          ? `<button type="button" class="formation-card-hit" data-lineup-slot-hit="${slot.id}" aria-label="${isSwapFrom ? "Cancel swap" : isPlaceTarget ? "Place here" : "Swap with this player"}"></button>`
+        gestureOn && (isSwapTarget || isSwapFrom)
+          ? `<button type="button" class="formation-card-hit" data-lineup-slot-hit="${slot.id}" aria-label="${isSwapFrom ? "Cancel swap" : "Swap with this player"}"></button>`
           : "";
       return `
         <div class="${cardClass}" style="${formationCardStyle(layout)}" data-lineup-slot-card="${slot.id}">
@@ -3294,12 +3359,12 @@
     const usCount = onFieldPlayers("us").length;
     const oppCount = onFieldPlayers("opp").length;
     const gestureOn = !!lineupGesture;
+    const gestureTeam = lineupGesture?.team === "opp" ? "opp" : "us";
     const oppLabel = opponentOf(st.game)?.name || "Opponent";
     const defaultCount = defaultLineupCount();
     const help = (() => {
       if (lineupGesture?.mode === "swap") return "Tap the player she should trade places with.";
-      if (lineupGesture?.mode === "place") return "Tap the next position in the chain, then Bench when someone comes off.";
-      return "Brighton on top, opponent below. Dropdown to assign — Swap on Brighton to trade spots.";
+      return "Brighton on top, opponent below. Dropdown to assign — Swap to trade spots on either team.";
     })();
     return `
       <section class="lineup-section ${gestureOn ? "is-gesturing" : ""}" id="lineup-section">
@@ -3309,14 +3374,14 @@
         <p class="muted lineup-help">${help}</p>
         ${lineupGestureBanner()}
         <div class="lineup-dual-pitches">
-          <div class="lineup-dual-block ${gestureOn ? "is-gesturing-pitch" : ""}">
+          <div class="lineup-dual-block ${gestureOn && gestureTeam === "us" ? "is-gesturing-pitch" : ""} ${gestureOn && gestureTeam !== "us" ? "is-dimmed" : ""}">
             <div class="lineup-dual-head">
               <p class="tracker-pitch-caption">Brighton</p>
               <p class="lineup-count">${usCount}/11 on the field</p>
             </div>
             ${formationPitchShell(lineupEditorCards("us"), "", { team: "us" })}
           </div>
-          <div class="lineup-dual-block is-opp">
+          <div class="lineup-dual-block is-opp ${gestureOn && gestureTeam === "opp" ? "is-gesturing-pitch" : ""} ${gestureOn && gestureTeam !== "opp" ? "is-dimmed" : ""}">
             <div class="lineup-dual-head">
               <p class="tracker-pitch-caption">${escapeHtml(oppLabel)}</p>
               <p class="lineup-count">${oppCount}/11 on the field</p>
@@ -3363,15 +3428,15 @@
       return;
     }
 
-    if (team === "us" && current) {
-      const snapshot = copyLineupBag("us");
-      assignSlot(team, slotId, payload);
-      startPlaceGesture("us", current, snapshot);
-      showToast(`${playerDisplayName(player)} in at ${slotCodeForId(slotId)}`);
-      return;
-    }
-
     assignSlot(team, slotId, payload);
+    clearLineupGesture();
+    if (current) {
+      showToast(
+        `${playerDisplayName(player) || `#${payload.number}`} in at ${slotCodeForId(slotId)} · ${playerDisplayName(current) || "player"} to bench`
+      );
+    } else {
+      showToast(`${playerDisplayName(player) || `#${payload.number}`} in at ${slotCodeForId(slotId)}`);
+    }
   }
 
   function bindLineupEditor() {
@@ -3383,12 +3448,6 @@
     $$("[data-lineup-gesture-cancel]").forEach((btn) => {
       btn.addEventListener("click", () => {
         cancelLineupGesture();
-        draw({ keepScroll: true });
-      });
-    });
-    $$("[data-lineup-gesture-bench]").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        benchHoldingPlayer();
         draw({ keepScroll: true });
       });
     });
@@ -3404,39 +3463,33 @@
       btn.addEventListener("click", (e) => {
         e.stopPropagation();
         const slotId = Number(btn.getAttribute("data-swap-slot"));
-        if (lineupGesture?.mode === "swap" && Number(lineupGesture.fromSlot) === slotId) {
+        const team = btn.getAttribute("data-swap-team") === "opp" ? "opp" : "us";
+        if (lineupGesture?.mode === "swap" && lineupGesture.team === team && Number(lineupGesture.fromSlot) === slotId) {
           clearLineupGesture();
           draw({ keepScroll: true });
           return;
         }
-        if (lineupGesture?.mode === "swap") {
+        if (lineupGesture?.mode === "swap" && lineupGesture.team === team) {
           completeSwapGesture(slotId);
           draw({ keepScroll: true });
           return;
         }
-        if (lineupGesture?.mode === "place") return;
-        startSwapGesture(slotId);
+        if (lineupGesture) return;
+        startSwapGesture(team, slotId);
         draw({ keepScroll: true });
       });
     });
     $$("[data-lineup-slot-hit]").forEach((btn) => {
       btn.addEventListener("click", (e) => {
         e.stopPropagation();
-        if (!lineupGesture) return;
+        if (!lineupGesture || lineupGesture.mode !== "swap") return;
         const slotId = Number(btn.getAttribute("data-lineup-slot-hit"));
-        if (lineupGesture.mode === "swap") {
-          if (Number(lineupGesture.fromSlot) === slotId) {
-            clearLineupGesture();
-          } else {
-            completeSwapGesture(slotId);
-          }
-          draw({ keepScroll: true });
-          return;
+        if (Number(lineupGesture.fromSlot) === slotId) {
+          clearLineupGesture();
+        } else {
+          completeSwapGesture(slotId);
         }
-        if (lineupGesture.mode === "place") {
-          placeHoldingOnSlot(slotId);
-          draw({ keepScroll: true });
-        }
+        draw({ keepScroll: true });
       });
     });
   }
@@ -3641,45 +3694,70 @@
   }
 
   function downloadSummaryImage() {
-    const svg = $("#shot-map-svg");
-    if (!svg) return;
-    const clone = svg.cloneNode(true);
-    clone.setAttribute("width", "1600");
-    clone.setAttribute("height", String(Math.round(1600 * (74.4 / 111.4))));
-    const xml = new XMLSerializer().serializeToString(clone);
-    const blob = new Blob([xml], { type: "image/svg+xml;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const img = new Image();
-    img.onload = () => {
-      const canvas = document.createElement("canvas");
-      canvas.width = 1600;
-      canvas.height = Math.round(1600 * (74.4 / 111.4));
-      const ctx = canvas.getContext("2d");
-      ctx.fillStyle = "#2d7a4a";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-      URL.revokeObjectURL(url);
-      canvas.toBlob((png) => {
-        if (!png) {
-          showToast("Could not save image");
-          return;
-        }
-        const pngUrl = URL.createObjectURL(png);
-        const a = document.createElement("a");
-        a.href = pngUrl;
-        a.download = `bengals-shot-map-${new Date().toISOString().slice(0, 10)}.png`;
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        setTimeout(() => URL.revokeObjectURL(pngUrl), 1500);
-        showToast("Shot map saved");
-      }, "image/png");
-    };
-    img.onerror = () => {
-      URL.revokeObjectURL(url);
-      showToast("Could not save image");
-    };
-    img.src = url;
+    const rootEl = $("#shot-map-print-root");
+    const svgs = rootEl ? $$(".shot-map-team-pitch .pitch-svg, #shot-map-svg", rootEl) : [];
+    if (!svgs.length) {
+      showToast("Nothing to save");
+      return;
+    }
+    const width = 1600;
+    const gap = 36;
+    const loads = svgs.map(
+      (svg) =>
+        new Promise((resolve, reject) => {
+          const clone = svg.cloneNode(true);
+          const vb = (clone.getAttribute("viewBox") || "0 0 100 70").split(/\s+/).map(Number);
+          const vw = vb[2] || 100;
+          const vh = vb[3] || 70;
+          const h = Math.round(width * (vh / vw));
+          clone.setAttribute("width", String(width));
+          clone.setAttribute("height", String(h));
+          const xml = new XMLSerializer().serializeToString(clone);
+          const blob = new Blob([xml], { type: "image/svg+xml;charset=utf-8" });
+          const url = URL.createObjectURL(blob);
+          const img = new Image();
+          img.onload = () => {
+            URL.revokeObjectURL(url);
+            resolve({ img, h });
+          };
+          img.onerror = () => {
+            URL.revokeObjectURL(url);
+            reject(new Error("image"));
+          };
+          img.src = url;
+        })
+    );
+    Promise.all(loads)
+      .then((parts) => {
+        const totalH = parts.reduce((sum, p) => sum + p.h, 0) + gap * Math.max(0, parts.length - 1);
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = totalH;
+        const ctx = canvas.getContext("2d");
+        ctx.fillStyle = "#2d7a4a";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        let y = 0;
+        parts.forEach((p, i) => {
+          ctx.drawImage(p.img, 0, y, width, p.h);
+          y += p.h + (i < parts.length - 1 ? gap : 0);
+        });
+        canvas.toBlob((png) => {
+          if (!png) {
+            showToast("Could not save image");
+            return;
+          }
+          const pngUrl = URL.createObjectURL(png);
+          const a = document.createElement("a");
+          a.href = pngUrl;
+          a.download = `bengals-shot-map-${new Date().toISOString().slice(0, 10)}.png`;
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          setTimeout(() => URL.revokeObjectURL(pngUrl), 1500);
+          showToast("Shot map saved");
+        }, "image/png");
+      })
+      .catch(() => showToast("Could not save image"));
   }
 
   function renderMap() {
@@ -3689,8 +3767,11 @@
     const etOne = events.filter((e) => eventPeriod(e) === "ET1");
     const etTwo = events.filter((e) => eventPeriod(e) === "ET2");
     const hasEt = etOne.length > 0 || etTwo.length > 0;
-    const vs = opponentOf(st.game)?.name || "";
+    const usEvents = events.filter((e) => eventTeam(e) === "us");
+    const oppEvents = events.filter((e) => eventTeam(e) === "opp");
+    const vs = opponentOf(st.game)?.name || "Opponent";
     const dateLabel = st.game?.date || "";
+    const halfOpts = { allPeriods: true, swapped: false, showGrid: false };
     root().innerHTML = `
       <div class="shot-map-page">
         ${trackerNav("map")}
@@ -3707,15 +3788,55 @@
               <span class="muted"> · ${escapeHtml(String(dateLabel))}</span>
             </p>
           </header>
-          <div class="shot-map-pitch">${fullFieldMarkup(events)}</div>
-          <p class="shot-map-caption">1st half and ET 1: we attack the right goal, they attack the left. 2nd half and ET 2 reverse. Gold = goal · White = on target · Orange = blocked · Hollow = missed · Blue dot = assist · Red ring = opponent.</p>
+          <div class="shot-map-dual">
+            <div class="shot-map-team-block">
+              <h2>Brighton</h2>
+              <div class="shot-map-team-pitch">${halfPitchMarkup(events, Object.assign({ team: "us" }, halfOpts))}</div>
+              <div class="tracker-summary">${summaryPills(trackerSummary(usEvents))}</div>
+            </div>
+            <div class="shot-map-team-block is-opp">
+              <h2>${escapeHtml(vs)}</h2>
+              <div class="shot-map-team-pitch">${halfPitchMarkup(events, Object.assign({ team: "opp" }, halfOpts))}</div>
+              <div class="tracker-summary">${summaryPills(trackerSummary(oppEvents))}</div>
+            </div>
+          </div>
+          <p class="shot-map-caption">Each map is that team’s attacking half (all periods overlaid). Goal at the top. Gold = goal · White = on target · Orange = blocked · Hollow = missed · Blue dot = assist · Purple = free kick · Blue = corner.</p>
+          <div class="shot-map-combined">
+            <h2>Full field (both teams)</h2>
+            <div class="shot-map-pitch">${fullFieldMarkup(events)}</div>
+            <p class="shot-map-caption">1st half / ET 1: Brighton attack right, opponent left. 2nd half / ET 2 reverse. Red ring = opponent.</p>
+          </div>
           <div class="shot-map-stats">
-            <div><h2>1st Half</h2><div class="tracker-summary">${summaryPills(trackerSummary(firstHalf))}</div></div>
-            <div><h2>2nd Half</h2><div class="tracker-summary">${summaryPills(trackerSummary(secondHalf))}</div></div>
+            <div>
+              <h2>1st Half</h2>
+              <p class="shot-map-stat-split muted">Brighton</p>
+              <div class="tracker-summary">${summaryPills(trackerSummary(firstHalf.filter((e) => eventTeam(e) === "us")))}</div>
+              <p class="shot-map-stat-split muted">${escapeHtml(vs)}</p>
+              <div class="tracker-summary">${summaryPills(trackerSummary(firstHalf.filter((e) => eventTeam(e) === "opp")))}</div>
+            </div>
+            <div>
+              <h2>2nd Half</h2>
+              <p class="shot-map-stat-split muted">Brighton</p>
+              <div class="tracker-summary">${summaryPills(trackerSummary(secondHalf.filter((e) => eventTeam(e) === "us")))}</div>
+              <p class="shot-map-stat-split muted">${escapeHtml(vs)}</p>
+              <div class="tracker-summary">${summaryPills(trackerSummary(secondHalf.filter((e) => eventTeam(e) === "opp")))}</div>
+            </div>
             ${
               hasEt
-                ? `<div><h2>ET 1</h2><div class="tracker-summary">${summaryPills(trackerSummary(etOne))}</div></div>
-            <div><h2>ET 2</h2><div class="tracker-summary">${summaryPills(trackerSummary(etTwo))}</div></div>`
+                ? `<div>
+              <h2>ET 1</h2>
+              <p class="shot-map-stat-split muted">Brighton</p>
+              <div class="tracker-summary">${summaryPills(trackerSummary(etOne.filter((e) => eventTeam(e) === "us")))}</div>
+              <p class="shot-map-stat-split muted">${escapeHtml(vs)}</p>
+              <div class="tracker-summary">${summaryPills(trackerSummary(etOne.filter((e) => eventTeam(e) === "opp")))}</div>
+            </div>
+            <div>
+              <h2>ET 2</h2>
+              <p class="shot-map-stat-split muted">Brighton</p>
+              <div class="tracker-summary">${summaryPills(trackerSummary(etTwo.filter((e) => eventTeam(e) === "us")))}</div>
+              <p class="shot-map-stat-split muted">${escapeHtml(vs)}</p>
+              <div class="tracker-summary">${summaryPills(trackerSummary(etTwo.filter((e) => eventTeam(e) === "opp")))}</div>
+            </div>`
                 : ""
             }
           </div>
@@ -3847,7 +3968,7 @@
               <tbody>${shotTableRows(rows, { showGame: true })}</tbody>
             </table>
           </div>
-          <p class="muted">Open a past game from Games, then Map, to see that game's full-field shot map.</p>`
+          <p class="muted">Open a past game from Games, then Map, to see that game’s team-by-team shot maps.</p>`
             : `<p class="muted">Run a query to see shots across games.</p>`
         }
       </div>`;
@@ -3889,6 +4010,205 @@
     }
   }
 
+  const EXPLORE_STARTERS = [
+    "Show me the trend of assists from midfielders this season",
+    "Which forwards have been most successful creating shots on frame or goals from gap passes?",
+    "Last time we played Viewmont, which of their players took the most shots and from what parts of the field?",
+    "Where do Brighton goals tend to come from on the pitch?",
+  ];
+
+  function exploreCell(value) {
+    if (value === null || value === undefined) return "—";
+    if (typeof value === "object") return escapeHtml(JSON.stringify(value));
+    return escapeHtml(String(value));
+  }
+
+  function exploreTableMarkup(columns, rows) {
+    if (!columns?.length || !rows?.length) {
+      return `<p class="muted">No matching rows.</p>`;
+    }
+    const head = columns.map((c) => `<th>${escapeHtml(c)}</th>`).join("");
+    const body = rows
+      .slice(0, 100)
+      .map(
+        (row) =>
+          `<tr>${columns.map((c) => `<td>${exploreCell(row[c])}</td>`).join("")}</tr>`
+      )
+      .join("");
+    return `
+      <div class="tracker-table-wrap explore-table-wrap">
+        <table class="tracker-table">
+          <thead><tr>${head}</tr></thead>
+          <tbody>${body}</tbody>
+        </table>
+      </div>`;
+  }
+
+  function explorePitchMarkup(rows) {
+    const points = (rows || [])
+      .map((r) => ({
+        x: Number(r.x ?? r.assist_x),
+        y: Number(r.y ?? r.assist_y),
+        result: r.result || "",
+        label: r.jersey_number_at_time || r.jersey || r.short_name || r.name || "",
+      }))
+      .filter((p) => Number.isFinite(p.x) && Number.isFinite(p.y));
+    if (!points.length) {
+      return `<p class="muted">No x/y locations in this result to plot.</p>`;
+    }
+    const line = "#f2f6f3";
+    const markers = points
+      .map((p) => {
+        const fill = resultFill(p.result || "missed");
+        let html = `<circle cx="${p.x}" cy="${p.y}" r="1.5" fill="${fill}" stroke="#0b1f33" stroke-width="0.25" />`;
+        if (p.label) {
+          html += `<text x="${p.x}" y="${p.y}" fill="#0b1f33" font-size="1.1" font-weight="700" text-anchor="middle" dominant-baseline="central">${escapeHtml(String(p.label))}</text>`;
+        }
+        return html;
+      })
+      .join("");
+    return `
+      <div class="explore-pitch-wrap">
+        <svg class="explore-pitch-svg" viewBox="-2 -2 ${PW + 4} ${FIELD_Y_MAX + 4}" role="img" aria-label="Shot locations">
+          <rect x="0" y="0" width="${PW}" height="${FIELD_Y_MAX}" fill="#2d7a4a" />
+          <rect x="0" y="0" width="${PW}" height="${FIELD_Y_MAX}" fill="none" stroke="${line}" stroke-width="0.4" />
+          <rect x="${PEN_SIDE}" y="0" width="${PEN_W}" height="16.5" fill="none" stroke="${line}" stroke-width="0.3" />
+          <rect x="${(PW - SIX_W) / 2}" y="0" width="${SIX_W}" height="5.5" fill="none" stroke="${line}" stroke-width="0.3" />
+          <line x1="0" y1="${HALF_L}" x2="${PW}" y2="${HALF_L}" stroke="${line}" stroke-width="0.3" stroke-dasharray="1 0.6" />
+          <text x="${PW / 2}" y="-0.6" fill="${line}" font-size="2" text-anchor="middle">Attacking goal</text>
+          ${markers}
+        </svg>
+        <p class="muted explore-pitch-caption">Attacking half · ${points.length} point${points.length === 1 ? "" : "s"}</p>
+      </div>`;
+  }
+
+  function exploreResultMarkup(result) {
+    if (!result) return "";
+    const cols = result.columns || [];
+    const rows = result.rows || [];
+    const viz = result.viz || "table";
+    let body = "";
+    if (viz === "pitch") {
+      body = explorePitchMarkup(rows) + exploreTableMarkup(cols, rows);
+    } else if (viz === "none" && !rows.length) {
+      body = "";
+    } else {
+      body = exploreTableMarkup(cols, rows);
+    }
+    return `
+      <div class="explore-result">
+        ${result.answer ? `<p class="explore-answer">${escapeHtml(result.answer)}</p>` : ""}
+        ${body}
+        ${
+          result.sql
+            ? `<details class="explore-sql"><summary>SQL used</summary><pre>${escapeHtml(result.sql)}</pre></details>`
+            : ""
+        }
+      </div>`;
+  }
+
+  async function runExplore(question) {
+    const q = String(question || "").trim();
+    if (!q || st.explore.loading) return;
+    const ex = st.explore;
+    ex.error = "";
+    ex.loading = true;
+    ex.draft = "";
+    ex.messages.push({ role: "user", content: q });
+    draw();
+
+    const history = ex.messages
+      .slice(0, -1)
+      .filter((m) => m.role === "user" || m.role === "assistant")
+      .map((m) => ({ role: m.role, content: m.content }));
+
+    const result = await API.explore(q, history);
+    ex.loading = false;
+    if (!result.ok) {
+      ex.error = result.error || "Explore failed";
+      if (result.data) ex.lastResult = result.data;
+      ex.messages.push({
+        role: "assistant",
+        content: ex.error,
+        result: result.data || null,
+      });
+      draw();
+      return;
+    }
+    ex.lastResult = result.data;
+    ex.messages.push({
+      role: "assistant",
+      content: result.data?.answer || "Done.",
+      result: result.data,
+    });
+    draw();
+  }
+
+  function renderExplore() {
+    const ex = st.explore;
+    const transcript = ex.messages
+      .map((m) => {
+        if (m.role === "user") {
+          return `<div class="explore-msg is-user"><p>${escapeHtml(m.content)}</p></div>`;
+        }
+        return `<div class="explore-msg is-assistant">${
+          m.result ? exploreResultMarkup(m.result) : `<p>${escapeHtml(m.content)}</p>`
+        }</div>`;
+      })
+      .join("");
+
+    root().innerHTML = `
+      <div class="shots-admin shots-explore">
+        ${trackerNav("explore")}
+        <h1>Explore</h1>
+        <p class="muted">Ask questions about games, shots, assists, and opponents. Answers use live Supabase data via OpenAI.</p>
+        ${st.error ? `<p class="shots-error">${escapeHtml(st.error)}</p>` : ""}
+        ${ex.error ? `<p class="shots-error">${escapeHtml(ex.error)}</p>` : ""}
+        <div class="explore-starters" role="group" aria-label="Suggested questions">
+          ${EXPLORE_STARTERS.map(
+            (q) =>
+              `<button type="button" class="explore-starter" data-explore-starter>${escapeHtml(q)}</button>`
+          ).join("")}
+        </div>
+        <div class="explore-transcript" id="explore-transcript">
+          ${
+            transcript ||
+            `<p class="muted">Try a starter above, or type your own question.</p>`
+          }
+          ${ex.loading ? `<p class="explore-loading">Working…</p>` : ""}
+        </div>
+        <form id="explore-form" class="explore-form">
+          <label class="sr-only" for="explore-input">Question</label>
+          <textarea id="explore-input" class="explore-input" rows="2" maxlength="2000" placeholder="e.g. Which Brighton players assisted the most goals?" ${ex.loading ? "disabled" : ""}>${escapeHtml(ex.draft)}</textarea>
+          <div class="explore-form-actions">
+            <button type="submit" class="btn btn-primary" ${ex.loading ? "disabled" : ""}>Ask</button>
+            <button type="button" class="btn btn-ghost" id="explore-clear" ${ex.loading || !ex.messages.length ? "disabled" : ""}>Clear</button>
+          </div>
+        </form>
+      </div>`;
+
+    $$("[data-explore-starter]").forEach((btn) => {
+      btn.addEventListener("click", () => runExplore(btn.textContent));
+    });
+    $("#explore-form")?.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const input = $("#explore-input");
+      runExplore(input?.value || "");
+    });
+    $("#explore-input")?.addEventListener("input", (e) => {
+      ex.draft = e.target.value;
+    });
+    $("#explore-clear")?.addEventListener("click", () => {
+      ex.messages = [];
+      ex.lastResult = null;
+      ex.error = "";
+      ex.draft = "";
+      draw();
+    });
+    const transcriptEl = $("#explore-transcript");
+    if (transcriptEl) transcriptEl.scrollTop = transcriptEl.scrollHeight;
+  }
+
   function draw(opts = {}) {
     const el = root();
     if (!el) return;
@@ -3915,6 +4235,10 @@
     }
     if (view === "shots-history") {
       renderHistory();
+      return;
+    }
+    if (view === "shots-explore") {
+      renderExplore();
       return;
     }
     if (!st.gameId || !st.game) {
