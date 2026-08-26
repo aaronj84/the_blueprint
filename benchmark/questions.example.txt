@@ -1,0 +1,18 @@
+# Basic counting / lookup
+How many shots did we take against Alta?
+Who has the most shots on target?
+Which players scored the most goals this season?
+
+# Chance quality / creation
+Which players are creating our highest-quality chances?
+Who is taking a lot of shots without producing many goals?
+Are we producing better chances in the first half or second half?
+
+# Defensive / opponent
+Where are we conceding our most dangerous shots?
+Last time we played Viewmont, which of their players took the most shots and from what parts of the field?
+
+# Trends
+What has changed about our attacking performance over the last four games?
+Show me the trend of assists from midfielders this season
+Where do Brighton goals tend to come from on the pitch?

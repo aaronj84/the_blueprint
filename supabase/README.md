@@ -53,6 +53,12 @@ Or paste `functions/explore-shots/index.ts` via the Dashboard → Edge Functions
 
 Cost note: `gpt-4o-mini` is typically cents per hundred coach questions. Edge Function invocations stay within the free quota at this volume.
 
+Optional: set `EXPLORE_OPENAI_MODEL` as a secret to override the default `gpt-4o-mini`.
+
+### Compare models (benchmark harness)
+
+To A/B OpenAI vs Anthropic on the **same** Explore pipeline (prompts → SQL → `explore_readonly` → narrate), see [`../benchmark/README.md`](../benchmark/README.md). Core prompt/SQL logic is shared under `functions/_shared/explore/`.
+
 ## Other machine checklist
 
 1. Pull this repo.

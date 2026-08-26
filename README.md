@@ -78,12 +78,18 @@ Coach mode shows scenario IDs, correct answers, target areas, cues, prev/next co
   shots-config.example.js
   shots-api.js            # Supabase access layer
   shots.js                # Shot tracker UI
+  benchmark/              # LLM Explore A/B harness (OpenAI vs Anthropic) — see benchmark/README.md
   supabase/schema.sql     # Postgres tables, RLS, Brighton roster seed (idempotent)
   supabase/sample_data.sql
   supabase/sample_schedule.csv
+  supabase/functions/explore-shots/   # Explore NL→SQL Edge Function
   assets/logo.svg
   README.md
 ```
+
+### Compare Explore LLM models
+
+See [`benchmark/README.md`](benchmark/README.md) for the OpenAI vs Anthropic regression harness (same SQL + narrate pipeline as `#shots-explore`).
 
 ## How to add a scenario
 
