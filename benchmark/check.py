@@ -77,7 +77,7 @@ def check_explore_readonly(cfg: BenchmarkConfig) -> CheckResult:
                 "explore_readonly",
                 False,
                 f"RPC failed HTTP {res.status_code}: {res.text[:300]} "
-                "(run migrate_explore.sql if missing)",
+                "(re-run supabase/migrate_explore.sql in the SQL editor)",
             )
         return ("explore_readonly", True, "SELECT 1 ok")
     except Exception as exc:  # noqa: BLE001
