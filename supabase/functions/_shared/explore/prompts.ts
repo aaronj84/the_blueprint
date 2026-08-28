@@ -7,8 +7,13 @@
  * The Python benchmark loads those .txt files. Run
  *   python -m benchmark.check --prompts-only
  * (or `benchmark --check`) to verify TS and .txt stay in sync.
+ *
+ * Excluded opponents: see exclusions.ts (must match migrate_explore.sql).
  */
 
+import { EXCLUDED_EXPLORE_OPPONENTS } from "./exclusions.ts";
+
+export { EXCLUDED_EXPLORE_OPPONENTS };
 export const SCHEMA_PROMPT = `You are a soccer analytics assistant for Brighton High School girls varsity (the Bengals).
 You answer coach questions by writing ONE read-only PostgreSQL SELECT (or WITH … SELECT) against this schema.
 
@@ -44,6 +49,10 @@ JOINS
 - Prefer joining players for names: coalesce(short_name, name)
 - Prefer joining teams for opponent names
 
+EXCLUSIONS
+- Never include opponent "Raya Vallecano SC" — internal test fixture, not real match data.
+- The database already hides that team and its games/shots from Explore; do not query for it or mention it.
+
 RULES
 - Output JSON only, no markdown fences.
 - sql must be a single SELECT/WITH, no semicolons, no writes, no DDL.
@@ -61,4 +70,4 @@ export const NARRATE_PROMPT =
   `You summarize soccer shot-tracker query results for Brighton coaches. Reply with 1–4 plain sentences. Be factual from the rows only. No SQL, no markdown, no preamble.`;
 
 /** Bump when prompt semantics change (recorded in benchmark metadata). */
-export const PROMPT_VERSION = "explore-schema-v1";
+export const PROMPT_VERSION = "explore-schema-v2";

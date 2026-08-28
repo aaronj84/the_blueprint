@@ -31,10 +31,12 @@ cp benchmark/.env.example benchmark/.env
 | --- | --- | --- |
 | `OPENAI_API_KEY` | for OpenAI runs | OpenAI API |
 | `ANTHROPIC_API_KEY` | for Anthropic runs | Anthropic API |
+| `GEMINI_API_KEY` | for Gemini runs | Google AI Studio key |
 | `SUPABASE_URL` | yes | Project URL (`https://<ref>.supabase.co`) |
 | `SUPABASE_SERVICE_ROLE_KEY` | yes | Service role key (same privilege the Edge Function uses for `explore_readonly`) |
 | `BENCHMARK_OPENAI_MODEL` | no | Default: `gpt-4o-mini` (production Explore default) |
-| `BENCHMARK_ANTHROPIC_MODEL` | no | Default: `claude-sonnet-4-20250514` |
+| `BENCHMARK_ANTHROPIC_MODEL` | no | Default: `claude-sonnet-4-6` |
+| `BENCHMARK_GEMINI_MODEL` | no | Default: `gemini-3.6-flash` |
 
 Put secrets in `benchmark/.env` or the repo-root `.env`. Never commit them.
 
@@ -75,9 +77,9 @@ Central rates: [`pricing.py`](./pricing.py)
 - `PRICING_VERSION` is written into every spreadsheet
 - Unknown models still run; cost columns are left blank
 
-Update `MODEL_PRICING` when vendors change prices. Re-check [OpenAI](https://openai.com/api/pricing/) and [Anthropic](https://www.anthropic.com/pricing).
+Update `MODEL_PRICING` when vendors change prices. Re-check [OpenAI](https://openai.com/api/pricing/), [Anthropic](https://www.anthropic.com/pricing), and [Gemini](https://ai.google.dev/gemini-api/docs/pricing).
 
-Cost is computed from **API-returned token usage**, never by asking the model. Cached tokens follow provider semantics (OpenAI: cached is a subset of input; Anthropic: cache read/write are additive).
+Cost is computed from **API-returned token usage**, never by asking the model. Cached tokens follow provider semantics (OpenAI/Gemini: cached is a subset of input; Anthropic: cache read/write are additive).
 
 ## Configuration check (no paid LLM calls)
 
@@ -100,7 +102,7 @@ Single pass (default `runs=1`):
 ```bash
 benchmark/.venv/bin/python -m benchmark \
   --questions ./benchmark/questions.txt \
-  --providers openai,anthropic
+  --providers openai,anthropic,gemini
 ```
 
 Consistency test (e.g. 5 repetitions — each stored separately):
@@ -109,7 +111,7 @@ Consistency test (e.g. 5 repetitions — each stored separately):
 benchmark/.venv/bin/python -m benchmark \
   --questions ./benchmark/questions.txt \
   --runs 5 \
-  --providers openai,anthropic \
+  --providers openai,anthropic,gemini \
   --concurrency 2
 ```
 

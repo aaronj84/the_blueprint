@@ -8,8 +8,8 @@ from typing import List, Tuple
 
 import httpx
 
-from .config import BenchmarkConfig, api_key_for, model_has_pricing
-from .prompts import prompts_in_sync
+from .config import BenchmarkConfig, PROVIDER_API_KEY_ENV, api_key_for, model_has_pricing
+from .prompts import EXCLUDED_EXPLORE_OPPONENTS, exclusions_in_sync, prompts_in_sync
 from .questions import parse_questions_maybe_json
 from .sql_safety import validate_sql
 
@@ -55,23 +55,27 @@ def check_supabase(cfg: BenchmarkConfig) -> CheckResult:
         return ("supabase", False, str(exc))
 
 
+def _explore_rpc(cfg: BenchmarkConfig, sql: str) -> httpx.Response:
+    url = cfg.supabase_url.rstrip("/") + "/rest/v1/rpc/explore_readonly"
+    return httpx.post(
+        url,
+        headers={
+            "apikey": cfg.supabase_service_role_key,
+            "Authorization": f"Bearer {cfg.supabase_service_role_key}",
+            "Content-Type": "application/json",
+        },
+        json={"query": sql},
+        timeout=30.0,
+    )
+
+
 def check_explore_readonly(cfg: BenchmarkConfig) -> CheckResult:
     """Execute a trivial read-only probe via explore_readonly (no LLM)."""
     if not cfg.supabase_url or not cfg.supabase_service_role_key:
         return ("explore_readonly", False, "missing Supabase credentials")
     sql = validate_sql("SELECT 1 AS ok")
-    url = cfg.supabase_url.rstrip("/") + "/rest/v1/rpc/explore_readonly"
     try:
-        res = httpx.post(
-            url,
-            headers={
-                "apikey": cfg.supabase_service_role_key,
-                "Authorization": f"Bearer {cfg.supabase_service_role_key}",
-                "Content-Type": "application/json",
-            },
-            json={"query": sql},
-            timeout=30.0,
-        )
+        res = _explore_rpc(cfg, sql)
         if res.status_code >= 400:
             return (
                 "explore_readonly",
@@ -82,6 +86,46 @@ def check_explore_readonly(cfg: BenchmarkConfig) -> CheckResult:
         return ("explore_readonly", True, "SELECT 1 ok")
     except Exception as exc:  # noqa: BLE001
         return ("explore_readonly", False, str(exc))
+
+
+def check_explore_exclusion(cfg: BenchmarkConfig) -> CheckResult:
+    """Confirm excluded test opponents are invisible through explore_readonly."""
+    if not cfg.supabase_url or not cfg.supabase_service_role_key:
+        return ("explore_exclusion", False, "missing Supabase credentials")
+    if not EXCLUDED_EXPLORE_OPPONENTS:
+        return ("explore_exclusion", True, "no excluded opponents configured")
+    literals = ", ".join(
+        "'" + name.replace("'", "''") + "'" for name in EXCLUDED_EXPLORE_OPPONENTS
+    )
+    sql = validate_sql(
+        f"SELECT name FROM teams WHERE name IN ({literals}) LIMIT 10"
+    )
+    try:
+        res = _explore_rpc(cfg, sql)
+        if res.status_code >= 400:
+            return (
+                "explore_exclusion",
+                False,
+                f"RPC failed HTTP {res.status_code}: {res.text[:300]} "
+                "(re-run supabase/migrate_explore.sql so explore.* views exist)",
+            )
+        rows = res.json()
+        if not isinstance(rows, list):
+            rows = []
+        if rows:
+            found = ", ".join(str(r.get("name", r)) for r in rows[:5])
+            return (
+                "explore_exclusion",
+                False,
+                f"excluded opponent(s) still visible via explore_readonly: {found}",
+            )
+        return (
+            "explore_exclusion",
+            True,
+            f"hidden: {', '.join(EXCLUDED_EXPLORE_OPPONENTS)}",
+        )
+    except Exception as exc:  # noqa: BLE001
+        return ("explore_exclusion", False, str(exc))
 
 
 def run_checks(cfg: BenchmarkConfig, *, include_network: bool = True) -> List[CheckResult]:
@@ -106,13 +150,17 @@ def run_checks(cfg: BenchmarkConfig, *, include_network: bool = True) -> List[Ch
     ok, msg = prompts_in_sync()
     results.append(("prompts_sync", ok, msg))
 
+    # Excluded test opponents (TS ↔ prompts ↔ migrate_explore.sql)
+    ok, msg = exclusions_in_sync()
+    results.append(("exclusions_sync", ok, msg))
+
     # API keys + models
     for provider in cfg.providers:
         key = api_key_for(cfg, provider)
         if key:
             results.append((f"{provider}_api_key", True, "present"))
         else:
-            env_name = "OPENAI_API_KEY" if provider == "openai" else "ANTHROPIC_API_KEY"
+            env_name = PROVIDER_API_KEY_ENV.get(provider, f"{provider.upper()}_API_KEY")
             results.append((f"{provider}_api_key", False, f"{env_name} not set"))
 
         model = cfg.models.get(provider, "")
@@ -162,6 +210,7 @@ def run_checks(cfg: BenchmarkConfig, *, include_network: bool = True) -> List[Ch
     if include_network:
         results.append(check_supabase(cfg))
         results.append(check_explore_readonly(cfg))
+        results.append(check_explore_exclusion(cfg))
 
     return results
 
@@ -171,10 +220,12 @@ def print_check_report(results: List[CheckResult]) -> int:
     critical_prefixes = (
         "questions_file",
         "prompts_sync",
+        "exclusions_sync",
         "output_dir",
         "sql_safety",
         "supabase",
         "explore_readonly",
+        "explore_exclusion",
     )
     # API keys are critical only for selected providers
     failed_critical = False

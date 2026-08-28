@@ -33,7 +33,7 @@ window.SHOTS_CONFIG = {
 
 Natural-language questions over shot data (`#shots-explore`). Uses a Supabase Edge Function + OpenAI — **not** your ChatGPT desktop subscription.
 
-1. SQL editor: run `migrate_explore.sql` (creates `explore_readonly` RPC, service_role only).
+1. SQL editor: run `migrate_explore.sql` (creates `explore_readonly` RPC, service_role only). This also hides test opponent **Raya Vallecano SC** from Explore via `explore.*` views — Tracker / Games / History still show it.
 2. Create an [OpenAI API](https://platform.openai.com) key. Set a low monthly spend limit (e.g. $5–10).
 3. Store the key as a project secret (CLI or Dashboard → Edge Functions → Secrets):
 

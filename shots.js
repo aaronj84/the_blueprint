@@ -355,6 +355,18 @@
     return opp ? opp.id : null;
   }
 
+  function teamIdForEvent(team, ev) {
+    const key = team === "opp" ? "opp" : "us";
+    const b = brighton();
+    if (key === "us") return b ? b.id : ev?.game?.our_team_id || st.game?.our_team_id || null;
+    const game = ev?.game || st.game;
+    if (game && b) {
+      if (game.home_team_id === b.id) return game.away_team_id;
+      if (game.away_team_id === b.id) return game.home_team_id;
+    }
+    return teamIdFor("opp");
+  }
+
   function recordingTeamId() {
     return teamIdFor(recordingTeam());
   }
@@ -2963,8 +2975,8 @@
         const extra = opts.showGame && ev.gameDate ? `<td>${escapeHtml(ev.gameDate)}</td>` : "";
         return `
           <tr class="${ev.saveFailed ? "is-unsaved" : ""}">
-            <td class="tracker-delete-cell">
-              <button type="button" class="icon-btn tracker-delete" data-delete-shot="${escapeHtml(ev.id)}" aria-label="Delete shot">×</button>
+            <td class="tracker-edit-cell">
+              <button type="button" class="icon-btn tracker-edit" data-edit-shot="${escapeHtml(ev.id)}" aria-label="Edit play">Edit</button>
             </td>
             <td>${escapeHtml(formatShotTime(ev.createdAt))}${failed}</td>
             ${extra}
@@ -2977,6 +2989,9 @@
             <td>${escapeHtml(assistType)}</td>
             <td class="tracker-coord-cell">${escapeHtml(formatLoc(ev.shot))}<br /><span class="muted">${escapeHtml(formatXY(ev.shot))}</span></td>
             <td class="tracker-coord-cell">${assistCell}</td>
+            <td class="tracker-delete-cell">
+              <button type="button" class="icon-btn tracker-delete" data-delete-shot="${escapeHtml(ev.id)}" aria-label="Delete shot">×</button>
+            </td>
           </tr>`;
       })
       .join("");
@@ -2990,7 +3005,7 @@
         <table class="tracker-table">
           <thead>
             <tr>
-              <th class="tracker-delete-cell"><span class="sr-only">Delete</span></th>
+              <th class="tracker-edit-cell"><span class="sr-only">Edit</span></th>
               <th>Time</th>
               <th>Team</th>
               <th>Player</th>
@@ -3001,6 +3016,7 @@
               <th>Assist type</th>
               <th>Shot location</th>
               <th>Assist location</th>
+              <th class="tracker-delete-cell"><span class="sr-only">Delete</span></th>
             </tr>
           </thead>
           <tbody>${shotTableRows(events)}</tbody>
@@ -3039,7 +3055,7 @@
     });
   }
 
-  function fillFoulerEditOptions(ev) {
+  function fillFoulerEditOptions(ev, teamOverride) {
     const wrap = $("#shot-edit-fouler-wrap");
     const sel = $("#shot-edit-fouler");
     if (!wrap || !sel) return;
@@ -3049,7 +3065,7 @@
       sel.innerHTML = `<option value="">—</option>`;
       return;
     }
-    const team = oppositeTeam(eventTeam(ev));
+    const team = oppositeTeam(teamOverride || eventTeam(ev));
     const players = sortPlayers(rosterPlayers(team));
     if (ev.fouler_player_id && !players.find((p) => p.id === ev.fouler_player_id)) {
       players.unshift({
@@ -3070,6 +3086,78 @@
         .join("");
   }
 
+  function fillEditPlayerOptions(ev, team, selectedId) {
+    const sel = $("#shot-edit-player");
+    if (!sel) return;
+    const players = sortPlayers(rosterPlayers(team));
+    const keepId = selectedId || ev.player_id;
+    if (keepId && !players.find((p) => p.id === keepId)) {
+      players.unshift({
+        id: keepId,
+        number: ev.shooterNumber,
+        name: ev.shooterName,
+        short: ev.shooterShort,
+        team,
+      });
+    }
+    sel.innerHTML =
+      `<option value="">Unknown / untagged</option>` +
+      players
+        .map(
+          (p) =>
+            `<option value="${p.id}" ${p.id === keepId ? "selected" : ""}>${escapeHtml(playerDisplayName(p))} (#${escapeHtml(String(p.number))})</option>`
+        )
+        .join("");
+  }
+
+  function fillEditAssistOptions(ev, team, selectedId) {
+    const sel = $("#shot-edit-assist");
+    if (!sel) return;
+    const players = sortPlayers(rosterPlayers(team));
+    const keepId = selectedId !== undefined ? selectedId : ev.assist?.player_id || null;
+    if (keepId && !players.find((p) => p.id === keepId)) {
+      players.unshift({
+        id: keepId,
+        number: ev.assist?.number || "",
+        name: ev.assist?.name || "",
+        short: ev.assist?.short || "",
+        team,
+      });
+    }
+    sel.innerHTML =
+      `<option value="">— None —</option>` +
+      players
+        .map(
+          (p) =>
+            `<option value="${p.id}" ${p.id === keepId ? "selected" : ""}>${escapeHtml(playerDisplayName(p))} (#${escapeHtml(String(p.number))})</option>`
+        )
+        .join("");
+  }
+
+  function editModalTeam() {
+    return $("#shot-edit-team")?.value === "opp" ? "opp" : "us";
+  }
+
+  function refreshEditModalRosters(ev, opts = {}) {
+    const team = editModalTeam();
+    const keepPlayer = opts.clearPlayers ? null : $("#shot-edit-player")?.value || ev.player_id;
+    const keepAssist = opts.clearPlayers ? null : $("#shot-edit-assist")?.value || ev.assist?.player_id || null;
+    fillEditPlayerOptions(ev, team, keepPlayer);
+    fillEditAssistOptions(ev, team, keepAssist);
+    fillFoulerEditOptions(
+      Object.assign({}, ev, { result: $("#shot-edit-result")?.value || ev.result }),
+      team
+    );
+    const teamSel = $("#shot-edit-team");
+    if (teamSel) {
+      const oppLabel = teamLabel("opp", ev);
+      const usOpt = teamSel.querySelector('option[value="us"]');
+      const oppOpt = teamSel.querySelector('option[value="opp"]');
+      if (usOpt) usOpt.textContent = teamLabel("us", ev);
+      if (oppOpt) oppOpt.textContent = oppLabel;
+    }
+  }
+
   function openEditShot(id) {
     const ev = st.shots.find((s) => s.id === id) || st.history.rows?.find((s) => s.id === id);
     if (!ev) return;
@@ -3077,18 +3165,10 @@
     if (!modal) return;
     modal.dataset.shotId = id;
     const team = eventTeam(ev);
-    const players = sortPlayers(rosterPlayers(team));
-    if (ev.player_id && !players.find((p) => p.id === ev.player_id)) {
-      players.unshift({
-        id: ev.player_id,
-        number: ev.shooterNumber,
-        name: ev.shooterName,
-        short: ev.shooterShort,
-        team,
-      });
-    }
     const title = $("#shot-edit-title");
-    if (title) title.textContent = "Edit player & position";
+    if (title) title.textContent = "Edit play";
+    const teamSel = $("#shot-edit-team");
+    if (teamSel) teamSel.value = team;
     $("#shot-edit-result").value = ev.result;
     $("#shot-edit-position").value = ev.position || "";
     const missSel = $("#shot-edit-miss");
@@ -3096,17 +3176,14 @@
       missSel.value = ev.missDirection || "";
       missSel.disabled = !RESULTS_NEEDING_MISS_DIR.has(ev.result);
     }
-    $("#shot-edit-player").innerHTML =
-      `<option value="">Unknown / untagged</option>` +
-      players
-        .map(
-          (p) =>
-            `<option value="${p.id}" ${p.id === ev.player_id ? "selected" : ""}>${escapeHtml(playerDisplayName(p))} (#${escapeHtml(String(p.number))})</option>`
-        )
-        .join("");
+    const assistTypeSel = $("#shot-edit-assist-type");
+    if (assistTypeSel) assistTypeSel.value = ev.assist?.type || "";
     $("#shot-edit-name").value = ev.shooterName || "";
     $("#shot-edit-short").value = ev.shooterShort || "";
-    fillFoulerEditOptions(ev);
+    refreshEditModalRosters(ev);
+    fillEditPlayerOptions(ev, team, ev.player_id);
+    fillEditAssistOptions(ev, team, ev.assist?.player_id || null);
+    fillFoulerEditOptions(ev, team);
     modal.hidden = false;
   }
 
@@ -3119,6 +3196,14 @@
         modal.hidden = true;
       });
     });
+    $("#shot-edit-team")?.addEventListener("change", () => {
+      const id = modal.dataset.shotId;
+      const ev = st.shots.find((s) => s.id === id) || st.history.rows?.find((s) => s.id === id);
+      if (!ev) return;
+      refreshEditModalRosters(ev, { clearPlayers: true });
+      $("#shot-edit-name").value = "";
+      $("#shot-edit-short").value = "";
+    });
     $("#shot-edit-result")?.addEventListener("change", () => {
       const missSel = $("#shot-edit-miss");
       if (missSel) {
@@ -3128,31 +3213,50 @@
       }
       const id = modal.dataset.shotId;
       const ev = st.shots.find((s) => s.id === id) || st.history.rows?.find((s) => s.id === id);
-      if (ev) fillFoulerEditOptions(Object.assign({}, ev, { result: $("#shot-edit-result").value }));
+      if (ev) fillFoulerEditOptions(Object.assign({}, ev, { result: $("#shot-edit-result").value }), editModalTeam());
+    });
+    $("#shot-edit-assist-type")?.addEventListener("change", () => {
+      const type = $("#shot-edit-assist-type").value;
+      if (!type && $("#shot-edit-assist")) $("#shot-edit-assist").value = "";
     });
     $("#shot-edit-save")?.addEventListener("click", async () => {
       const id = modal.dataset.shotId;
       const ev = st.shots.find((s) => s.id === id) || st.history.rows?.find((s) => s.id === id);
       if (!ev) return;
+      const team = editModalTeam();
+      const teamId = teamIdForEvent(team, ev);
+      if (!teamId) {
+        showToast("Could not resolve team for this play");
+        return;
+      }
       const playerId = $("#shot-edit-player").value || null;
-      const team = eventTeam(ev);
       const player = playerId ? playerFromRoster(team, playerId, null) : null;
       const result = $("#shot-edit-result").value;
       const missVal = $("#shot-edit-miss")?.value || "";
       const foulerId = RESULTS_NEEDING_FOULER.has(result) ? $("#shot-edit-fouler")?.value || null : null;
       const fouler = foulerId ? playerFromRoster(oppositeTeam(team), foulerId, null) : null;
+      const assistType = $("#shot-edit-assist-type")?.value || "";
+      const assistIdRaw = $("#shot-edit-assist")?.value || null;
+      if (assistIdRaw && !assistType) {
+        showToast("Pick an assist type (or clear Assisted by)");
+        return;
+      }
+      const assistId = assistType ? assistIdRaw : null;
       const patch = {
+        team_id: teamId,
         result,
         position: $("#shot-edit-position").value || null,
         miss_direction: RESULTS_NEEDING_MISS_DIR.has(result) ? missVal || null : null,
         player_id: playerId,
-        jersey_number_at_time: player ? String(player.number) : ev.shooterNumber || null,
+        jersey_number_at_time: player ? String(player.number) : null,
         fouler_player_id: RESULTS_NEEDING_FOULER.has(result) ? foulerId : null,
         fouler_jersey_number_at_time: RESULTS_NEEDING_FOULER.has(result)
           ? fouler
             ? String(fouler.number)
             : null
           : null,
+        assist_player_id: assistId,
+        assist_type: assistType || null,
       };
       const saved = await API.updateShot(id, patch);
       if (!saved.ok) {
@@ -3951,7 +4055,7 @@
             <table class="tracker-table">
               <thead>
                 <tr>
-                  <th class="tracker-delete-cell"><span class="sr-only">Delete</span></th>
+                  <th class="tracker-edit-cell"><span class="sr-only">Edit</span></th>
                   <th>Time</th>
                   <th>Game</th>
                   <th>Team</th>
@@ -3963,6 +4067,7 @@
                   <th>Assist type</th>
                   <th>Shot location</th>
                   <th>Assist location</th>
+                  <th class="tracker-delete-cell"><span class="sr-only">Delete</span></th>
                 </tr>
               </thead>
               <tbody>${shotTableRows(rows, { showGame: true })}</tbody>

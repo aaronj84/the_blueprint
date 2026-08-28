@@ -27,9 +27,17 @@ def validate_sql(sql: str) -> str:
         raise ValueError("Only SELECT queries are allowed")
     if FORBIDDEN.search(cleaned):
         raise ValueError("Forbidden keyword in SQL")
+    # Match explore_readonly / sql.ts: strip public. so explore.* views apply.
+    cleaned = re.sub(
+        r"\bpublic\.(teams|seasons|players|games|rosters|shots)\b",
+        r"\1",
+        cleaned,
+        flags=re.I,
+    )
     if not re.search(r"\blimit\b", cleaned, re.I):
         cleaned = f"SELECT * FROM ({cleaned}) AS explore_q LIMIT 100"
     return cleaned
+
 
 
 def parse_plan(raw: str) -> Dict[str, Any]:

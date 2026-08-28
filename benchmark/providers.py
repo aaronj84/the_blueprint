@@ -187,11 +187,12 @@ class AnthropicProvider:
         body: Dict[str, Any] = {
             "model": model,
             "max_tokens": 4096,
-            "temperature": temperature,
             "messages": normalized,
         }
         if system:
             body["system"] = system
+        # Some newer Claude models (e.g. claude-sonnet-5) reject temperature.
+        include_temperature = True
 
         started = time.time()
         last_err: Optional[Exception] = None
@@ -203,6 +204,9 @@ class AnthropicProvider:
                     retries = attempt
                     _sleep_backoff(attempt)
                 try:
+                    payload = dict(body)
+                    if include_temperature:
+                        payload["temperature"] = temperature
                     res = client.post(
                         "https://api.anthropic.com/v1/messages",
                         headers={
@@ -210,8 +214,12 @@ class AnthropicProvider:
                             "anthropic-version": "2023-06-01",
                             "Content-Type": "application/json",
                         },
-                        json=body,
+                        json=payload,
                     )
+                    if res.status_code == 400 and "temperature" in res.text.lower():
+                        include_temperature = False
+                        last_err = RuntimeError(f"Anthropic HTTP {res.status_code}: {res.text[:500]}")
+                        continue
                     if res.status_code in (429,) or res.status_code >= 500:
                         last_err = RuntimeError(f"Anthropic HTTP {res.status_code}: {res.text[:500]}")
                         continue
@@ -238,11 +246,142 @@ class AnthropicProvider:
         raise last_err or RuntimeError("Anthropic request failed")
 
 
+def _gemini_usage(raw: Optional[Dict[str, Any]]) -> TokenUsage:
+    if not raw:
+        return TokenUsage()
+    u = TokenUsage(raw=raw)
+    if "promptTokenCount" in raw:
+        u.input_tokens = int(raw["promptTokenCount"])
+    candidates = raw.get("candidatesTokenCount")
+    thoughts = raw.get("thoughtsTokenCount")
+    # Google bills thinking tokens at the output rate; fold into output for cost.
+    if candidates is not None or thoughts is not None:
+        u.output_tokens = int(candidates or 0) + int(thoughts or 0)
+    if thoughts is not None:
+        u.reasoning_tokens = int(thoughts)
+    if "cachedContentTokenCount" in raw:
+        u.cached_input_tokens = int(raw["cachedContentTokenCount"])
+    if "totalTokenCount" in raw:
+        u.total_tokens = int(raw["totalTokenCount"])
+    elif u.input_tokens is not None and u.output_tokens is not None:
+        u.total_tokens = u.input_tokens + u.output_tokens
+    return u
+
+
+class GeminiProvider:
+    """Google Gemini via the Generative Language API (AI Studio keys)."""
+
+    id = "gemini"
+
+    def __init__(self, api_key: str, max_retries: int = 2, timeout: float = 120.0):
+        self.api_key = api_key
+        self.max_retries = max_retries
+        self.timeout = timeout
+
+    def complete(
+        self,
+        *,
+        model: str,
+        messages: List[Dict[str, str]],
+        temperature: float = 0.1,
+        json_object: bool = False,
+    ) -> ChatResult:
+        system_parts = [m["content"] for m in messages if m.get("role") == "system"]
+        system = "\n\n".join(system_parts)
+
+        contents: List[Dict[str, Any]] = []
+        for m in messages:
+            role = m.get("role")
+            if role == "system":
+                continue
+            # Gemini uses "user" / "model" (not "assistant")
+            gem_role = "model" if role == "assistant" else "user"
+            if contents and contents[-1]["role"] == gem_role:
+                contents[-1]["parts"][0]["text"] += "\n\n" + m["content"]
+            else:
+                contents.append({"role": gem_role, "parts": [{"text": m["content"]}]})
+
+        if not contents:
+            raise RuntimeError("Gemini requires at least one user message")
+        if contents[0]["role"] != "user":
+            contents.insert(0, {"role": "user", "parts": [{"text": "(continue)"}]})
+
+        body: Dict[str, Any] = {
+            "contents": contents,
+            "generationConfig": {
+                "temperature": temperature,
+            },
+        }
+        if system:
+            body["systemInstruction"] = {"parts": [{"text": system}]}
+        if json_object:
+            body["generationConfig"]["responseMimeType"] = "application/json"
+
+        url = (
+            f"https://generativelanguage.googleapis.com/v1beta/models/"
+            f"{model}:generateContent"
+        )
+        started = time.time()
+        last_err: Optional[Exception] = None
+        retries = 0
+
+        with httpx.Client(timeout=self.timeout) as client:
+            for attempt in range(self.max_retries + 1):
+                if attempt > 0:
+                    retries = attempt
+                    _sleep_backoff(attempt)
+                try:
+                    res = client.post(
+                        url,
+                        headers={
+                            "x-goog-api-key": self.api_key,
+                            "Content-Type": "application/json",
+                        },
+                        json=body,
+                    )
+                    if res.status_code in (429,) or res.status_code >= 500:
+                        last_err = RuntimeError(f"Gemini HTTP {res.status_code}: {res.text[:500]}")
+                        continue
+                    if res.status_code >= 400:
+                        raise RuntimeError(f"Gemini HTTP {res.status_code}: {res.text[:800]}")
+                    data = res.json()
+                    cands = data.get("candidates") or []
+                    if not cands:
+                        raise RuntimeError(
+                            f"Empty Gemini response: {str(data.get('promptFeedback') or data)[:400]}"
+                        )
+                    parts = ((cands[0] or {}).get("content") or {}).get("parts") or []
+                    text = "".join(
+                        str(p.get("text") or "")
+                        for p in parts
+                        if isinstance(p, dict) and not p.get("thought")
+                    )
+                    if not text:
+                        # Fallback: include all text parts
+                        text = "".join(str(p.get("text") or "") for p in parts if isinstance(p, dict))
+                    if not text:
+                        raise RuntimeError("Empty Gemini response text")
+                    return ChatResult(
+                        content=text,
+                        model=str(data.get("modelVersion") or model),
+                        usage=_gemini_usage(data.get("usageMetadata")),
+                        latency_ms=int((time.time() - started) * 1000),
+                        provider=self.id,
+                        retries=retries,
+                    )
+                except (httpx.TimeoutException, httpx.TransportError) as exc:
+                    last_err = exc
+                    continue
+        raise last_err or RuntimeError("Gemini request failed")
+
+
 def create_provider(provider_id: str, api_key: str, max_retries: int = 2):
     if provider_id == "openai":
         return OpenAIProvider(api_key, max_retries=max_retries)
     if provider_id == "anthropic":
         return AnthropicProvider(api_key, max_retries=max_retries)
+    if provider_id == "gemini":
+        return GeminiProvider(api_key, max_retries=max_retries)
     raise ValueError(f"Unknown provider: {provider_id}")
 
 

@@ -33,6 +33,10 @@ JOINS
 - Prefer joining players for names: coalesce(short_name, name)
 - Prefer joining teams for opponent names
 
+EXCLUSIONS
+- Never include opponent "Raya Vallecano SC" — internal test fixture, not real match data.
+- The database already hides that team and its games/shots from Explore; do not query for it or mention it.
+
 RULES
 - Output JSON only, no markdown fences.
 - sql must be a single SELECT/WITH, no semicolons, no writes, no DDL.

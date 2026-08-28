@@ -15,7 +15,17 @@ DEFAULT_QUESTIONS = Path(__file__).resolve().parent / "questions.example.txt"
 
 DEFAULT_MODELS = {
     "openai": "gpt-4o-mini",
-    "anthropic": "claude-sonnet-4-20250514",
+    # Sonnet 4.6 still accepts temperature (needed for fair prod-like settings).
+    # claude-sonnet-5 works too but rejects non-default temperature.
+    "anthropic": "claude-sonnet-4-6",
+    # Google's current Flash tier for new API keys.
+    "gemini": "gemini-3.6-flash",
+}
+
+PROVIDER_API_KEY_ENV = {
+    "openai": "OPENAI_API_KEY",
+    "anthropic": "ANTHROPIC_API_KEY",
+    "gemini": "GEMINI_API_KEY",
 }
 
 
@@ -29,6 +39,7 @@ class BenchmarkConfig:
     concurrency: int
     openai_api_key: Optional[str]
     anthropic_api_key: Optional[str]
+    gemini_api_key: Optional[str]
     supabase_url: Optional[str]
     supabase_service_role_key: Optional[str]
     plan_temperature: float = 0.1
@@ -66,7 +77,7 @@ def build_config(
     load_env()
     provider_list = [
         p.strip().lower()
-        for p in (providers or "openai,anthropic").split(",")
+        for p in (providers or "openai,anthropic,gemini").split(",")
         if p.strip()
     ]
     models = {
@@ -75,6 +86,7 @@ def build_config(
         or DEFAULT_MODELS["openai"],
         "anthropic": os.environ.get("BENCHMARK_ANTHROPIC_MODEL")
         or DEFAULT_MODELS["anthropic"],
+        "gemini": os.environ.get("BENCHMARK_GEMINI_MODEL") or DEFAULT_MODELS["gemini"],
     }
     return BenchmarkConfig(
         questions_path=Path(questions).expanduser() if questions else DEFAULT_QUESTIONS,
@@ -85,6 +97,7 @@ def build_config(
         concurrency=max(1, int(concurrency)),
         openai_api_key=os.environ.get("OPENAI_API_KEY"),
         anthropic_api_key=os.environ.get("ANTHROPIC_API_KEY"),
+        gemini_api_key=os.environ.get("GEMINI_API_KEY"),
         supabase_url=os.environ.get("SUPABASE_URL"),
         supabase_service_role_key=os.environ.get("SUPABASE_SERVICE_ROLE_KEY"),
     )
@@ -95,6 +108,8 @@ def api_key_for(cfg: BenchmarkConfig, provider: str) -> Optional[str]:
         return cfg.openai_api_key
     if provider == "anthropic":
         return cfg.anthropic_api_key
+    if provider == "gemini":
+        return cfg.gemini_api_key
     return None
 
 

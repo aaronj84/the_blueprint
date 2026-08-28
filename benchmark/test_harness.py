@@ -6,7 +6,13 @@ import unittest
 from pathlib import Path
 
 from benchmark.pricing import estimate_cost_usd, resolve_pricing
-from benchmark.prompts import load_narrate_prompt, load_schema_prompt, prompts_in_sync
+from benchmark.prompts import (
+    EXCLUDED_EXPLORE_OPPONENTS,
+    exclusions_in_sync,
+    load_narrate_prompt,
+    load_schema_prompt,
+    prompts_in_sync,
+)
 from benchmark.questions import parse_questions_file, parse_questions_maybe_json
 from benchmark.sql_safety import is_safe_select, parse_plan, validate_sql
 from benchmark.spreadsheet import row_from_result, side_by_side_rows, summarize_by_model
@@ -33,6 +39,14 @@ class SqlSafetyTests(unittest.TestCase):
     def test_rejects_insert(self):
         with self.assertRaises(ValueError):
             validate_sql("INSERT INTO shots (id) VALUES (1)")
+
+    def test_strips_public_schema(self):
+        sql = validate_sql(
+            "SELECT count(*) FROM public.shots JOIN public.teams ON true LIMIT 10"
+        )
+        self.assertNotIn("public.", sql.lower())
+        self.assertIn("shots", sql.lower())
+        self.assertIn("teams", sql.lower())
 
 
 class ParsePlanTests(unittest.TestCase):
@@ -77,6 +91,15 @@ class PromptSyncTests(unittest.TestCase):
         ok, msg = prompts_in_sync()
         self.assertTrue(ok, msg)
 
+    def test_exclusions_sync(self):
+        self.assertIn("Raya Vallecano SC", EXCLUDED_EXPLORE_OPPONENTS)
+        ok, msg = exclusions_in_sync()
+        self.assertTrue(ok, msg)
+        schema = load_schema_prompt()
+        self.assertIn("EXCLUSIONS", schema)
+        for name in EXCLUDED_EXPLORE_OPPONENTS:
+            self.assertIn(name, schema)
+
 
 class PricingTests(unittest.TestCase):
     def test_openai_cache_not_double_counted(self):
@@ -102,7 +125,7 @@ class PricingTests(unittest.TestCase):
 
     def test_anthropic_cache_additive(self):
         cost = estimate_cost_usd(
-            "claude-sonnet-4-20250514",
+            "claude-sonnet-4-6",
             input_tokens=1000,
             output_tokens=100,
             cached_input_tokens=400,
@@ -113,6 +136,25 @@ class PricingTests(unittest.TestCase):
         expected_input = 1000 * 3.0 / 1_000_000
         expected_cache = 400 * 0.30 / 1_000_000 + 50 * 3.75 / 1_000_000
         expected_output = 100 * 15.0 / 1_000_000
+        self.assertAlmostEqual(cost["estimated_input_cost_usd"], expected_input)
+        self.assertAlmostEqual(cost["estimated_cache_cost_usd"], expected_cache)
+        self.assertAlmostEqual(
+            cost["estimated_total_cost_usd"],
+            expected_input + expected_cache + expected_output,
+        )
+
+    def test_gemini_cache_like_openai(self):
+        cost = estimate_cost_usd(
+            "gemini-3.6-flash",
+            input_tokens=1000,
+            output_tokens=100,
+            cached_input_tokens=400,
+            provider="gemini",
+        )
+        self.assertTrue(cost["pricing_found"])
+        expected_input = 600 * 0.30 / 1_000_000
+        expected_cache = 400 * 0.03 / 1_000_000
+        expected_output = 100 * 2.50 / 1_000_000
         self.assertAlmostEqual(cost["estimated_input_cost_usd"], expected_input)
         self.assertAlmostEqual(cost["estimated_cache_cost_usd"], expected_cache)
         self.assertAlmostEqual(
@@ -169,10 +211,11 @@ class SpreadsheetAggTests(unittest.TestCase):
 
         rows = [
             fake("openai", "gpt-4o-mini", 0.001),
-            fake("anthropic", "claude-sonnet-4-20250514", 0.002),
+            fake("anthropic", "claude-sonnet-4-6", 0.002),
+            fake("gemini", "gemini-3.6-flash", 0.0015),
         ]
         summary = summarize_by_model(rows)
-        self.assertEqual(len(summary), 2)
+        self.assertEqual(len(summary), 3)
         # Projection uses avg per execution, not inflated
         oai = next(s for s in summary if s["Provider"] == "openai")
         self.assertAlmostEqual(oai["Projected Cost — 100 Questions"], 0.1)
@@ -181,6 +224,8 @@ class SpreadsheetAggTests(unittest.TestCase):
         self.assertEqual(len(sbs), 1)
         self.assertEqual(sbs[0]["Preferred Answer"], "")
         self.assertIn("OpenAI Final Answer", sbs[0])
+        self.assertIn("Gemini Final Answer", sbs[0])
+        self.assertEqual(sbs[0]["Gemini Score"], "")
 
 
 if __name__ == "__main__":

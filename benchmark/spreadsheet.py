@@ -187,7 +187,7 @@ def summarize_by_model(rows: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
 
 
 def side_by_side_rows(rows: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    """One row per question_id × run, with OpenAI and Anthropic columns."""
+    """One row per question_id × run, with OpenAI / Claude / Gemini columns."""
     keyed: Dict[tuple, Dict[str, Dict[str, Any]]] = {}
     for r in rows:
         key = (r["Question ID"], r["Run #"], r["Question"])
@@ -197,6 +197,7 @@ def side_by_side_rows(rows: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     for (qid, run, question), by_provider in sorted(keyed.items()):
         openai = by_provider.get("openai", {})
         anthropic = by_provider.get("anthropic", {})
+        gemini = by_provider.get("gemini", {})
         out.append(
             {
                 "Question ID": qid,
@@ -214,9 +215,16 @@ def side_by_side_rows(rows: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
                 "Claude Cost": anthropic.get("Estimated Total Cost USD"),
                 "Claude Latency ms": anthropic.get("Total Latency ms"),
                 "Claude Success": anthropic.get("Success"),
+                "Gemini Model": gemini.get("Model", ""),
+                "Gemini Final Answer": gemini.get("Final Answer", ""),
+                "Gemini SQL": gemini.get("Generated SQL", ""),
+                "Gemini Cost": gemini.get("Estimated Total Cost USD"),
+                "Gemini Latency ms": gemini.get("Total Latency ms"),
+                "Gemini Success": gemini.get("Success"),
                 "Preferred Answer": "",
                 "OpenAI Score": "",
                 "Claude Score": "",
+                "Gemini Score": "",
                 "Reviewer Notes": "",
             }
         )
@@ -300,15 +308,17 @@ def write_workbook(
         ws3.append(headers)
         for row in sbs:
             ws3.append([row.get(h) for h in headers])
-        money_cols = [headers.index(h) + 1 for h in ("OpenAI Cost", "Claude Cost") if h in headers]
+        money_cols = [headers.index(h) + 1 for h in ("OpenAI Cost", "Claude Cost", "Gemini Cost") if h in headers]
         wrap_cols = [
             headers.index(h) + 1
             for h in (
                 "Question",
                 "OpenAI Final Answer",
                 "Claude Final Answer",
+                "Gemini Final Answer",
                 "OpenAI SQL",
                 "Claude SQL",
+                "Gemini SQL",
                 "Reviewer Notes",
             )
             if h in headers

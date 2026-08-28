@@ -9,7 +9,10 @@ const FORBIDDEN =
 
 /**
  * Validate and normalize model-generated SQL for explore_readonly.
- * Must stay aligned with benchmark/lib/sql_safety.py and migrate_explore.sql.
+ * Must stay aligned with benchmark/sql_safety.py and migrate_explore.sql.
+ *
+ * Strips public. qualifiers so explore_readonly's search_path (explore, public)
+ * resolves teams/games/shots to the filtered explore.* views (hides Raya Vallecano SC).
  */
 export function validateSql(sql: string): string {
   let cleaned = String(sql || "").trim();
@@ -20,6 +23,10 @@ export function validateSql(sql: string): string {
     throw new Error("Only SELECT queries are allowed");
   }
   if (FORBIDDEN.test(cleaned)) throw new Error("Forbidden keyword in SQL");
+  cleaned = cleaned.replace(
+    /\bpublic\.(teams|seasons|players|games|rosters|shots)\b/gi,
+    "$1",
+  );
   if (!/\blimit\b/i.test(cleaned)) {
     cleaned = `SELECT * FROM (${cleaned}) AS explore_q LIMIT 100`;
   }

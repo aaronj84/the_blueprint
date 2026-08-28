@@ -7,7 +7,7 @@
   <meta name="theme-color" content="#f4f7fb" />
   <title>Brighton Girls</title>
   <link rel="icon" href="assets/logo.svg" type="image/svg+xml" />
-  <link rel="stylesheet" href="styles.css?v=20260826b" />
+  <link rel="stylesheet" href="styles.css?v=20260828a" />
 </head>
 <body>
   <a class="sr-only" href="#main">Skip to content</a>
@@ -229,8 +229,33 @@
   <div class="modal" id="shot-edit-modal" hidden role="dialog" aria-modal="true" aria-labelledby="shot-edit-title">
     <div class="modal-backdrop" data-close-shot-edit></div>
     <div class="modal-panel">
-      <h2 id="shot-edit-title">Edit player &amp; position</h2>
-      <p class="muted">Change who took the play and which position they were in. Naming a player updates every shot with that player.</p>
+      <h2 id="shot-edit-title">Edit play</h2>
+      <p class="muted">Fix team, player, position, result, or assist. Location edits come later.</p>
+      <label class="shots-field">Team
+        <select id="shot-edit-team">
+          <option value="us">Brighton</option>
+          <option value="opp">Opponent</option>
+        </select>
+      </label>
+      <label class="shots-field">Player
+        <select id="shot-edit-player"></select>
+      </label>
+      <label class="shots-field">Position
+        <select id="shot-edit-position">
+          <option value="">—</option>
+          <option value="GK">GK</option>
+          <option value="RB">RB</option>
+          <option value="LB">LB</option>
+          <option value="RCB">RCB</option>
+          <option value="LCB">LCB</option>
+          <option value="DM">DM</option>
+          <option value="LM">LM</option>
+          <option value="RM">RM</option>
+          <option value="RW">RW</option>
+          <option value="CF">CF</option>
+          <option value="LW">LW</option>
+        </select>
+      </label>
       <label class="shots-field">Result
         <select id="shot-edit-result">
           <option value="goal">Goal</option>
@@ -252,27 +277,19 @@
           <option value="wide-right">Wide right</option>
         </select>
       </label>
-      <label class="shots-field">Position
-        <select id="shot-edit-position">
-          <option value="">—</option>
-          <option value="GK">GK</option>
-          <option value="RB">RB</option>
-          <option value="LB">LB</option>
-          <option value="RCB">RCB</option>
-          <option value="LCB">LCB</option>
-          <option value="DM">DM</option>
-          <option value="LM">LM</option>
-          <option value="RM">RM</option>
-          <option value="RW">RW</option>
-          <option value="CF">CF</option>
-          <option value="LW">LW</option>
-        </select>
-      </label>
-      <label class="shots-field">Player
-        <select id="shot-edit-player"></select>
-      </label>
       <label class="shots-field" id="shot-edit-fouler-wrap">Fouler (infringement)
         <select id="shot-edit-fouler"></select>
+      </label>
+      <label class="shots-field">Assisted by
+        <select id="shot-edit-assist"></select>
+      </label>
+      <label class="shots-field">Assist type
+        <select id="shot-edit-assist-type">
+          <option value="">— None —</option>
+          <option value="pass">Pass</option>
+          <option value="gap">Gap</option>
+          <option value="cross">Cross</option>
+        </select>
       </label>
       <label class="shots-field">Player name
         <input type="text" id="shot-edit-name" class="text-gate-input" autocomplete="off" placeholder="Full name (Veo review)" />
@@ -292,7 +309,7 @@
   <script src="scenarios.js?v=20260825e"></script>
   <script src="cfc-red-scenarios.js?v=20260826d"></script>
   <script src="shots-api.js?v=20260826e"></script>
-  <script src="shots.js?v=20260826e"></script>
+  <script src="shots.js?v=20260828a"></script>
   <script src="app.js?v=20260826e"></script>
 </body>
 </html>

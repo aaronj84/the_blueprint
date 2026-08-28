@@ -7,6 +7,7 @@ which pricing snapshot was used (PRICING_VERSION + per-model rates).
 Sources (verify before trusting historical files):
   OpenAI: https://openai.com/api/pricing/
   Anthropic: https://www.anthropic.com/pricing
+  Google Gemini: https://ai.google.dev/gemini-api/docs/pricing
 
 If a configured model is missing here, the benchmark still runs but marks
 cost fields as unavailable (null) rather than guessing.
@@ -17,7 +18,7 @@ from __future__ import annotations
 from typing import Any, Dict, Optional
 
 # Bump when rates change so old spreadsheets stay interpretable.
-PRICING_VERSION = "2026-08-26"
+PRICING_VERSION = "2026-08-28b"
 
 # Prices are USD per 1,000,000 tokens.
 # cached_input: discounted rate for cache-read / cached prompt tokens when billed separately.
@@ -45,6 +46,30 @@ MODEL_PRICING: Dict[str, Dict[str, float]] = {
         "cached_input": 0.50,
     },
     # Anthropic Claude
+    "claude-sonnet-4-6": {
+        "input": 3.00,
+        "output": 15.00,
+        "cached_input": 0.30,
+        "cache_write": 3.75,
+    },
+    "claude-sonnet-5": {
+        "input": 3.00,
+        "output": 15.00,
+        "cached_input": 0.30,
+        "cache_write": 3.75,
+    },
+    "claude-sonnet-4-5": {
+        "input": 3.00,
+        "output": 15.00,
+        "cached_input": 0.30,
+        "cache_write": 3.75,
+    },
+    "claude-sonnet-4-5-20250929": {
+        "input": 3.00,
+        "output": 15.00,
+        "cached_input": 0.30,
+        "cache_write": 3.75,
+    },
     "claude-sonnet-4-20250514": {
         "input": 3.00,
         "output": 15.00,
@@ -74,6 +99,27 @@ MODEL_PRICING: Dict[str, Dict[str, float]] = {
         "output": 5.00,
         "cached_input": 0.10,
         "cache_write": 1.25,
+    },
+    # Google Gemini (paid tier; thinking tokens billed as output)
+    "gemini-3.6-flash": {
+        "input": 0.30,
+        "output": 2.50,
+        "cached_input": 0.03,
+    },
+    "gemini-2.5-flash": {
+        "input": 0.30,
+        "output": 2.50,
+        "cached_input": 0.03,
+    },
+    "gemini-2.5-pro": {
+        "input": 1.25,
+        "output": 10.00,
+        "cached_input": 0.125,
+    },
+    "gemini-2.0-flash": {
+        "input": 0.10,
+        "output": 0.40,
+        "cached_input": 0.025,
     },
 }
 
@@ -108,6 +154,9 @@ def estimate_cost_usd(
 
     Anthropic: input_tokens is usually non-cached input; cache_read and
     cache_creation are separate fields — do not subtract from input_tokens.
+
+    Gemini: promptTokenCount typically includes cachedContentTokenCount when
+    present — treat like OpenAI (subtract cached from input for billing).
     """
     rates = resolve_pricing(model)
     if not rates:
@@ -131,8 +180,8 @@ def estimate_cost_usd(
     cached_rate = rates.get("cached_input", input_rate)
     cache_write_rate = rates.get("cache_write", 0.0)
 
-    if provider == "openai" and cached > 0:
-        # OpenAI reports cached as a subset of prompt/input tokens.
+    if provider in ("openai", "gemini") and cached > 0:
+        # Cached tokens reported as a subset of prompt/input tokens.
         billable_input = max(inp - cached, 0)
         input_cost = billable_input * input_rate / 1_000_000
         cache_cost = cached * cached_rate / 1_000_000

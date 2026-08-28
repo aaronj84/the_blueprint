@@ -46,8 +46,8 @@ def _parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
     p.add_argument("--runs", type=int, default=1, help="Repetitions per question/model (default 1)")
     p.add_argument(
         "--providers",
-        default="openai,anthropic",
-        help="Comma-separated providers: openai,anthropic",
+        default="openai,anthropic,gemini",
+        help="Comma-separated providers: openai,anthropic,gemini",
     )
     p.add_argument("--output", help="Output directory (default: ./benchmark-results)")
     p.add_argument("--concurrency", type=int, default=2, help="Max parallel executions (default 2)")
@@ -204,6 +204,7 @@ def run_benchmark(cfg) -> int:
         "providers": ",".join(cfg.providers),
         "openai_model": cfg.models.get("openai", ""),
         "anthropic_model": cfg.models.get("anthropic", ""),
+        "gemini_model": cfg.models.get("gemini", ""),
         "plan_temperature": cfg.plan_temperature,
         "narrate_temperature": cfg.narrate_temperature,
         "prompt_version": "explore-schema-v1",
