@@ -1,4 +1,4 @@
-/* Brighton Varsity Shot Tracker — shell / router */
+/* Brighton Bengals Shot Tracker — shell / router */
 (function () {
   "use strict";
 
@@ -24,8 +24,15 @@
       view === "shots-games" || view === "shots-history" || view === "shots-explore"
     );
 
+    const cfg = window.SHOTS_CONFIG || {};
+    const brandName = $("#brand-name");
     const brandSub = $("#brand-sub");
-    if (brandSub) brandSub.textContent = "Shot Tracker";
+    if (brandName) brandName.textContent = cfg.brandName || "Brighton Bengals";
+    if (brandSub) {
+      const sub = cfg.brandSub != null ? String(cfg.brandSub) : "Shot Tracker";
+      brandSub.textContent = sub;
+      brandSub.hidden = !sub;
+    }
 
     $$("[data-nav]").forEach((el) => {
       const key = el.getAttribute("data-nav");

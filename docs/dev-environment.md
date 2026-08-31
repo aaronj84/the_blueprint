@@ -62,14 +62,13 @@ supabase db push
 
 That applies everything under `supabase/migrations/` (baseline schema + semantic layer + explore RPC).
 
-Optional light seed (DEV only):
+Optional DEV seed (rich fake season — **DEV only**):
 
-```bash
-# In Dashboard → SQL editor on DEV, paste and run:
-# supabase/sample_data.sql
-```
+1. Confirm the dashboard project is `bhs-shot-tracker-dev` (ref `fmiymqnfezkqagpbrmoi`).
+2. **SQL Editor** → paste [`supabase/seed_dev_sandbox.sql`](../supabase/seed_dev_sandbox.sql) → Run.
+3. Local app → Games → season **DEV Sandbox**.
 
-Never re-run large import dumps (`migrate_import_recorded_shots.sql`, etc.) on **prod** casually.
+Lighter alternative: `supabase/sample_data.sql`. Never run either on **prod**.
 
 ### Local CLI habit
 

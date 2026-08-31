@@ -810,7 +810,24 @@
       st.shots = [];
       return;
     }
-    st.game = await API.game(st.gameId);
+    try {
+      st.game = await API.game(st.gameId);
+    } catch (err) {
+      // Stale id after switching DEV/PROD or re-seeding (PGRST116 / missing row).
+      const msg = err && err.message ? String(err.message) : "";
+      st.gameId = "";
+      st.game = null;
+      st.ourRoster = [];
+      st.oppRoster = [];
+      st.shots = [];
+      saveUi();
+      sessionStorage.removeItem("shots-game-id");
+      throw new Error(
+        /coerce|multiple \(or no\) rows|PGRST116|permission denied|not found/i.test(msg)
+          ? "Previous game is gone (new database or seed). Pick a game from the list."
+          : msg || "Could not open game"
+      );
+    }
     st.seasonId = st.game.season_id;
     const b = brighton();
     const opp = opponentOf(st.game);

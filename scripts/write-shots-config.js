@@ -7,6 +7,8 @@
  *   SHOTS_SUPABASE_ANON_KEY
  * Optional:
  *   SHOTS_PIN (default KEPPA)
+ *   SHOTS_BRAND_NAME (default Brighton Bengals)
+ *   SHOTS_BRAND_SUB (default Shot Tracker)
  */
 const fs = require("fs");
 const path = require("path");
@@ -14,6 +16,8 @@ const path = require("path");
 const url = process.env.SHOTS_SUPABASE_URL || "";
 const anon = process.env.SHOTS_SUPABASE_ANON_KEY || "";
 const pin = process.env.SHOTS_PIN || "KEPPA";
+const brandName = process.env.SHOTS_BRAND_NAME || "Brighton Bengals";
+const brandSub = process.env.SHOTS_BRAND_SUB != null ? process.env.SHOTS_BRAND_SUB : "Shot Tracker";
 
 if (!url || !anon) {
   console.error("SHOTS_SUPABASE_URL and SHOTS_SUPABASE_ANON_KEY are required");
@@ -27,6 +31,8 @@ const body = `/**
 window.SHOTS_CONFIG = {
   pitch: { width: 68, length: 105 },
   storageKey: "brighton-varsity-shot-tracker",
+  brandName: ${JSON.stringify(brandName)},
+  brandSub: ${JSON.stringify(brandSub)},
   supabaseUrl: ${JSON.stringify(url)},
   supabaseAnonKey: ${JSON.stringify(anon)},
   pin: ${JSON.stringify(pin)}
