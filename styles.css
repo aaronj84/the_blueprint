@@ -520,6 +520,53 @@ body.tracker-view .brand-sub {
   }
 }
 
+
+@media (max-width: 719px) {
+  body.tracker-view .tracker-pitch-wrap {
+    width: 100%;
+    max-width: none;
+  }
+}
+
+/* Pitch */
+.pitch-wrap {
+  position: relative;
+  width: 100%;
+  max-width: 520px;
+  margin: 0 auto;
+  /* Allow vertical page scroll on phones; drag scenarios opt into none */
+  touch-action: pan-y;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.pitch-wrap.is-dragging {
+  touch-action: none;
+}
+
+.pitch-svg {
+  width: 100%;
+  height: auto;
+  border-radius: var(--radius);
+  background: var(--pitch-grass);
+  box-shadow: var(--shadow);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.pitch-svg .grass-stripe {
+  fill: var(--pitch-shade);
+  opacity: 0.35;
+}
+
+.player-token {
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.player-token.is-draggable {
+  touch-action: none;
+}
+
 /* Shot tracker (settings-only module) */
 .tracker-page {
   display: flex;

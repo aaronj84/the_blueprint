@@ -18,7 +18,7 @@ This is an LLM regression harness, not a one-off script. Rerun whenever models, 
 Python 3.9+ required (already used under `scripts/`).
 
 ```bash
-cd /path/to/the_blueprint
+cd /path/to/bhs_shot_tracker
 python3 -m venv benchmark/.venv
 benchmark/.venv/bin/pip install -r benchmark/requirements.txt
 cp benchmark/.env.example benchmark/.env

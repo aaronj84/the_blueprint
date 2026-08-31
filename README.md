@@ -8,7 +8,7 @@ Tactical learning packs (BHS Blueprint, CFC Red) live in a separate repo: [`blue
 
 ## Use the site
 
-**[https://aaronj84.github.io/the_blueprint/](https://aaronj84.github.io/the_blueprint/)**
+**[https://aaronj84.github.io/bhs_shot_tracker/](https://aaronj84.github.io/bhs_shot_tracker/)**
 
 Staff PIN gates write access (default documented in `shots-config.example.js`).
 
