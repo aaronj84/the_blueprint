@@ -1,14 +1,16 @@
--- Brighton Shot Tracker — Phase 2 schema (HISTORICAL reference copy).
--- Canonical migrations live in supabase/migrations/ — prefer:
---   supabase migration new … && supabase db push
--- This file remains for documentation / emergency paste; it is safe to re-run
--- (idempotent, additive, non-data-destructive) but new work should not edit it.
+-- Baseline schema (squashed from schema.sql). Idempotent.
+-- Applied automatically via supabase db push / CI.
+
+-- Brighton Shot Tracker — Phase 2 schema
+-- Safe to re-run: idempotent, additive, non-data-destructive.
+-- Does not drop tables, truncate data, or overwrite coach-edited fields.
 --
--- Dashboard steps after first apply on a new project:
+-- Dashboard steps after this script:
 --   1. Authentication → Providers → Anonymous → Enable
---   2. Copy Project URL + anon public key into shots-config.js (DEV locally)
+--   2. Copy Project URL + anon public key into shots-config.js
 --
--- Out of scope: per-coach accounts/attribution, shot edit-history, offline sync, realtime.
+-- Out of scope for this phase (do not add here):
+--   per-coach accounts/attribution, shot edit-history, offline sync, realtime.
 
 create extension if not exists pgcrypto;
 
