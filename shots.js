@@ -16,8 +16,11 @@
 (function (global) {
   "use strict";
 
-  const IQ = global.SoccerIQ || {};
-  const CONFIG = IQ.CONFIG || { pitch: { width: 68, length: 105 } };
+  const SHOTS_CFG = global.SHOTS_CONFIG || {};
+  const CONFIG = {
+    pitch: SHOTS_CFG.pitch || { width: 68, length: 105 },
+    shotsStorageKey: SHOTS_CFG.storageKey || "brighton-varsity-shot-tracker",
+  };
   const API = global.ShotAPI;
   const PW = CONFIG.pitch.width;
   const PL = CONFIG.pitch.length;
