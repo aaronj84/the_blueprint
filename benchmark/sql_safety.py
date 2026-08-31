@@ -16,6 +16,15 @@ FORBIDDEN = re.compile(
 )
 
 
+_PUBLIC_RELATIONS = re.compile(
+    r"\bpublic\.(teams|seasons|players|games|rosters|shots|"
+    r"v_brighton_shots|v_brighton_shots_official|v_brighton_games)\b",
+    re.I,
+)
+_RAW_STAT_TABLES = re.compile(r"\b(from|join)\s+(public\.)?(shots|games)\b", re.I)
+_VIEW_STAT = re.compile(r"\bv_brighton_(shots|shots_official|games)\b", re.I)
+
+
 def validate_sql(sql: str) -> str:
     cleaned = (sql or "").strip()
     cleaned = re.sub(r";\s*$", "", cleaned)
@@ -28,15 +37,17 @@ def validate_sql(sql: str) -> str:
     if FORBIDDEN.search(cleaned):
         raise ValueError("Forbidden keyword in SQL")
     # Match explore_readonly / sql.ts: strip public. so explore.* views apply.
-    cleaned = re.sub(
-        r"\bpublic\.(teams|seasons|players|games|rosters|shots)\b",
-        r"\1",
-        cleaned,
-        flags=re.I,
-    )
+    cleaned = _PUBLIC_RELATIONS.sub(r"\1", cleaned)
     if not re.search(r"\blimit\b", cleaned, re.I):
         cleaned = f"SELECT * FROM ({cleaned}) AS explore_q LIMIT 100"
     return cleaned
+
+
+def uses_raw_stat_tables(sql: str) -> bool:
+    """Optional guardrail: True when SQL bypasses v_brighton_* for raw shots/games."""
+    if _VIEW_STAT.search(sql or ""):
+        return False
+    return bool(_RAW_STAT_TABLES.search(sql or ""))
 
 
 

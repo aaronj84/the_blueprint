@@ -261,6 +261,9 @@ grant usage on schema public to authenticated, anon;
 grant select, insert, update, delete on all tables in schema public to authenticated;
 revoke all on all tables in schema public from anon;
 
+-- Semantic layer (stat_scope + curated views) lives in migrate_semantic_layer.sql.
+-- Explore RPC wrappers live in migrate_explore.sql. Run both after this schema.
+
 -- ---------------------------------------------------------------------------
 -- Seed (insert-only / fill empty defaults — never clobber existing rows)
 -- ---------------------------------------------------------------------------

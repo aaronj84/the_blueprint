@@ -5,10 +5,12 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-PROMPT_VERSION = "explore-schema-v2"
+PROMPT_VERSION = "explore-schema-v3"
 
-# Canonical list — must match exclusions.ts and migrate_explore.sql explore.* views.
-EXCLUDED_EXPLORE_OPPONENTS = ("Raya Vallecano SC",)
+# Known friendlies used in golden / scope checks (not hard-hidden from Explore).
+KNOWN_FRIENDLY_OPPONENTS = ("Raya Vallecano SC",)
+# Back-compat alias for older check names.
+EXCLUDED_EXPLORE_OPPONENTS = KNOWN_FRIENDLY_OPPONENTS
 
 _SHARED = (
     Path(__file__).resolve().parents[1]
@@ -20,6 +22,9 @@ _SHARED = (
 
 _MIGRATE_EXPLORE = (
     Path(__file__).resolve().parents[1] / "supabase" / "migrate_explore.sql"
+)
+_MIGRATE_SEMANTIC = (
+    Path(__file__).resolve().parents[1] / "supabase" / "migrate_semantic_layer.sql"
 )
 
 
@@ -56,8 +61,6 @@ def extract_ts_prompt_export(ts_source: str, export_name: str) -> str:
                 return rest[1:end]
             end += 1
         raise ValueError(f"Unclosed template for {export_name}")
-    # Single-line string form: `export const X = \`...\`;` already handled;
-    # also support: export const X =\n  `...`;
     raise ValueError(f"Unsupported prompt literal form for {export_name}")
 
 
@@ -94,35 +97,52 @@ def prompts_in_sync() -> tuple[bool, str]:
 
 
 def exclusions_in_sync() -> tuple[bool, str]:
-    """Verify excluded opponents agree across TS, prompts, and migrate_explore.sql."""
+    """Verify scope convention + known friendlies agree across TS, prompts, migrations."""
     excl_path = _SHARED / "exclusions.ts"
     if not excl_path.is_file():
         return False, f"Missing {excl_path}"
     try:
         ts_list = _parse_ts_string_array(
-            excl_path.read_text(encoding="utf-8"), "EXCLUDED_EXPLORE_OPPONENTS"
+            excl_path.read_text(encoding="utf-8"), "KNOWN_FRIENDLY_OPPONENTS"
         )
     except ValueError as exc:
         return False, str(exc)
 
-    if ts_list != EXCLUDED_EXPLORE_OPPONENTS:
+    if ts_list != KNOWN_FRIENDLY_OPPONENTS:
         return (
             False,
-            f"exclusions.ts {ts_list!r} != benchmark EXCLUDED_EXPLORE_OPPONENTS "
-            f"{EXCLUDED_EXPLORE_OPPONENTS!r}",
+            f"exclusions.ts {ts_list!r} != benchmark KNOWN_FRIENDLY_OPPONENTS "
+            f"{KNOWN_FRIENDLY_OPPONENTS!r}",
         )
 
     schema = load_schema_prompt()
+    for needle in (
+        "v_brighton_shots_official",
+        "For season or aggregate stats, query v_brighton_shots_official",
+        "is_tracked=false",
+    ):
+        if needle not in schema:
+            return False, f"schema_prompt.txt missing required scope text: {needle!r}"
+
+    if not _MIGRATE_SEMANTIC.is_file():
+        return False, f"Missing {_MIGRATE_SEMANTIC}"
     if not _MIGRATE_EXPLORE.is_file():
         return False, f"Missing {_MIGRATE_EXPLORE}"
+    semantic = _MIGRATE_SEMANTIC.read_text(encoding="utf-8")
     migrate = _MIGRATE_EXPLORE.read_text(encoding="utf-8")
 
-    for name in EXCLUDED_EXPLORE_OPPONENTS:
-        if name not in schema:
-            return False, f"schema_prompt.txt missing exclusion {name!r}"
-        if f"'{name}'" not in migrate:
-            return False, f"migrate_explore.sql missing literal '{name}'"
-        if f'Never include opponent "{name}"' not in schema:
-            return False, f"schema_prompt.txt missing EXCLUSIONS line for {name!r}"
+    for view in (
+        "v_brighton_shots",
+        "v_brighton_shots_official",
+        "v_brighton_games",
+    ):
+        if view not in semantic:
+            return False, f"migrate_semantic_layer.sql missing {view}"
+        if view not in migrate:
+            return False, f"migrate_explore.sql missing explore.{view}"
 
-    return True, f"exclusions in sync ({', '.join(EXCLUDED_EXPLORE_OPPONENTS)})"
+    for name in KNOWN_FRIENDLY_OPPONENTS:
+        if name not in semantic and "'friendly'" not in semantic:
+            return False, f"migrate_semantic_layer.sql missing friendly scope mapping"
+
+    return True, f"scope convention in sync (friendlies: {', '.join(KNOWN_FRIENDLY_OPPONENTS)})"

@@ -1,0 +1,127 @@
+{
+  "version": 1,
+  "prompt_version": "explore-schema-v3",
+  "notes": [
+    "expected_number values computed from v_brighton_* after migrate_semantic_layer.sql (2026-08-31).",
+    "Ari is the regression case: official=15, all-tracked-including-friendly=16.",
+    "Refresh with: python -m benchmark.golden --compute"
+  ],
+  "regression_pair": {
+    "player_name": "Ari",
+    "expected_number": 15,
+    "season_sql": "SELECT count(*)::int AS shots FROM v_brighton_shots_official WHERE is_brighton_shot AND player_name = 'Ari'",
+    "overall_sql": "SELECT count(*)::int AS shots FROM v_brighton_shots_official WHERE is_brighton_shot AND player_name = 'Ari'"
+  },
+  "cases": [
+    {
+      "id": "G001",
+      "question": "How many total shots does Ari have this season?",
+      "truth_sql": "SELECT count(*)::int AS shots FROM v_brighton_shots_official WHERE is_brighton_shot AND player_name = 'Ari'",
+      "expected_number": 15,
+      "result_key": "shots",
+      "require_view": "v_brighton_shots_official",
+      "forbid_raw_stats": true
+    },
+    {
+      "id": "G002",
+      "question": "How many total shots does Ari have overall?",
+      "truth_sql": "SELECT count(*)::int AS shots FROM v_brighton_shots_official WHERE is_brighton_shot AND player_name = 'Ari'",
+      "expected_number": 15,
+      "result_key": "shots",
+      "require_view": "v_brighton_shots_official",
+      "forbid_raw_stats": true
+    },
+    {
+      "id": "G003",
+      "question": "How many shots did we take against Viewmont?",
+      "truth_sql": "SELECT count(*)::int AS shots FROM v_brighton_shots_official WHERE is_brighton_shot AND opponent_name = 'Viewmont'",
+      "expected_number": 20,
+      "result_key": "shots",
+      "require_view": "v_brighton_shots_official",
+      "forbid_raw_stats": true
+    },
+    {
+      "id": "G004",
+      "question": "Who has the most shots on target this season?",
+      "truth_sql": "SELECT player_name, count(*)::int AS shots FROM v_brighton_shots_official WHERE is_brighton_shot AND is_on_frame GROUP BY player_name ORDER BY shots DESC LIMIT 1",
+      "expected_number": 6,
+      "expected_player": "Ari",
+      "result_key": "shots",
+      "require_view": "v_brighton_shots_official",
+      "forbid_raw_stats": true
+    },
+    {
+      "id": "G005",
+      "question": "Which players scored the most goals this season?",
+      "truth_sql": "SELECT player_name, count(*)::int AS goals FROM v_brighton_shots_official WHERE is_brighton_shot AND is_goal GROUP BY player_name ORDER BY goals DESC LIMIT 1",
+      "expected_number": 2,
+      "expected_player": "Addison",
+      "result_key": "goals",
+      "require_view": "v_brighton_shots_official",
+      "forbid_raw_stats": true
+    },
+    {
+      "id": "G006",
+      "question": "How many Brighton goals this season?",
+      "truth_sql": "SELECT count(*)::int AS goals FROM v_brighton_shots_official WHERE is_brighton_shot AND is_goal",
+      "expected_number": 11,
+      "result_key": "goals",
+      "require_view": "v_brighton_shots_official",
+      "forbid_raw_stats": true
+    },
+    {
+      "id": "G007",
+      "question": "How many total Brighton shots this season?",
+      "truth_sql": "SELECT count(*)::int AS shots FROM v_brighton_shots_official WHERE is_brighton_shot",
+      "expected_number": 78,
+      "result_key": "shots",
+      "require_view": "v_brighton_shots_official",
+      "forbid_raw_stats": true
+    },
+    {
+      "id": "G008",
+      "question": "What has changed about our attacking performance over the last four games?",
+      "truth_sql": "SELECT count(*)::int AS n FROM (SELECT 1 FROM v_brighton_games WHERE stat_scope IN ('official','preseason') ORDER BY game_date DESC LIMIT 4) t",
+      "expected_number": 4,
+      "result_key": "n",
+      "require_view": "v_brighton_games",
+      "forbid_raw_stats": true
+    },
+    {
+      "id": "G009",
+      "question": "How many of our scheduled official or preseason games are not yet tracked?",
+      "truth_sql": "SELECT count(*)::int AS n FROM v_brighton_games WHERE stat_scope IN ('official','preseason') AND is_tracked = false",
+      "expected_number": 12,
+      "result_key": "n",
+      "require_view": "v_brighton_games",
+      "forbid_raw_stats": true
+    },
+    {
+      "id": "G010",
+      "question": "Including friendlies, how many total Brighton shots are in the tracker?",
+      "truth_sql": "SELECT count(*)::int AS shots FROM v_brighton_shots WHERE is_brighton_shot",
+      "expected_number": 82,
+      "result_key": "shots",
+      "require_view": "v_brighton_shots",
+      "forbid_raw_stats": true
+    },
+    {
+      "id": "G011",
+      "question": "How many Brighton shots came from friendlies?",
+      "truth_sql": "SELECT count(*)::int AS shots FROM v_brighton_shots WHERE is_brighton_shot AND stat_scope = 'friendly'",
+      "expected_number": 4,
+      "result_key": "shots",
+      "require_view": "v_brighton_shots",
+      "forbid_raw_stats": true
+    },
+    {
+      "id": "G012",
+      "question": "How many shots on frame have we taken this season?",
+      "truth_sql": "SELECT count(*)::int AS shots FROM v_brighton_shots_official WHERE is_brighton_shot AND is_on_frame",
+      "expected_number": 33,
+      "result_key": "shots",
+      "require_view": "v_brighton_shots_official",
+      "forbid_raw_stats": true
+    }
+  ]
+}

@@ -88,44 +88,45 @@ def check_explore_readonly(cfg: BenchmarkConfig) -> CheckResult:
         return ("explore_readonly", False, str(exc))
 
 
-def check_explore_exclusion(cfg: BenchmarkConfig) -> CheckResult:
-    """Confirm excluded test opponents are invisible through explore_readonly."""
+def check_semantic_scope(cfg: BenchmarkConfig) -> CheckResult:
+    """Confirm friendlies are scoped out of v_brighton_shots_official."""
     if not cfg.supabase_url or not cfg.supabase_service_role_key:
-        return ("explore_exclusion", False, "missing Supabase credentials")
+        return ("semantic_scope", False, "missing Supabase credentials")
     if not EXCLUDED_EXPLORE_OPPONENTS:
-        return ("explore_exclusion", True, "no excluded opponents configured")
+        return ("semantic_scope", True, "no known friendlies configured")
     literals = ", ".join(
         "'" + name.replace("'", "''") + "'" for name in EXCLUDED_EXPLORE_OPPONENTS
     )
     sql = validate_sql(
-        f"SELECT name FROM teams WHERE name IN ({literals}) LIMIT 10"
+        f"SELECT count(*)::int AS n FROM v_brighton_shots_official "
+        f"WHERE opponent_name IN ({literals})"
     )
     try:
         res = _explore_rpc(cfg, sql)
         if res.status_code >= 400:
             return (
-                "explore_exclusion",
+                "semantic_scope",
                 False,
                 f"RPC failed HTTP {res.status_code}: {res.text[:300]} "
-                "(re-run supabase/migrate_explore.sql so explore.* views exist)",
+                "(run migrate_semantic_layer.sql then migrate_explore.sql)",
             )
         rows = res.json()
-        if not isinstance(rows, list):
-            rows = []
-        if rows:
-            found = ", ".join(str(r.get("name", r)) for r in rows[:5])
+        if not isinstance(rows, list) or not rows:
+            return ("semantic_scope", False, "unexpected empty RPC result")
+        n = int(rows[0].get("n", -1))
+        if n != 0:
             return (
-                "explore_exclusion",
+                "semantic_scope",
                 False,
-                f"excluded opponent(s) still visible via explore_readonly: {found}",
+                f"known friendlies still in official view ({n} rows)",
             )
         return (
-            "explore_exclusion",
+            "semantic_scope",
             True,
-            f"hidden: {', '.join(EXCLUDED_EXPLORE_OPPONENTS)}",
+            f"official view excludes: {', '.join(EXCLUDED_EXPLORE_OPPONENTS)}",
         )
     except Exception as exc:  # noqa: BLE001
-        return ("explore_exclusion", False, str(exc))
+        return ("semantic_scope", False, str(exc))
 
 
 def run_checks(cfg: BenchmarkConfig, *, include_network: bool = True) -> List[CheckResult]:
@@ -210,7 +211,7 @@ def run_checks(cfg: BenchmarkConfig, *, include_network: bool = True) -> List[Ch
     if include_network:
         results.append(check_supabase(cfg))
         results.append(check_explore_readonly(cfg))
-        results.append(check_explore_exclusion(cfg))
+        results.append(check_semantic_scope(cfg))
 
     return results
 
@@ -225,7 +226,7 @@ def print_check_report(results: List[CheckResult]) -> int:
         "sql_safety",
         "supabase",
         "explore_readonly",
-        "explore_exclusion",
+        "semantic_scope",
     )
     # API keys are critical only for selected providers
     failed_critical = False

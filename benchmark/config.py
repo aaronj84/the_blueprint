@@ -14,7 +14,8 @@ DEFAULT_OUTPUT_DIR = REPO_ROOT / "benchmark-results"
 DEFAULT_QUESTIONS = Path(__file__).resolve().parent / "questions.example.txt"
 
 DEFAULT_MODELS = {
-    "openai": "gpt-4o-mini",
+    # Peer to Claude Sonnet on quality; ~$2/$8 per 1M vs Sonnet ~$3/$15.
+    "openai": "gpt-4.1",
     # Sonnet 4.6 still accepts temperature (needed for fair prod-like settings).
     # claude-sonnet-5 works too but rejects non-default temperature.
     "anthropic": "claude-sonnet-4-6",

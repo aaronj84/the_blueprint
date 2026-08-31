@@ -5,23 +5,27 @@
 --   1. Deploy supabase/functions/explore-shots
 --   2. supabase secrets set OPENAI_API_KEY=sk-...
 --
+-- Also run migrate_semantic_layer.sql first so v_brighton_* views exist.
+--
 -- The RPC is SECURITY DEFINER and granted only to service_role so the
 -- browser cannot call it directly. The Edge Function verifies the caller's
 -- JWT, then runs validated SELECT queries via the service role.
 --
--- Test fixture: opponent "Raya Vallecano SC" is hidden from Explore via the
--- explore schema views (search_path). Tracker / Games / History still see it.
+-- Scope convention (house default): season aggregates use
+-- v_brighton_shots_official (official + preseason, tracked only). Friendlies
+-- (including Raya Vallecano SC) remain visible on v_brighton_shots /
+-- v_brighton_games with stat_scope='friendly' so explicit asks still work.
 --
 -- NOTE: PostgreSQL regex uses [[:<:]] / [[:>:]] for word boundaries.
 --       JavaScript-style \b means "backspace" in Postgres and breaks checks.
 
 create schema if not exists explore;
 
--- Filtered catalog for AI inquiries — excludes internal test opponent.
+-- Raw catalog still available for non-stat lookups (rosters, player names).
+-- Prefer v_brighton_* for shot/game stats (see SCHEMA_PROMPT).
 create or replace view explore.teams as
   select t.*
-  from public.teams t
-  where t.name <> 'Raya Vallecano SC';
+  from public.teams t;
 
 create or replace view explore.seasons as
   select * from public.seasons;
@@ -34,22 +38,27 @@ create or replace view explore.rosters as
 
 create or replace view explore.games as
   select g.*
-  from public.games g
-  where not exists (
-    select 1
-    from public.teams t
-    where t.id in (g.home_team_id, g.away_team_id)
-      and t.name = 'Raya Vallecano SC'
-  );
+  from public.games g;
 
 create or replace view explore.shots as
   select s.*
-  from public.shots s
-  where exists (
-    select 1
-    from explore.games g
-    where g.id = s.game_id
-  );
+  from public.shots s;
+
+-- Curated semantic layer (requires migrate_semantic_layer.sql).
+do $$
+begin
+  if to_regclass('public.v_brighton_shots') is not null then
+    execute 'create or replace view explore.v_brighton_shots as select * from public.v_brighton_shots';
+    execute 'create or replace view explore.v_brighton_shots_official as select * from public.v_brighton_shots_official';
+    execute 'create or replace view explore.v_brighton_games as select * from public.v_brighton_games';
+    execute 'grant select on explore.v_brighton_shots to service_role';
+    execute 'grant select on explore.v_brighton_shots_official to service_role';
+    execute 'grant select on explore.v_brighton_games to service_role';
+  else
+    raise notice 'public.v_brighton_* missing -- run migrate_semantic_layer.sql before explore view wrappers';
+  end if;
+end;
+$$;
 
 create or replace function public.explore_readonly(query text)
 returns jsonb
@@ -83,7 +92,7 @@ begin
   -- Force unqualified names onto explore.* views (never public.shots etc.).
   cleaned := regexp_replace(
     cleaned,
-    '\mpublic\.(teams|seasons|players|games|rosters|shots)\M',
+    '\mpublic\.(teams|seasons|players|games|rosters|shots|v_brighton_shots|v_brighton_shots_official|v_brighton_games)\M',
     '\1',
     'gi'
   );
@@ -105,4 +114,4 @@ revoke all on function public.explore_readonly(text) from authenticated;
 grant execute on function public.explore_readonly(text) to service_role;
 
 comment on function public.explore_readonly(text) is
-  'Read-only SELECT runner for explore-shots Edge Function (service_role only). Resolves tables via explore schema (excludes Raya Vallecano SC test games).';
+  'Read-only SELECT runner for explore-shots Edge Function (service_role only). Resolves tables via explore schema; prefer v_brighton_* for stats.';

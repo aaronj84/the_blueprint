@@ -962,6 +962,35 @@
     return t;
   }
 
+  function localYmd(d = new Date()) {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${y}-${m}-${day}`;
+  }
+
+  function addDaysYmd(ymd, delta) {
+    const [y, m, d] = String(ymd).slice(0, 10).split("-").map(Number);
+    const dt = new Date(y, m - 1, d);
+    dt.setDate(dt.getDate() + delta);
+    return localYmd(dt);
+  }
+
+  function gameDateYmd(g) {
+    return String(g?.date || "").slice(0, 10);
+  }
+
+  /** Ascending by date, rotated so the first game on/after yesterday leads the list. */
+  function gamesForList(gamesList) {
+    const yesterday = addDaysYmd(localYmd(), -1);
+    const sorted = (gamesList || [])
+      .slice()
+      .sort((a, b) => gameDateYmd(a).localeCompare(gameDateYmd(b)));
+    const start = sorted.findIndex((g) => gameDateYmd(g) >= yesterday);
+    if (start <= 0) return sorted;
+    return sorted.slice(start).concat(sorted.slice(0, start));
+  }
+
   function parseScheduleCsv(text) {
     const raw = String(text || "").replace(/^\uFEFF/, "");
     const lines = raw.split(/\r\n|\n|\r/).filter((l) => l.trim());
@@ -1171,15 +1200,18 @@
 
   function renderGames() {
     const localCount = localEvents().length;
-    const today = new Date().toISOString().slice(0, 10);
-    const games = st.games
+    const today = localYmd();
+    const yesterday = addDaysYmd(today, -1);
+    const games = gamesForList(st.games)
       .map((g) => {
+        const date = gameDateYmd(g);
+        const past = date < yesterday;
         const opp = opponentOf(g);
         const vs = opp ? opp.name : "";
         return `
-          <li class="shots-game-row">
+          <li class="shots-game-row${past ? " is-past" : ""}">
             <button type="button" class="shots-game-btn" data-open-game="${g.id}">
-              <strong>${escapeHtml(String(g.date).slice(0, 10))}</strong>
+              <strong>${escapeHtml(date)}</strong>
               <span>vs ${escapeHtml(vs)} · ${escapeHtml(g.game_type)}</span>
             </button>
           </li>`;

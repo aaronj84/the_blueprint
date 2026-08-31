@@ -3135,6 +3135,17 @@ button.formation-card.is-empty {
   color: var(--text-muted);
 }
 
+.shots-game-row.is-past .shots-game-btn {
+  opacity: 0.45;
+  color: var(--text-muted);
+  background: var(--bg-soft);
+  border-color: transparent;
+}
+
+.shots-game-row.is-past .shots-game-btn strong {
+  font-weight: 500;
+}
+
 .shots-confirm {
   margin: 0.75rem 0;
   padding: 0.85rem;

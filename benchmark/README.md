@@ -34,7 +34,7 @@ cp benchmark/.env.example benchmark/.env
 | `GEMINI_API_KEY` | for Gemini runs | Google AI Studio key |
 | `SUPABASE_URL` | yes | Project URL (`https://<ref>.supabase.co`) |
 | `SUPABASE_SERVICE_ROLE_KEY` | yes | Service role key (same privilege the Edge Function uses for `explore_readonly`) |
-| `BENCHMARK_OPENAI_MODEL` | no | Default: `gpt-4o-mini` (production Explore default) |
+| `BENCHMARK_OPENAI_MODEL` | no | Default: `gpt-4.1` |
 | `BENCHMARK_ANTHROPIC_MODEL` | no | Default: `claude-sonnet-4-6` |
 | `BENCHMARK_GEMINI_MODEL` | no | Default: `gemini-3.6-flash` |
 
@@ -93,7 +93,24 @@ Offline-only (skip Supabase probes):
 benchmark/.venv/bin/python -m benchmark --check-offline
 ```
 
-Checks: questions file, prompt sync (TS ↔ `.txt`), API keys, model pricing entries, output dir, SQL safety, Supabase reachability, and a `SELECT 1` via `explore_readonly`.
+Checks: questions file, prompt sync (TS ↔ `.txt`), scope convention sync, API keys, model pricing entries, output dir, SQL safety, Supabase reachability, `SELECT 1` via `explore_readonly`, and official-view friendly exclusion.
+
+### Golden scope tests (numeric truth)
+
+After `migrate_semantic_layer.sql` + `migrate_explore.sql`:
+
+```bash
+# Structural + hardcoded expected_number checks (no LLM spend)
+benchmark/.venv/bin/python -m benchmark.golden --verify
+
+# Print view-computed player totals to refresh golden.json
+benchmark/.venv/bin/python -m benchmark.golden --compute
+
+# Optional: run LLM cases and auto-grade key figures
+benchmark/.venv/bin/python -m benchmark.golden --run --providers openai,anthropic,gemini
+```
+
+Cases live in [`golden.json`](./golden.json). The regression pair asserts the same player total for "this season" vs "overall" when both use `v_brighton_shots_official`.
 
 ## Run a benchmark
 
@@ -177,6 +194,5 @@ A single failed model call does not stop the suite.
 
 ## What this does *not* do (yet)
 
-- Automated answer grading / LLM-as-judge
-- Enforcing expected numeric/player assertions (format supported; logic TBD)
+- LLM-as-judge for free-form answer quality (golden harness grades key numbers only)
 - Calling the deployed Edge Function over HTTP (runs the shared pipeline locally with the service role, which is the same core path)

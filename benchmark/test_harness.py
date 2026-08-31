@@ -96,9 +96,19 @@ class PromptSyncTests(unittest.TestCase):
         ok, msg = exclusions_in_sync()
         self.assertTrue(ok, msg)
         schema = load_schema_prompt()
-        self.assertIn("EXCLUSIONS", schema)
-        for name in EXCLUDED_EXPLORE_OPPONENTS:
-            self.assertIn(name, schema)
+        self.assertIn("v_brighton_shots_official", schema)
+        self.assertIn("For season or aggregate stats, query v_brighton_shots_official", schema)
+
+    def test_raw_stat_guardrail(self):
+        from benchmark.sql_safety import uses_raw_stat_tables
+
+        self.assertTrue(uses_raw_stat_tables("SELECT count(*) FROM shots"))
+        self.assertTrue(uses_raw_stat_tables("SELECT * FROM games JOIN shots ON true"))
+        self.assertFalse(
+            uses_raw_stat_tables(
+                "SELECT count(*) FROM v_brighton_shots_official WHERE is_brighton_shot"
+            )
+        )
 
 
 class PricingTests(unittest.TestCase):
