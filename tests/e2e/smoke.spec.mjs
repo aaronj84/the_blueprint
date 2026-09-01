@@ -12,6 +12,18 @@ async function signIn(page) {
   });
 }
 
+/** Swap is disabled until a slot has a player (DEV has no Brighton default XI). */
+async function assignTwoUsLineupPlayers(page) {
+  const sel = page.locator('select[data-lineup-team="us"][data-lineup-slot="10"]');
+  await expect(sel).toBeVisible({ timeout: 15000 });
+  const options = sel.locator('option[value]:not([value=""])');
+  await expect(options.first()).toBeAttached({ timeout: 20000 });
+  const values = await options.evaluateAll((opts) => opts.map((o) => o.value).filter(Boolean));
+  expect(values.length).toBeGreaterThanOrEqual(2);
+  await sel.selectOption(values[0]);
+  await page.locator('select[data-lineup-team="us"][data-lineup-slot="9"]').selectOption(values[1]);
+}
+
 test.describe("Shot tracker smoke", () => {
   test.beforeEach(async ({ page }) => {
     await page.addInitScript(() => {
@@ -58,9 +70,10 @@ test.describe("Shot tracker smoke", () => {
     await expect(page.locator(".tracker-page")).toBeVisible({ timeout: 20000 });
     await expect(page.locator("#tracker-pitch-us .pitch-svg")).toBeVisible();
 
-    // Lineup swap control
-    const swapBtn = page.locator('[data-swap-slot][data-swap-team="us"]').first();
-    await expect(swapBtn).toBeVisible();
+    // Lineup swap control (needs two filled slots; DEV roster ≠ DEFAULT_XI_JERSEYS)
+    await assignTwoUsLineupPlayers(page);
+    const swapBtn = page.locator('[data-swap-slot][data-swap-team="us"]:not([disabled])').first();
+    await expect(swapBtn).toBeEnabled();
     await swapBtn.click();
     await expect(page.locator(".lineup-swap.is-on, [data-lineup-gesture-cancel]").first()).toBeVisible();
     const cancel = page.locator("[data-lineup-gesture-cancel]");
