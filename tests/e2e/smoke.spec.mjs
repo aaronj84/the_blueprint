@@ -24,6 +24,29 @@ async function assignTwoUsLineupPlayers(page) {
   await page.locator('select[data-lineup-team="us"][data-lineup-slot="9"]').selectOption(values[1]);
 }
 
+/** Tracker listens for pointerup with a custom double-tap window (not click/dblclick). */
+async function doubleTapUsPitch(page) {
+  const svg = page.locator("#tracker-pitch-us .pitch-svg");
+  await svg.scrollIntoViewIfNeeded();
+  const box = await svg.boundingBox();
+  expect(box).toBeTruthy();
+  const clientX = box.x + box.width * 0.55;
+  const clientY = box.y + box.height * 0.4;
+  const pointerUp = () =>
+    svg.dispatchEvent("pointerup", {
+      bubbles: true,
+      cancelable: true,
+      clientX,
+      clientY,
+      pointerId: 1,
+      pointerType: "mouse",
+      isPrimary: true,
+    });
+  await pointerUp();
+  await page.waitForTimeout(120);
+  await pointerUp();
+}
+
 test.describe("Shot tracker smoke", () => {
   test.beforeEach(async ({ page }) => {
     await page.addInitScript(() => {
@@ -79,15 +102,8 @@ test.describe("Shot tracker smoke", () => {
     const cancel = page.locator("[data-lineup-gesture-cancel]");
     if (await cancel.count()) await cancel.first().click();
 
-    // Double-tap pitch to open record modal
-    const svg = page.locator("#tracker-pitch-us .pitch-svg");
-    const box = await svg.boundingBox();
-    expect(box).toBeTruthy();
-    const x = box.x + box.width * 0.55;
-    const y = box.y + box.height * 0.4;
-    await page.mouse.click(x, y);
-    await page.waitForTimeout(80);
-    await page.mouse.click(x, y);
+    // Double-tap pitch to open record modal (pointerup-based gesture in shots.js)
+    await doubleTapUsPitch(page);
 
     const shotModal = page.locator("#shot-event-modal");
     await expect(shotModal).toBeVisible({ timeout: 10000 });
