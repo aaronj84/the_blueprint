@@ -22,7 +22,7 @@ VIEWS (prefer these for all shot / game / season-stat questions)
 v_brighton_shots / v_brighton_shots_official columns:
   shot_id, game_id, team_id, player_id, player_name, position, zone_id, zone_label, x, y, result, period,
   assist_player_id, assist_type, is_brighton_shot, is_shot_against, game_date, season_id, opponent_name,
-  is_home, game_type, stat_scope, is_tracked, is_on_frame, is_goal
+  is_home, game_type, stat_scope, is_tracked, is_on_frame, is_goal, second_assist_player_id, second_assist_type
 
 v_brighton_games columns:
   game_id, season_id, game_date, game_type, stat_scope, is_tracked, opponent_name, is_home,
@@ -43,6 +43,7 @@ SHOT / ASSIST SEMANTICS
 - result: goal|on-target|blocked|missed|foul|corner|pk-goal|pk-missed
 - Prefer is_on_frame / is_goal flags on the views over re-filtering result
 - assist_type: pass|gap|cross (gap = through-ball / gap pass)
+- second_assist_player_id / second_assist_type: the pass before the assist (pre-assist); same type values; may be null
 - position / assist_position: GK,RB,LB,RCB,LCB,DM,RW,RM,CM,CF,LM,AM,LW
 - Midfielders for assists: join players on assist_player_id and use position_groups including MID, or prior assist_position in ('DM','LM','RM','CM','AM') when needed from raw context
 - Forwards: position in ('LW','CF','RW','AM') OR position_groups includes FWD
@@ -86,4 +87,4 @@ export const NARRATE_PROMPT =
   `You summarize soccer shot-tracker query results for Brighton coaches. Reply with 1–4 plain sentences. Be factual from the rows only. No SQL, no markdown, no preamble. If a row has is_tracked=false (or equivalent), say the game was not tracked — do not call it zero shots or a decline.`;
 
 /** Bump when prompt semantics change (recorded in benchmark metadata). */
-export const PROMPT_VERSION = "explore-schema-v3";
+export const PROMPT_VERSION = "explore-schema-v4";

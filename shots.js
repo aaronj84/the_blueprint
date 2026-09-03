@@ -624,21 +624,82 @@
     if (action.result === "foul") return "Who took the free kick?";
     if (action.result === "corner") return "Who took the corner?";
     if (action.result === "pk-goal" || action.result === "pk-missed") return "Who took the PK?";
-    if (action.kind === "assist") return "Who assisted?";
+    if (action.kind === "assist") return "Who passed?";
     return "Who shot?";
   }
 
   function needsMissDirection(action) {
-    const result = action?.result === "foul" ? shotModalDraft.fkOutcome || "" : action?.result;
+    const result = action?.result === "foul" || action?.result === "corner" ? shotModalDraft.fkOutcome || "" : action?.result;
     return !!(result && RESULTS_NEEDING_MISS_DIR.has(result));
   }
 
   function needsFoulerStep(action) {
-    return !!(action && RESULTS_NEEDING_FOULER.has(action.result));
+    return !!(action && (action.result === "foul" || RESULTS_NEEDING_FOULER.has(action.result)));
+  }
+
+  function canChainAssist() {
+    return !!(st.pending?.assist && !st.pending?.secondAssist);
+  }
+
+  function awaitingFollowUp() {
+    return st.mode === "awaiting-shot-location";
+  }
+
+  function draftAssistFromModal(player) {
+    return {
+      player,
+      type: shotModalDraft.action?.type,
+      location: shotModalDraft.location,
+      position: shotModalDraft.position || "",
+    };
+  }
+
+  function linkedPlayFields(play, prefix) {
+    if (!play) {
+      return {
+        [`${prefix}_player_id`]: null,
+        [`${prefix}_type`]: null,
+        [`${prefix}_position`]: null,
+        [`${prefix}_x`]: null,
+        [`${prefix}_y`]: null,
+        [`${prefix}_zone_id`]: null,
+        [`${prefix}_zone_label`]: null,
+      };
+    }
+    const loc = play.location || play;
+    return {
+      [`${prefix}_player_id`]: play.player?.id || play.player_id || null,
+      [`${prefix}_type`]: play.type || null,
+      [`${prefix}_position`]: play.position || null,
+      [`${prefix}_x`]: loc.x,
+      [`${prefix}_y`]: loc.y,
+      [`${prefix}_zone_id`]: loc.zoneId || loc.zone_id || null,
+      [`${prefix}_zone_label`]: loc.zoneLabel || loc.zone_label || null,
+    };
+  }
+
+  function mapLinkedPlay(row, prefix, playerJoin, roster) {
+    const type = row[`${prefix}_type`];
+    if (!type) return null;
+    const playerId = row[`${prefix}_player_id`];
+    const jersey = playerId ? roster.find((r) => r.player_id === playerId)?.jersey_number || "" : "";
+    return {
+      player_id: playerId || null,
+      number: jersey,
+      name: playerJoin?.name || "",
+      short: playerJoin?.short_name || "",
+      type,
+      position: normalizePositionCode(row[`${prefix}_position`] || ""),
+      x: Number(row[`${prefix}_x`]),
+      y: Number(row[`${prefix}_y`]),
+      zoneId: row[`${prefix}_zone_id`],
+      zoneLabel: row[`${prefix}_zone_label`],
+    };
   }
 
   function effectiveShotResult() {
-    if (shotModalDraft.action?.result === "foul" && shotModalDraft.fkOutcome) {
+    const origin = shotModalDraft.action?.result;
+    if ((origin === "foul" || origin === "corner") && shotModalDraft.fkOutcome) {
       return shotModalDraft.fkOutcome;
     }
     return shotModalDraft.action?.result || "";
@@ -772,9 +833,6 @@
     const b = brighton();
     const team = b && row.team_id === b.id ? "us" : "opp";
     const roster = team === "us" ? st.ourRoster : st.oppRoster;
-    const assistJersey = row.assist_player_id
-      ? roster.find((r) => r.player_id === row.assist_player_id)?.jersey_number || ""
-      : "";
     return {
       id: row.id,
       createdAt: row.created_at,
@@ -800,20 +858,8 @@
         zoneId: row.zone_id,
         zoneLabel: row.zone_label,
       },
-      assist: row.assist_type
-        ? {
-            player_id: row.assist_player_id || null,
-            number: assistJersey,
-            name: row.assist_player?.name || "",
-            short: row.assist_player?.short_name || "",
-            type: row.assist_type,
-            position: normalizePositionCode(row.assist_position || ""),
-            x: Number(row.assist_x),
-            y: Number(row.assist_y),
-            zoneId: row.assist_zone_id,
-            zoneLabel: row.assist_zone_label,
-          }
-        : null,
+      assist: mapLinkedPlay(row, "assist", row.assist_player, roster),
+      secondAssist: mapLinkedPlay(row, "second_assist", row.second_assist_player, roster),
     };
   }
 
@@ -1502,6 +1548,14 @@
       csvEscape(ev.assist?.zoneLabel || ev.assist_zone_label || ""),
       ev.assist?.x ?? ev.assist_x ?? "",
       ev.assist?.y ?? ev.assist_y ?? "",
+      ev.secondAssist?.number ?? "",
+      csvEscape(ev.secondAssist?.name || ev.second_assist_player?.name || ""),
+      ev.secondAssist ? ASSIST_TYPE_LABELS[ev.secondAssist.type] || ev.secondAssist.type : ev.second_assist_type || "",
+      ev.secondAssist?.position || ev.second_assist_position || "",
+      ev.secondAssist?.zoneId ?? ev.second_assist_zone_id ?? "",
+      csvEscape(ev.secondAssist?.zoneLabel || ev.second_assist_zone_label || ""),
+      ev.secondAssist?.x ?? ev.second_assist_x ?? "",
+      ev.secondAssist?.y ?? ev.second_assist_y ?? "",
     ];
   }
 
@@ -1531,6 +1585,14 @@
     "assist_zone",
     "assist_x",
     "assist_y",
+    "second_assisted_by_number",
+    "second_assisted_by_name",
+    "second_assist_type",
+    "second_assist_position",
+    "second_assist_zone_id",
+    "second_assist_zone",
+    "second_assist_x",
+    "second_assist_y",
   ];
 
   function exportShotsCsv(events, filename) {
@@ -1603,6 +1665,10 @@
     const pending = st.pending;
     const modalLoc = shotModalDraft.location;
     const active = recordingTeam() === team;
+    if (active && pending?.secondAssist?.location) {
+      const s = pending.secondAssist.location;
+      pendingDots.push(`<circle class="tracker-pending second-assist" cx="${s.x}" cy="${s.y}" r="1.05" />`);
+    }
     if (active && pending?.assist?.location) {
       const a = pending.assist.location;
       pendingDots.push(`<circle class="tracker-pending assist" cx="${a.x}" cy="${a.y}" r="1.15" />`);
@@ -1619,6 +1685,11 @@
       })
       .map((ev) => {
         let html = "";
+        if (ev.secondAssist) {
+          const from = ev.assist || ev.shot;
+          html += `<line class="tracker-assist-line is-second" x1="${ev.secondAssist.x}" y1="${ev.secondAssist.y}" x2="${from.x}" y2="${from.y}" />`;
+          html += `<circle class="tracker-assist-dot is-second" cx="${ev.secondAssist.x}" cy="${ev.secondAssist.y}" r="0.8" />`;
+        }
         if (ev.assist) {
           html += `<line class="tracker-assist-line" x1="${ev.assist.x}" y1="${ev.assist.y}" x2="${ev.shot.x}" y2="${ev.shot.y}" />`;
           html += `<circle class="tracker-assist-dot" cx="${ev.assist.x}" cy="${ev.assist.y}" r="0.9" />`;
@@ -1699,9 +1770,10 @@
     shotModalDraft.phase = "action";
     shotModalDraft.location = location;
     shotModalDraft.player = null;
-    shotModalDraft.fouler = null;
-    shotModalDraft.foulerPicked = false;
-    shotModalDraft.foulerPickTeam = oppositeTeam(recordingTeam());
+    shotModalDraft.fouler = st.pending?.foulerPicked ? st.pending.fouler : null;
+    shotModalDraft.foulerPicked = !!st.pending?.foulerPicked;
+    shotModalDraft.foulerPickTeam =
+      st.pending?.foulerPickTeam || oppositeTeam(recordingTeam());
     shotModalDraft.action = null;
     shotModalDraft.position = "";
     shotModalDraft.missDirection = "";
@@ -1733,6 +1805,7 @@
       if (eventTeam(ev) === team) {
         if (ev.shooterNumber) nums.add(String(ev.shooterNumber));
         if (ev.assist?.number) nums.add(String(ev.assist.number));
+        if (ev.secondAssist?.number) nums.add(String(ev.secondAssist.number));
       }
       if (RESULTS_NEEDING_FOULER.has(ev.result) && ev.foulerNumber) {
         const foulerTeam = oppositeTeam(eventTeam(ev));
@@ -1843,6 +1916,7 @@
           phase === "fouler" ||
           phase === "miss-dir" ||
           phase === "fk-result" ||
+          phase === "corner-result" ||
           inSubFlow
       );
     }
@@ -1858,6 +1932,7 @@
     }
 
     if (phase === "action") {
+      const follow = step === "follow";
       title.textContent = step === "shot" ? "Shot result?" : "What happened?";
       locEl.textContent = locText;
       if (playerHeading) playerHeading.hidden = true;
@@ -1868,13 +1943,19 @@
         (a) =>
           `<button type="button" class="shot-action-btn is-${a.result}" data-action-id="${escapeHtml(a.id)}">${escapeHtml(actionShortLabel(a))}</button>`
       ).join("");
+      const assistBtns = TRACKER_ASSIST_ACTIONS.map(
+        (a) =>
+          `<button type="button" class="shot-action-btn is-assist" data-action-id="${escapeHtml(a.id)}">${escapeHtml(ASSIST_TYPE_LABELS[a.type])}</button>`
+      ).join("");
       if (step === "shot") {
         actionGrid.innerHTML = `<div class="shot-action-row shot-action-row-fill">${shotBtns}</div>`;
+      } else if (follow) {
+        actionGrid.innerHTML = `
+          <p class="shot-action-heading">Assist</p>
+          <div class="shot-action-row shot-action-row-3">${assistBtns}</div>
+          <p class="shot-action-heading">Shot</p>
+          <div class="shot-action-row shot-action-row-fill">${shotBtns}</div>`;
       } else {
-        const assistBtns = TRACKER_ASSIST_ACTIONS.map(
-          (a) =>
-            `<button type="button" class="shot-action-btn is-assist" data-action-id="${escapeHtml(a.id)}">${escapeHtml(ASSIST_TYPE_LABELS[a.type])}</button>`
-        ).join("");
         const otherBtns = TRACKER_OTHER_ACTIONS.map(
           (a) =>
             `<button type="button" class="shot-action-btn is-${a.result}" data-action-id="${escapeHtml(a.id)}">${escapeHtml(actionShortLabel(a))}</button>`
@@ -1910,30 +1991,40 @@
       return;
     }
 
-    if (phase === "fk-result") {
+    if (phase === "fk-result" || phase === "corner-result") {
       const chosen = shotModalDraft.action;
+      const isCorner = phase === "corner-result" || chosen?.result === "corner";
       const taker = shotModalDraft.player
         ? playerLabel(Object.assign({ team: recordingTeam() }, shotModalDraft.player))
         : shotModalDraft.position
           ? `untagged · ${shotModalDraft.position}`
           : "untagged";
-      title.textContent = "Free kick result?";
+      title.textContent = isCorner ? "Corner — what next?" : "Free kick — what next?";
       locEl.textContent = chosen ? `${actionShortLabel(chosen)} · ${taker}  ·  ${locText}` : locText;
       if (playerHeading) {
         playerHeading.hidden = false;
-        playerHeading.textContent = "What happened from the restart?";
+        playerHeading.textContent = "Shot from here, another pass, or just log the restart.";
       }
       if (nudge) nudge.hidden = true;
       playerGrid.hidden = true;
       actionGrid.hidden = false;
       const shotBtns = TRACKER_SHOT_ACTIONS.map(
         (a) =>
-          `<button type="button" class="shot-action-btn is-${a.result}" data-fk-result="${escapeHtml(a.result)}">${escapeHtml(actionShortLabel(a))}</button>`
+          `<button type="button" class="shot-action-btn is-${a.result}" data-restart-result="${escapeHtml(a.result)}">${escapeHtml(actionShortLabel(a))}</button>`
       ).join("");
+      const assistBtns = TRACKER_ASSIST_ACTIONS.map(
+        (a) =>
+          `<button type="button" class="shot-action-btn is-assist" data-restart-assist="${escapeHtml(a.type)}">${escapeHtml(ASSIST_TYPE_LABELS[a.type])}</button>`
+      ).join("");
+      const keepResult = isCorner ? "corner" : "foul";
+      const keepLabel = isCorner ? "No shot — corner only" : "No shot — free kick only";
       actionGrid.innerHTML = `
+        <p class="shot-action-heading">Assist</p>
+        <div class="shot-action-row shot-action-row-3">${assistBtns}</div>
+        <p class="shot-action-heading">Shot</p>
         <div class="shot-action-row shot-action-row-fill">${shotBtns}</div>
         <div class="shot-action-row shot-action-row-fill" style="margin-top:0.55rem">
-          <button type="button" class="shot-action-btn is-foul" data-fk-result="foul">No shot — free kick only</button>
+          <button type="button" class="shot-action-btn is-${keepResult}" data-restart-result="${keepResult}">${keepLabel}</button>
         </div>`;
       return;
     }
@@ -1957,7 +2048,9 @@
         playerHeading.textContent =
           chosen?.result === "foul"
             ? "Who took the free kick? Tap Empty for unknown at that spot."
-            : "Tap a player to save. Tap Empty for unknown at that spot.";
+            : chosen?.kind === "assist"
+              ? "Who passed? Tap Empty for unknown at that spot."
+              : "Tap a player to save. Tap Empty for unknown at that spot.";
       }
       if (nudge) {
         nudge.hidden = !(team === "us" && !lineupHasXi("us"));
@@ -2362,22 +2455,25 @@
       renderShotModal();
       return;
     }
+    if (shotModalDraft.action?.result === "corner") {
+      shotModalDraft.fkOutcome = "";
+      shotModalDraft.missDirection = "";
+      shotModalDraft.phase = "corner-result";
+      renderShotModal();
+      return;
+    }
     await completeShotModal();
   }
 
-  async function completeShotModal() {
-    const action = shotModalDraft.action;
-    if (!action) return;
-    const player = shotModalDraft.player || null;
-    if (shotModalDraft.step === "first" && action.kind === "assist") {
-      st.pending = {
-        assist: {
-          player,
-          type: action.type,
-          location: shotModalDraft.location,
-          position: shotModalDraft.position || "",
-        },
-      };
+  function stashAssistAndWait(player) {
+    const next = draftAssistFromModal(player);
+    const foulerBag = {
+      fouler: shotModalDraft.fouler,
+      foulerPicked: shotModalDraft.foulerPicked,
+      foulerPickTeam: shotModalDraft.foulerPickTeam,
+    };
+    if (st.pending?.assist && !st.pending?.secondAssist) {
+      st.pending = Object.assign({ secondAssist: st.pending.assist, assist: next }, foulerBag);
       st.mode = "awaiting-shot-location";
       closeShotModal();
       shotModalDraft.location = null;
@@ -2385,16 +2481,35 @@
       showToast("Tap where the shot was taken");
       return;
     }
+    st.pending = Object.assign({}, st.pending, { assist: next }, foulerBag);
+    st.mode = "awaiting-shot-location";
+    closeShotModal();
+    shotModalDraft.location = null;
+    draw();
+    showToast("Tap the next pass or the shot");
+  }
+
+  async function completeShotModal() {
+    const action = shotModalDraft.action;
+    if (!action) return;
+    const player = shotModalDraft.player || null;
+    if (action.kind === "assist") {
+      stashAssistAndWait(player);
+      return;
+    }
     if (action.kind === "shot") {
-      const assist = shotModalDraft.step === "shot" ? st.pending?.assist : null;
+      const assist = st.pending?.assist || null;
+      const secondAssist = st.pending?.secondAssist || null;
       const result = effectiveShotResult() || action.result;
-      await commitShotEvent(result, player, assist || null);
+      await commitShotEvent(result, player, assist, secondAssist);
     }
   }
 
-  function payloadFromDraft(result, shooter, assist) {
+  function payloadFromDraft(result, shooter, assist, secondAssist) {
     const loc = shotModalDraft.location;
     const teamId = recordingTeamId();
+    const saveFouler =
+      shotModalDraft.foulerPicked || RESULTS_NEEDING_FOULER.has(result) || result === "foul";
     return {
       id: global.crypto.randomUUID(),
       game_id: st.gameId,
@@ -2409,27 +2524,22 @@
       zone_label: loc.zoneLabel,
       result,
       miss_direction: RESULTS_NEEDING_MISS_DIR.has(result) ? shotModalDraft.missDirection || null : null,
-      fouler_player_id: RESULTS_NEEDING_FOULER.has(result) ? shotModalDraft.fouler?.id || null : null,
-      fouler_jersey_number_at_time: RESULTS_NEEDING_FOULER.has(result)
+      fouler_player_id: saveFouler ? shotModalDraft.fouler?.id || null : null,
+      fouler_jersey_number_at_time: saveFouler
         ? shotModalDraft.fouler
           ? String(shotModalDraft.fouler.number)
           : null
         : null,
-      assist_player_id: assist?.player?.id || null,
-      assist_type: assist ? assist.type : null,
-      assist_position: assist?.position || null,
-      assist_x: assist ? assist.location.x : null,
-      assist_y: assist ? assist.location.y : null,
-      assist_zone_id: assist ? assist.location.zoneId : null,
-      assist_zone_label: assist ? assist.location.zoneLabel : null,
+      ...linkedPlayFields(assist, "assist"),
+      ...linkedPlayFields(secondAssist, "second_assist"),
     };
   }
 
-  async function commitShotEvent(result, shooter, assist) {
+  async function commitShotEvent(result, shooter, assist, secondAssist) {
     const loc = shotModalDraft.location;
     if (!loc) return;
     const team = recordingTeam();
-    const payload = payloadFromDraft(result, shooter, assist);
+    const payload = payloadFromDraft(result, shooter, assist, secondAssist);
     const view = mapShot({
       ...payload,
       created_at: new Date().toISOString(),
@@ -2444,25 +2554,42 @@
       assist_player: assist?.player
         ? { id: assist.player.id, name: assist.player.name, short_name: assist.player.short }
         : null,
+      second_assist_player: secondAssist?.player
+        ? {
+            id: secondAssist.player.id,
+            name: secondAssist.player.name,
+            short_name: secondAssist.player.short,
+          }
+        : null,
       saveFailed: false,
       pendingPayload: payload,
     });
     view.team = team;
     view.shooterNumber = shooter ? String(shooter.number) : "";
     if (view.assist && assist?.player) view.assist.number = String(assist.player.number || "");
+    if (view.secondAssist && secondAssist?.player) {
+      view.secondAssist.number = String(secondAssist.player.number || "");
+    }
     st.shots = [view, ...st.shots];
     closeShotModal();
     resetTrackerDraft();
     draw();
     const missBit = view.missDirection ? ` (${MISS_DIRECTION_LABELS[view.missDirection]})` : "";
-    const foulerBit =
-      RESULTS_NEEDING_FOULER.has(result) && (view.foulerNumber || view.foulerName || view.foulerShort)
-        ? ` · foul: ${eventPersonLabel(oppositeTeam(team), view.foulerNumber, view.foulerName, view.foulerShort)}`
-        : RESULTS_NEEDING_FOULER.has(result)
-          ? " · foul: untagged"
-          : "";
+    const foulerBit = view.foulerNumber || view.foulerName || view.foulerShort
+      ? ` · foul: ${eventPersonLabel(oppositeTeam(team), view.foulerNumber, view.foulerName, view.foulerShort)}`
+      : "";
     const extra = view.assist
-      ? ` (assist: ${view.assist.number ? (team === "opp" ? `Opp #${view.assist.number}` : view.assist.short || firstName(view.assist.name) || `#${view.assist.number}`) : "untagged"})`
+      ? ` (assist: ${view.assist.number ? (team === "opp" ? `Opp #${view.assist.number}` : view.assist.short || firstName(view.assist.name) || `#${view.assist.number}`) : "untagged"}${
+          view.secondAssist
+            ? ` · 2nd: ${
+                view.secondAssist.number
+                  ? team === "opp"
+                    ? `Opp #${view.secondAssist.number}`
+                    : view.secondAssist.short || firstName(view.secondAssist.name) || `#${view.secondAssist.number}`
+                  : "untagged"
+              }`
+            : ""
+        })`
       : "";
     showToast(`${SHOT_RESULT_LABELS[result]}${missBit} — ${playerLabel(shooter ? Object.assign({ team }, shooter) : null)}${foulerBit}${extra}`);
     const saved = await API.insertShot(payload);
@@ -2623,9 +2750,23 @@
         advanceAfterAction();
         return;
       }
-      const fkResultBtn = e.target.closest("[data-fk-result]");
-      if (fkResultBtn) {
-        shotModalDraft.fkOutcome = fkResultBtn.getAttribute("data-fk-result") || "foul";
+      const restartAssistBtn = e.target.closest("[data-restart-assist]");
+      if (restartAssistBtn) {
+        const type = restartAssistBtn.getAttribute("data-restart-assist");
+        const action = TRACKER_ASSIST_ACTIONS.find((a) => a.type === type);
+        if (!action) return;
+        shotModalDraft.action = action;
+        shotModalDraft.fkOutcome = "";
+        shotModalDraft.missDirection = "";
+        await completeShotModal();
+        return;
+      }
+      const restartResultBtn = e.target.closest("[data-restart-result], [data-fk-result]");
+      if (restartResultBtn) {
+        shotModalDraft.fkOutcome =
+          restartResultBtn.getAttribute("data-restart-result") ||
+          restartResultBtn.getAttribute("data-fk-result") ||
+          "foul";
         shotModalDraft.missDirection = "";
         if (RESULTS_NEEDING_MISS_DIR.has(shotModalDraft.fkOutcome)) {
           shotModalDraft.phase = "miss-dir";
@@ -2759,9 +2900,11 @@
         shotModalDraft.action = action;
         shotModalDraft.missDirection = "";
         shotModalDraft.fkOutcome = "";
-        shotModalDraft.fouler = null;
-        shotModalDraft.foulerPicked = false;
-        shotModalDraft.foulerPickTeam = oppositeTeam(recordingTeam());
+        if (shotModalDraft.step === "first") {
+          shotModalDraft.fouler = null;
+          shotModalDraft.foulerPicked = false;
+          shotModalDraft.foulerPickTeam = oppositeTeam(recordingTeam());
+        }
         advanceAfterAction();
       }
     });
@@ -2786,7 +2929,7 @@
         renderShotModal();
         return;
       }
-      if (shotModalDraft.phase === "fk-result") {
+      if (shotModalDraft.phase === "fk-result" || shotModalDraft.phase === "corner-result") {
         shotModalDraft.phase = "position";
         shotModalDraft.fkOutcome = "";
         shotModalDraft.missDirection = "";
@@ -2795,8 +2938,12 @@
         renderShotModal();
         return;
       }
-      if (shotModalDraft.phase === "miss-dir" && shotModalDraft.action?.result === "foul" && shotModalDraft.fkOutcome) {
-        shotModalDraft.phase = "fk-result";
+      if (
+        shotModalDraft.phase === "miss-dir" &&
+        (shotModalDraft.action?.result === "foul" || shotModalDraft.action?.result === "corner") &&
+        shotModalDraft.fkOutcome
+      ) {
+        shotModalDraft.phase = shotModalDraft.action.result === "corner" ? "corner-result" : "fk-result";
         shotModalDraft.missDirection = "";
         renderShotModal();
         return;
@@ -2866,7 +3013,7 @@
   }
 
   function bindTrackerPitches() {
-    const awaitingShot = st.mode === "awaiting-shot-location";
+    const awaitingShot = awaitingFollowUp();
     $$("[data-pitch-team]").forEach((svg) => {
       const team = svg.getAttribute("data-pitch-team");
       const wrap = svg.closest(".tracker-pitch-wrap");
@@ -2897,7 +3044,7 @@
             showToast("Finish this shot on the same team’s pitch");
             return;
           }
-          fillShotModal("shot", loc);
+          fillShotModal(canChainAssist() ? "follow" : "shot", loc);
           draw({ keepScroll: true });
           return;
         }
@@ -2917,6 +3064,7 @@
   function trackerSummary(events) {
     const n = (result) => events.filter((e) => e.result === result).length;
     const assists = events.filter((e) => e.assist).length;
+    const secondAssists = events.filter((e) => e.secondAssist).length;
     return {
       goals: n("goal") + n("pk-goal"),
       onTarget: n("on-target"),
@@ -2926,6 +3074,7 @@
       corners: n("corner"),
       pks: n("pk-goal") + n("pk-missed"),
       assists,
+      secondAssists,
       total: events.length,
     };
   }
@@ -2940,7 +3089,8 @@
       <span class="pill">Free kicks <strong>${sum.fouls}</strong></span>
       <span class="pill">Corners <strong>${sum.corners}</strong></span>
       <span class="pill">PKs <strong>${sum.pks}</strong></span>
-      <span class="pill">Assists <strong>${sum.assists}</strong></span>`;
+      <span class="pill">Assists <strong>${sum.assists}</strong></span>
+      <span class="pill">2nd assists <strong>${sum.secondAssists}</strong></span>`;
   }
 
   function unitsBreakdown(events) {
@@ -2957,6 +3107,11 @@
         const aPos = ev.assist.position || "—";
         const key = `${aPos} → ${pos}`;
         pairCounts[key] = (pairCounts[key] || 0) + 1;
+        if (ev.secondAssist) {
+          const sPos = ev.secondAssist.position || "—";
+          const sKey = `${sPos} → ${aPos}`;
+          pairCounts[sKey] = (pairCounts[sKey] || 0) + 1;
+        }
       }
       if (ev.missDirection) {
         const who = eventPersonLabel("us", ev.shooterNumber, ev.shooterName, ev.shooterShort);
@@ -3033,19 +3188,26 @@
         const player = eventPersonLabel(team, ev.shooterNumber, ev.shooterName, ev.shooterShort);
         const foulerTeam = oppositeTeam(team);
         const foulerLabel =
-          RESULTS_NEEDING_FOULER.has(ev.result) && (ev.foulerNumber || ev.foulerName || ev.foulerShort)
+          ev.foulerNumber || ev.foulerName || ev.foulerShort
             ? eventPersonLabel(foulerTeam, ev.foulerNumber, ev.foulerName, ev.foulerShort)
-            : RESULTS_NEEDING_FOULER.has(ev.result)
-              ? "—"
-              : "";
+            : "";
         const playerCell = foulerLabel
           ? `${escapeHtml(player)}<br /><span class="muted">foul: ${escapeHtml(foulerLabel)}</span>`
           : escapeHtml(player);
         const assistBy = ev.assist ? eventPersonLabel(team, ev.assist.number, ev.assist.name, ev.assist.short) : "—";
         const assistType = ev.assist ? ASSIST_TYPE_LABELS[ev.assist.type] || ev.assist.type : "—";
         const assistPos = ev.assist?.position ? ` · ${ev.assist.position}` : "";
+        const secondBy = ev.secondAssist
+          ? eventPersonLabel(team, ev.secondAssist.number, ev.secondAssist.name, ev.secondAssist.short)
+          : "";
+        const secondType = ev.secondAssist ? ASSIST_TYPE_LABELS[ev.secondAssist.type] || ev.secondAssist.type : "";
+        const secondPos = ev.secondAssist?.position ? ` · ${ev.secondAssist.position}` : "";
         const assistCell = ev.assist
-          ? `${escapeHtml(formatLoc(ev.assist))}<br /><span class="muted">${escapeHtml(formatXY(ev.assist))}</span>`
+          ? `${escapeHtml(formatLoc(ev.assist))}<br /><span class="muted">${escapeHtml(formatXY(ev.assist))}</span>${
+              ev.secondAssist
+                ? `<br /><span class="muted">2nd: ${escapeHtml(formatLoc(ev.secondAssist))} · ${escapeHtml(formatXY(ev.secondAssist))}</span>`
+                : ""
+            }`
           : "—";
         const resultLabel = SHOT_RESULT_LABELS[ev.result] || ev.result;
         const missLabel = ev.missDirection ? MISS_DIRECTION_LABELS[ev.missDirection] || ev.missDirection : "—";
@@ -3070,8 +3232,14 @@
             <td><button type="button" class="linkish" data-edit-shot="${escapeHtml(ev.id)}">${playerCell}</button></td>
             <td><button type="button" class="linkish" data-edit-shot="${escapeHtml(ev.id)}">${escapeHtml(ev.position || "—")}</button></td>
             <td>${escapeHtml(missLabel)}</td>
-            <td>${escapeHtml(assistBy)}${escapeHtml(assistPos)}</td>
-            <td>${escapeHtml(assistType)}</td>
+            <td>${escapeHtml(assistBy)}${escapeHtml(assistPos)}${
+              secondBy
+                ? `<br /><span class="muted">2nd: ${escapeHtml(secondBy)}${escapeHtml(secondPos)}</span>`
+                : ""
+            }</td>
+            <td>${escapeHtml(assistType)}${
+              secondType ? `<br /><span class="muted">2nd: ${escapeHtml(secondType)}</span>` : ""
+            }</td>
             <td class="tracker-coord-cell">${escapeHtml(formatLoc(ev.shot))}<br /><span class="muted">${escapeHtml(formatXY(ev.shot))}</span></td>
             <td class="tracker-coord-cell">${assistCell}</td>
             <td class="tracker-delete-cell">
@@ -3196,7 +3364,10 @@
     const wrap = $("#shot-edit-fouler-wrap");
     const sel = $("#shot-edit-fouler");
     if (!wrap || !sel) return;
-    const needs = RESULTS_NEEDING_FOULER.has(ev.result || $("#shot-edit-result")?.value);
+    const needs =
+      RESULTS_NEEDING_FOULER.has(ev.result || $("#shot-edit-result")?.value) ||
+      (ev.result || $("#shot-edit-result")?.value) === "foul" ||
+      !!(ev.fouler_player_id || ev.foulerNumber);
     wrap.hidden = !needs;
     if (!needs) {
       sel.innerHTML = `<option value="">—</option>`;
@@ -3271,6 +3442,30 @@
         .join("");
   }
 
+  function fillEditSecondAssistOptions(ev, team, selectedId) {
+    const sel = $("#shot-edit-second-assist");
+    if (!sel) return;
+    const players = sortPlayers(rosterPlayers(team));
+    const keepId = selectedId !== undefined ? selectedId : ev.secondAssist?.player_id || null;
+    if (keepId && !players.find((p) => p.id === keepId)) {
+      players.unshift({
+        id: keepId,
+        number: ev.secondAssist?.number || "",
+        name: ev.secondAssist?.name || "",
+        short: ev.secondAssist?.short || "",
+        team,
+      });
+    }
+    sel.innerHTML =
+      `<option value="">— None —</option>` +
+      players
+        .map(
+          (p) =>
+            `<option value="${p.id}" ${p.id === keepId ? "selected" : ""}>${escapeHtml(playerDisplayName(p))} (#${escapeHtml(String(p.number))})</option>`
+        )
+        .join("");
+  }
+
   function editModalTeam() {
     return $("#shot-edit-team")?.value === "opp" ? "opp" : "us";
   }
@@ -3279,8 +3474,11 @@
     const team = editModalTeam();
     const keepPlayer = opts.clearPlayers ? null : $("#shot-edit-player")?.value || ev.player_id;
     const keepAssist = opts.clearPlayers ? null : $("#shot-edit-assist")?.value || ev.assist?.player_id || null;
+    const keepSecond =
+      opts.clearPlayers ? null : $("#shot-edit-second-assist")?.value || ev.secondAssist?.player_id || null;
     fillEditPlayerOptions(ev, team, keepPlayer);
     fillEditAssistOptions(ev, team, keepAssist);
+    fillEditSecondAssistOptions(ev, team, keepSecond);
     fillFoulerEditOptions(
       Object.assign({}, ev, { result: $("#shot-edit-result")?.value || ev.result }),
       team
@@ -3315,11 +3513,14 @@
     }
     const assistTypeSel = $("#shot-edit-assist-type");
     if (assistTypeSel) assistTypeSel.value = ev.assist?.type || "";
+    const secondTypeSel = $("#shot-edit-second-assist-type");
+    if (secondTypeSel) secondTypeSel.value = ev.secondAssist?.type || "";
     $("#shot-edit-name").value = ev.shooterName || "";
     $("#shot-edit-short").value = ev.shooterShort || "";
     refreshEditModalRosters(ev);
     fillEditPlayerOptions(ev, team, ev.player_id);
     fillEditAssistOptions(ev, team, ev.assist?.player_id || null);
+    fillEditSecondAssistOptions(ev, team, ev.secondAssist?.player_id || null);
     fillFoulerEditOptions(ev, team);
     modal.hidden = false;
   }
@@ -3356,6 +3557,10 @@
       const type = $("#shot-edit-assist-type").value;
       if (!type && $("#shot-edit-assist")) $("#shot-edit-assist").value = "";
     });
+    $("#shot-edit-second-assist-type")?.addEventListener("change", () => {
+      const type = $("#shot-edit-second-assist-type").value;
+      if (!type && $("#shot-edit-second-assist")) $("#shot-edit-second-assist").value = "";
+    });
     $("#shot-edit-save")?.addEventListener("click", async () => {
       const id = modal.dataset.shotId;
       const ev = st.shots.find((s) => s.id === id) || st.history.rows?.find((s) => s.id === id);
@@ -3370,15 +3575,26 @@
       const player = playerId ? playerFromRoster(team, playerId, null) : null;
       const result = $("#shot-edit-result").value;
       const missVal = $("#shot-edit-miss")?.value || "";
-      const foulerId = RESULTS_NEEDING_FOULER.has(result) ? $("#shot-edit-fouler")?.value || null : null;
+      const foulerId = $("#shot-edit-fouler")?.value || null;
       const fouler = foulerId ? playerFromRoster(oppositeTeam(team), foulerId, null) : null;
       const assistType = $("#shot-edit-assist-type")?.value || "";
       const assistIdRaw = $("#shot-edit-assist")?.value || null;
+      const secondType = $("#shot-edit-second-assist-type")?.value || "";
+      const secondIdRaw = $("#shot-edit-second-assist")?.value || null;
       if (assistIdRaw && !assistType) {
         showToast("Pick an assist type (or clear Assisted by)");
         return;
       }
+      if ((secondIdRaw || secondType) && !assistType) {
+        showToast("2nd assist needs an assist first");
+        return;
+      }
+      if (secondIdRaw && !secondType) {
+        showToast("Pick a 2nd assist type (or clear 2nd assist)");
+        return;
+      }
       const assistId = assistType ? assistIdRaw : null;
+      const secondId = secondType ? secondIdRaw : null;
       const patch = {
         team_id: teamId,
         result,
@@ -3386,14 +3602,12 @@
         miss_direction: RESULTS_NEEDING_MISS_DIR.has(result) ? missVal || null : null,
         player_id: playerId,
         jersey_number_at_time: player ? String(player.number) : null,
-        fouler_player_id: RESULTS_NEEDING_FOULER.has(result) ? foulerId : null,
-        fouler_jersey_number_at_time: RESULTS_NEEDING_FOULER.has(result)
-          ? fouler
-            ? String(fouler.number)
-            : null
-          : null,
+        fouler_player_id: foulerId,
+        fouler_jersey_number_at_time: fouler ? String(fouler.number) : null,
         assist_player_id: assistId,
         assist_type: assistType || null,
+        second_assist_player_id: assistType ? secondId : null,
+        second_assist_type: assistType ? secondType || null : null,
       };
       const saved = await API.updateShot(id, patch);
       if (!saved.ok) {
@@ -3754,7 +3968,7 @@
       logFilterActive() && events.length
         ? `<p class="plays-filter-count muted">${filteredCount} of ${events.length} plays</p>`
         : "";
-    const awaitingShot = st.mode === "awaiting-shot-location";
+    const awaitingShot = awaitingFollowUp();
     const usActive = recordingTeam() === "us";
     const usSwapped = !!st.swapSides;
     const oppSwapped = !usSwapped;
@@ -3763,13 +3977,33 @@
     let status = `Double-tap a spot on either pitch to start a play. ${periodLabel(period)} · Brighton goal on the ${goalSide}, opponent opposite.`;
     if (awaitingShot) {
       const a = st.pending?.assist;
-      status = a
-        ? `Assist: ${playerLabel(a.player ? Object.assign({ team: recordingTeam() }, a.player) : null)} (${ASSIST_TYPE_LABELS[a.type]}). Tap the shot on the ${teamLabel(recordingTeam())} pitch.`
-        : `Tap where the shot was taken on the ${teamLabel(recordingTeam())} pitch.`;
+      const s2 = st.pending?.secondAssist;
+      const who = (play) =>
+        playerLabel(play?.player ? Object.assign({ team: recordingTeam() }, play.player) : null);
+      if (s2 && a) {
+        status = `2nd: ${who(s2)} · Assist: ${who(a)} (${ASSIST_TYPE_LABELS[a.type]}). Tap the shot on the ${teamLabel(recordingTeam())} pitch.`;
+      } else if (a) {
+        status = `Assist: ${who(a)} (${ASSIST_TYPE_LABELS[a.type]}). Tap the next pass or the shot on the ${teamLabel(recordingTeam())} pitch.`;
+      } else {
+        status = `Tap where the shot was taken on the ${teamLabel(recordingTeam())} pitch.`;
+      }
     }
 
+    document.body.classList.toggle("is-recording-play", awaitingShot);
+    const usCaption = awaitingShot
+      ? usActive
+        ? "Brighton · tap next pass or shot"
+        : "Brighton"
+      : "Brighton · double-tap to record";
+    const oppName = opponentOf(st.game)?.name || "Opponent";
+    const oppCaption = awaitingShot
+      ? !usActive
+        ? `${oppName} · tap next pass or shot`
+        : oppName
+      : `${oppName} · double-tap to record`;
+
     root().innerHTML = `
-      <div class="tracker-page">
+      <div class="tracker-page${awaitingShot ? " is-recording-play" : ""}">
         ${trackerNav("shots")}
         <p class="shots-game-label">${escapeHtml(gameTitle(st.game))}</p>
         <section class="tracker-stage">
@@ -3785,24 +4019,29 @@
             }
           </div>
           <div class="tracker-toolbar">
-            ${
-              awaitingShot
-                ? `<button type="button" class="btn btn-secondary" id="tracker-cancel-record">Cancel assist</button>`
-                : ""
-            }
             <button type="button" class="btn btn-secondary" id="tracker-sync" ${st.syncing ? "disabled" : ""}>${st.syncing ? "Syncing…" : "Sync"}</button>
             <button type="button" class="btn btn-ghost" id="tracker-swap">${st.swapSides ? "Goal left" : "Swap sides"}</button>
             <button type="button" class="btn btn-ghost" id="tracker-export" ${events.length ? "" : "disabled"}>CSV</button>
             <button type="button" class="btn btn-ghost" id="tracker-toggle-grid">${st.showGrid ? "Hide zones" : "Zones"}</button>
           </div>
-          <p class="tracker-status ${awaitingShot ? "is-live" : ""}" id="tracker-status">${escapeHtml(status)}</p>
+          ${
+            awaitingShot
+              ? `<div class="tracker-recording-banner" role="status">
+            <div class="tracker-recording-head">
+              <span class="tracker-recording-badge">Recording play</span>
+              <button type="button" class="btn btn-ghost tracker-recording-cancel" id="tracker-cancel-record">Cancel</button>
+            </div>
+            <p class="tracker-status is-live" id="tracker-status">${escapeHtml(status)}</p>
+          </div>`
+              : `<p class="tracker-status" id="tracker-status">${escapeHtml(status)}</p>`
+          }
           <div class="tracker-pitches">
             <div class="tracker-pitch-block ${usActive || !awaitingShot ? "is-active" : ""}">
-              <p class="tracker-pitch-caption">Brighton · double-tap to record</p>
+              <p class="tracker-pitch-caption">${escapeHtml(usCaption)}</p>
               <div class="pitch-wrap tracker-pitch-wrap" id="tracker-pitch-us">${halfPitchMarkup(events, Object.assign({ team: "us", swapped: usSwapped }, pitchOpts))}</div>
             </div>
             <div class="tracker-pitch-block is-opp ${!usActive || !awaitingShot ? "is-active" : ""}">
-              <p class="tracker-pitch-caption">${escapeHtml(opponentOf(st.game)?.name || "Opponent")} · double-tap to record</p>
+              <p class="tracker-pitch-caption">${escapeHtml(oppCaption)}</p>
               <div class="pitch-wrap tracker-pitch-wrap" id="tracker-pitch-opp">${halfPitchMarkup(events, Object.assign({ team: "opp", swapped: oppSwapped }, pitchOpts))}</div>
             </div>
           </div>
@@ -3909,6 +4148,12 @@
         const stroke = team === "opp" ? "#c0392b" : ev.result === "missed" || ev.result === "pk-missed" ? "#ffffff" : "#0b1f33";
         const numFill = team === "opp" || ev.result === "missed" || ev.result === "pk-missed" ? "#ffffff" : "#0b1f33";
         let html = "";
+        if (ev.secondAssist) {
+          const s = toFullFieldPoint(ev.secondAssist, period, team);
+          const aEnd = ev.assist ? toFullFieldPoint(ev.assist, period, team) : shot;
+          html += `<line x1="${s.fx}" y1="${s.fy}" x2="${aEnd.fx}" y2="${aEnd.fy}" stroke="rgba(197,163,232,0.9)" stroke-width="0.28" stroke-dasharray="0.7 0.7" fill="none" />`;
+          html += `<circle cx="${s.fx}" cy="${s.fy}" r="0.75" fill="#c5a3e8" stroke="${team === "opp" ? "#c0392b" : "#0b1f33"}" stroke-width="0.2" />`;
+        }
         if (ev.assist) {
           const a = toFullFieldPoint(ev.assist, period, team);
           html += `<line x1="${a.fx}" y1="${a.fy}" x2="${shot.fx}" y2="${shot.fy}" stroke="rgba(255,255,255,0.85)" stroke-width="0.28" stroke-dasharray="1.1 0.7" fill="none" />`;
@@ -4464,6 +4709,7 @@
   function draw(opts = {}) {
     const el = root();
     if (!el) return;
+    document.body.classList.remove("is-recording-play");
     if (!API || !API.isConfigured()) {
       renderSetup();
       return;
