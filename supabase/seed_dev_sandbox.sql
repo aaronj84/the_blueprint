@@ -7,8 +7,8 @@
 --   • Adds cartoon opponents + mixed game types + shots
 --
 -- Prerequisites: migrations applied.
--- Safe to re-run: skips if season label 'DEV Sandbox' already exists
---   (re-run still forces team rename if needed).
+-- Safe to re-run: skips games if 'DEV Sandbox' already exists; always
+--   refreshes the Bogwater Badgers cartoon roster (names + positions).
 --
 -- Dashboard: DEV project → SQL Editor → paste → Run
 
@@ -24,6 +24,10 @@ declare
   g_away uuid;
   g_friendly uuid;
   g_empty uuid;
+  skip_games boolean := false;
+  rec record;
+  pid uuid;
+  loaded int := 0;
   -- Medville XI (fake)
   p_pip uuid;
   p_ziggy uuid;
@@ -48,14 +52,17 @@ begin
     raise exception 'Home team (is_brighton) missing — run migrations first';
   end if;
 
-  if exists (select 1 from public.seasons where label = 'DEV Sandbox') then
-    raise notice 'DEV Sandbox already present — skip games/shots (team rename applied if needed)';
-    return;
+  select id into season from public.seasons where label = 'DEV Sandbox' limit 1;
+  if season is not null then
+    skip_games := true;
+    raise notice 'DEV Sandbox already present — skip games/shots; refreshing Bogwater roster';
+  else
+    insert into public.seasons (year, label)
+    values (2099, 'DEV Sandbox')
+    returning id into season;
   end if;
 
-  insert into public.seasons (year, label)
-  values (2099, 'DEV Sandbox')
-  returning id into season;
+  if not skip_games then
 
   -- Cartoon opponents
   insert into public.teams (name, is_brighton)
@@ -199,5 +206,70 @@ begin
     (g_friendly, '2', opp_rivals, p_rival9, '9', null, 30.0, 14.0, 'C-PS', 'Box · Center', 'blocked');
 
   raise notice 'DEV Sandbox ready: Medville Marauders, season %, fake roster + shots', season;
+  end if;
+
+  -- Re-runnable: Bogwater names + positions so opponent tagging isn't just numbers.
+  insert into public.teams (name, is_brighton)
+  values ('Bogwater Badgers', false)
+  on conflict (name) do nothing;
+  select id into opp_badgers from public.teams where name = 'Bogwater Badgers' limit 1;
+  if opp_badgers is null or season is null then
+    raise exception 'Bogwater team or DEV Sandbox season missing';
+  end if;
+
+  for rec in
+    select * from (
+      values
+        ('1',  'Bramble Moss',       'Bramble',    '{GK}'::text[]),
+        ('00', 'Puddle Finn',        'Puddle',     '{GK}'),
+        ('2',  'Cattail Wren',       'Cattail',    '{OB}'),
+        ('5',  'Mudskipper Jones',   'Mudskipper', '{OB}'),
+        ('3',  'Bog Myrtle',         'Myrtle',     '{CB}'),
+        ('4',  'Silt Hammer',        'Silt',       '{CB}'),
+        ('6',  'Peat Brickley',      'Peat',       '{CB}'),
+        ('8',  'Fen Whisper',        'Fen',        '{MID}'),
+        ('10', 'Reed Canary',        'Reed',       '{MID}'),
+        ('14', 'Moss Paget',         'Moss',       '{MID}'),
+        ('16', 'Duckweed Lane',      'Duckweed',   '{MID}'),
+        ('7',  'Marsh Pike',         'Marsh',      '{FWD}'),
+        ('9',  'Bracken Vale',       'Bracken',    '{FWD}'),
+        ('11', 'Toadstool Quinn',    'Toad',       '{FWD}'),
+        ('17', 'Lily Padgett',       'Lily',       '{FWD}'),
+        ('21', 'Newt Gallagher',     'Newt',       '{FWD}')
+    ) as t(jersey, full_name, short_name, groups)
+  loop
+    select r.player_id into pid
+    from public.rosters r
+    where r.team_id = opp_badgers
+      and r.season_id = season
+      and r.jersey_number = rec.jersey;
+
+    if pid is null then
+      insert into public.players (name, short_name, position_groups)
+      values (rec.full_name, rec.short_name, rec.groups)
+      returning id into pid;
+
+      insert into public.rosters (team_id, season_id, player_id, jersey_number, squad)
+      values (opp_badgers, season, pid, rec.jersey, 'varsity')
+      on conflict (team_id, season_id, jersey_number) do nothing;
+
+      select r.player_id into pid
+      from public.rosters r
+      where r.team_id = opp_badgers
+        and r.season_id = season
+        and r.jersey_number = rec.jersey;
+    end if;
+
+    if pid is not null then
+      update public.players
+      set name = rec.full_name,
+          short_name = rec.short_name,
+          position_groups = rec.groups
+      where id = pid;
+      loaded := loaded + 1;
+    end if;
+  end loop;
+
+  raise notice 'Bogwater Badgers roster ready (% players) for DEV Sandbox', loaded;
 end;
 $$;

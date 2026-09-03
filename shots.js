@@ -2828,8 +2828,8 @@
       playerHeading.hidden = false;
       playerHeading.textContent = pickingFouler
         ? "Usually the other team. Unknown is fine."
-        : team === "opp"
-          ? "Tap a number, a roster name, or Unknown."
+          : team === "opp"
+          ? "Pick a name or number. Unknown is fine."
           : lockedPos
             ? `Who at ${lockedPos}? Tap a player, or Unknown to save without a number.`
             : "Who? Tap a player or Unknown.";
@@ -2914,49 +2914,62 @@
 
     const opponentPickerBody = () => {
       const skip = new Set();
-      if (justAdded) skip.add(String(justAdded.number));
+      const optFor = (p, extra = "", selected = false) => {
+        const named = opponentShortName(p);
+        const posHint = opponentPosHint(p);
+        const value = p.id ? String(p.id) : `n-${p.number}`;
+        const label = named
+          ? `${named} (#${p.number})${posHint ? ` · ${posHint}` : ""}${extra}`
+          : `#${p.number}${extra}`;
+        return `<option value="${escapeHtml(value)}" data-number="${escapeHtml(String(p.number))}" data-player-id="${escapeHtml(p.id || "")}" data-player-team="opp"${selected ? " selected" : ""}>${escapeHtml(label)}</option>`;
+      };
+      const groups = [];
+      if (justAdded) {
+        skip.add(String(justAdded.number));
+        groups.push(`<optgroup label="Just added">${optFor(justAdded, "", true)}</optgroup>`);
+      }
       const priorNums = usedThisGameNumbers("opp").filter((n) => !skip.has(String(n)));
-      const priorHtml = priorNums
+      const priorOpts = priorNums
         .map((num) => {
           const p = rosterList.find((x) => String(x.number) === String(num)) || { number: num, id: "", team: "opp" };
           skip.add(String(num));
-          return playerBtn(p);
+          return optFor(p);
         })
         .join("");
+      if (priorOpts) groups.push(`<optgroup label="This game">${priorOpts}</optgroup>`);
       const namedRoster = rosterList.filter(
         (p) => !skip.has(String(p.number)) && (p.name || p.short || p.short_name)
       );
+      const grouped = new Set();
+      POSITION_GROUPS.forEach((g) => {
+        const inG = namedRoster.filter((p) => !grouped.has(String(p.number)) && playerInGroup(p, g.id));
+        if (!inG.length) return;
+        inG.forEach((p) => grouped.add(String(p.number)));
+        groups.push(`<optgroup label="${escapeHtml(g.label)}">${inG.map((p) => optFor(p)).join("")}</optgroup>`);
+      });
       namedRoster.forEach((p) => skip.add(String(p.number)));
-      const chips = jerseyChoices()
-        .filter((num) => !skip.has(String(num)))
-        .map(
-          (num) =>
-            `<button type="button" class="shot-jersey-chip" data-player-number="${escapeHtml(num)}" data-player-id="" data-player-team="opp">${escapeHtml(num)}</button>`
-        )
-        .join("");
-      let body = "";
-      if (priorHtml) body += `<div class="shot-quick-label">This game</div>${priorHtml}`;
-      if (namedRoster.length) {
-        const grouped = new Set();
-        POSITION_GROUPS.forEach((g) => {
-          const inG = namedRoster.filter((p) => !grouped.has(String(p.number)) && playerInGroup(p, g.id));
-          if (!inG.length) return;
-          inG.forEach((p) => grouped.add(String(p.number)));
-          body += `<div class="shot-quick-label">${escapeHtml(g.label)}</div>${inG.map((p) => playerBtn(p)).join("")}`;
-        });
-        const ungrouped = namedRoster.filter((p) => !grouped.has(String(p.number)));
-        if (ungrouped.length) {
-          body += `<div class="shot-quick-label">${grouped.size ? "Other roster" : "Roster"}</div>${ungrouped
-            .map((p) => playerBtn(p))
-            .join("")}`;
-        }
+      const ungrouped = namedRoster.filter((p) => !grouped.has(String(p.number)));
+      if (ungrouped.length) {
+        groups.push(
+          `<optgroup label="${grouped.size ? "Other roster" : "Roster"}">${ungrouped.map((p) => optFor(p)).join("")}</optgroup>`
+        );
       }
-      body += `<div class="shot-quick-label">Numbers</div><div class="shot-jersey-grid">${chips}</div>`;
-      return body;
+      const rest = jerseyChoices()
+        .filter((num) => !skip.has(String(num)))
+        .map((num) => optFor({ number: num, id: "", team: "opp" }))
+        .join("");
+      if (rest) groups.push(`<optgroup label="Other numbers">${rest}</optgroup>`);
+      const placeholder = justAdded ? "" : `<option value="">Who?</option>`;
+      return `
+        <label class="sr-only" for="shot-opp-pick">Opponent player</label>
+        <select id="shot-opp-pick" class="shot-opp-select" data-opp-pick="1">
+          ${placeholder}
+          ${groups.join("")}
+        </select>`;
     };
 
     let html = toolbar;
-    if (justAdded) {
+    if (justAdded && team !== "opp") {
       html += `<div class="shot-quick-label">Just added</div>${playerBtn(justAdded, "new", true)}`;
     }
     if (team === "opp") {
@@ -3072,8 +3085,7 @@
         shotModalDraft.justAddedNumber = String(num);
 
         if (shotModalDraft.phase === "fouler") {
-          showToast(`#${num} added — tap to use`);
-          renderShotModal();
+          await applyShotPersonPick(team, player.id, num, "");
           return;
         }
 
@@ -3329,9 +3341,53 @@
     }
   }
 
+  async function applyShotPersonPick(team, playerId, number, slotCode = "") {
+    if (number == null || number === "") return;
+    const picked = playerFromRoster(team, playerId, number) || {
+      id: playerId || "",
+      number: String(number),
+      name: null,
+      short: null,
+      team,
+    };
+    picked.team = team;
+    shotModalDraft.justAddedNumber = "";
+    if (shotModalDraft.phase === "fouler") {
+      shotModalDraft.fouler = picked;
+      shotModalDraft.foulerPicked = true;
+      shotModalDraft.foulerPickTeam = team;
+      advanceAfterAction();
+      return;
+    }
+    shotModalDraft.player = picked;
+    if (!shotModalDraft.position && slotCode) shotModalDraft.position = slotCode;
+    else if (!shotModalDraft.position && shotModalDraft.player?.slotCode) {
+      shotModalDraft.position = shotModalDraft.player.slotCode;
+    }
+    if (recordingNeedsPosition() && !shotModalDraft.position) {
+      showToast("Pick a position first");
+      shotModalDraft.phase = "position";
+      shotModalDraft.player = null;
+      renderShotModal();
+      return;
+    }
+    assignPlayerToShotPosition(team, picked);
+    await afterTakerPicked();
+  }
+
   function bindShotModal() {
     if (!shotModal || shotModal.dataset.bound === "1") return;
     shotModal.dataset.bound = "1";
+    shotModal.addEventListener("change", async (e) => {
+      const sel = e.target.closest("[data-opp-pick]");
+      if (!sel || !sel.value) return;
+      const opt = sel.selectedOptions[0];
+      if (!opt) return;
+      const number = opt.getAttribute("data-number");
+      const playerId = opt.getAttribute("data-player-id") || "";
+      const team = opt.getAttribute("data-player-team") === "us" ? "us" : "opp";
+      await applyShotPersonPick(team, playerId, number, "");
+    });
     shotModal.addEventListener("click", async (e) => {
       const pickPos = e.target.closest("[data-pick-position]");
       if (pickPos) {
@@ -3527,36 +3583,7 @@
         const number = playerBtn.getAttribute("data-player-number");
         const playerId = playerBtn.getAttribute("data-player-id");
         const slotCode = playerBtn.getAttribute("data-slot-code") || "";
-        const picked = playerFromRoster(team, playerId, number) || {
-          id: playerId || "",
-          number: String(number),
-          name: null,
-          short: null,
-          team,
-        };
-        picked.team = team;
-        shotModalDraft.justAddedNumber = "";
-        if (shotModalDraft.phase === "fouler") {
-          shotModalDraft.fouler = picked;
-          shotModalDraft.foulerPicked = true;
-          shotModalDraft.foulerPickTeam = team;
-          advanceAfterAction();
-          return;
-        }
-        shotModalDraft.player = picked;
-        if (!shotModalDraft.position && slotCode) shotModalDraft.position = slotCode;
-        else if (!shotModalDraft.position && shotModalDraft.player?.slotCode) {
-          shotModalDraft.position = shotModalDraft.player.slotCode;
-        }
-        if (recordingNeedsPosition() && !shotModalDraft.position) {
-          showToast("Pick a position first");
-          shotModalDraft.phase = "position";
-          shotModalDraft.player = null;
-          renderShotModal();
-          return;
-        }
-        assignPlayerToShotPosition(team, picked);
-        await afterTakerPicked();
+        await applyShotPersonPick(team, playerId, number, slotCode);
         return;
       }
       const actionBtn = e.target.closest("[data-action-id]");

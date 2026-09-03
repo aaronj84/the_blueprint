@@ -66,7 +66,7 @@ Optional DEV seed (rich fake season — **DEV only**):
 
 1. Confirm the dashboard project is `bhs-shot-tracker-dev` (ref `fmiymqnfezkqagpbrmoi`).
 2. **SQL Editor** → paste [`supabase/seed_dev_sandbox.sql`](../supabase/seed_dev_sandbox.sql) → Run.
-3. Local app → Games → season **DEV Sandbox**.
+3. Local app → Games → season **DEV Sandbox**. Opponent **Bogwater Badgers** has a cartoon roster (names + positions). Re-run the seed anytime to refresh that roster without duplicating games.
 
 Lighter alternative: `supabase/sample_data.sql`. Never run either on **prod**.
 
