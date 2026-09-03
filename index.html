@@ -7,7 +7,7 @@
   <meta name="theme-color" content="#f4f7fb" />
   <title>Brighton Bengals Shot Tracker</title>
   <link rel="icon" href="assets/logo.svg" type="image/svg+xml" />
-  <link rel="stylesheet" href="styles.css?v=20260903e" />
+  <link rel="stylesheet" href="styles.css?v=20260903l" />
 </head>
 <body class="shots-mode tracker-view">
   <a class="sr-only" href="#main">Skip to content</a>
@@ -40,10 +40,11 @@
 
   <div class="nav-drawer" id="nav-drawer" hidden>
     <div class="nav-drawer-backdrop" data-close-drawer></div>
-    <nav class="nav-drawer-panel" aria-label="Mobile">
+    <nav class="nav-drawer-panel" aria-label="App">
       <p class="nav-drawer-heading">Shot Tracker</p>
       <a href="#shots-games" data-nav="shots-games" data-close-drawer>Games</a>
       <a href="#shots" data-nav="shots" data-close-drawer>Record</a>
+      <div class="nav-drawer-submenu" id="nav-drawer-actions" hidden role="group" aria-label="Pitch"></div>
       <a href="#shots-history" data-nav="shots-history" data-close-drawer>History</a>
       <a href="#shots-explore" data-nav="shots-explore" data-close-drawer>Explore</a>
       <a href="#shots-map" data-nav="shots-map" data-close-drawer>Map</a>
@@ -102,6 +103,9 @@
           <option value="us">Brighton</option>
           <option value="opp">Opponent</option>
         </select>
+      </label>
+      <label class="shots-field">Game Clock
+        <input type="text" id="shot-edit-clock" class="text-gate-input" inputmode="decimal" autocomplete="off" placeholder="38:50" />
       </label>
       <label class="shots-field">Player
         <select id="shot-edit-player"></select>
@@ -198,10 +202,50 @@
     </div>
   </div>
 
+  <div class="modal" id="game-open-modal" hidden role="dialog" aria-modal="true" aria-labelledby="game-open-title">
+    <div class="modal-backdrop" data-close-game-open></div>
+    <div class="modal-panel game-open-panel">
+      <h2 id="game-open-title">Open game</h2>
+      <p class="muted" id="game-open-sub"></p>
+      <div class="game-open-actions">
+        <button type="button" class="btn btn-primary" data-open-mode="track">Track Shots</button>
+        <button type="button" class="btn btn-secondary" data-open-mode="scoreboard">Scoreboard</button>
+        <button type="button" class="btn btn-ghost" data-close-game-open>Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="clock-setup-modal" hidden role="dialog" aria-modal="true" aria-labelledby="clock-setup-title">
+    <div class="modal-backdrop" data-close-clock-setup></div>
+    <div class="modal-panel">
+      <h2 id="clock-setup-title">Game clock</h2>
+      <p class="step-label">Period</p>
+      <div class="clock-setup-grid" role="group" aria-label="Period">
+        <button type="button" class="plays-filter-btn" data-clock-setup-period="1">1st Half</button>
+        <button type="button" class="plays-filter-btn" data-clock-setup-period="2">2nd Half</button>
+        <button type="button" class="plays-filter-btn" data-clock-setup-period="ET1">ET 1</button>
+        <button type="button" class="plays-filter-btn" data-clock-setup-period="ET2">ET 2</button>
+      </div>
+      <label class="shots-field">Time
+        <input type="text" id="clock-setup-time" class="text-gate-input" inputmode="decimal" autocomplete="off" placeholder="40 or 38.5" />
+      </label>
+      <p class="step-label">Count</p>
+      <div class="clock-setup-grid" role="group" aria-label="Clock direction">
+        <button type="button" class="plays-filter-btn" data-clock-setup-dir="down">Count down</button>
+        <button type="button" class="plays-filter-btn" data-clock-setup-dir="up">Count up</button>
+      </div>
+      <button type="button" class="btn btn-ghost clock-setup-reset" data-clock-setup-reset>Reset this period</button>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-ghost" data-close-clock-setup>Cancel</button>
+        <button type="button" class="btn btn-primary" id="clock-setup-save">Done</button>
+      </div>
+    </div>
+  </div>
+
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="shots-config.js?v=20260831c"></script>
-  <script src="shots-api.js?v=20260903b"></script>
-  <script src="shots.js?v=20260903c"></script>
-  <script src="app.js?v=20260831c"></script>
+  <script src="shots-api.js?v=20260903c"></script>
+  <script src="shots.js?v=20260903j"></script>
+  <script src="app.js?v=20260903e"></script>
 </body>
 </html>

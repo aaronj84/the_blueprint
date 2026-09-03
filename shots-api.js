@@ -162,6 +162,17 @@
       return data;
     },
 
+    async updateGame(id, patch) {
+      const { data, error } = await getClient()
+        .from("games")
+        .update(patch)
+        .eq("id", id)
+        .select(GAME_SELECT)
+        .single();
+      throwIfError(error, "Could not update game");
+      return data;
+    },
+
     async roster(teamId, seasonId) {
       const { data, error } = await getClient()
         .from("rosters")
@@ -239,11 +250,12 @@
         getClient().from("shots").insert(row).select(select).single()
       );
       if (!error) return { ok: true, data };
-      if (/second_assist_|schema cache|Could not find/i.test(error.message || "")) {
+      if (/second_assist_|game_clock_seconds|schema cache|Could not find/i.test(error.message || "")) {
         const slim = { ...row };
         Object.keys(slim).forEach((k) => {
           if (k.startsWith("second_assist_")) delete slim[k];
         });
+        delete slim.game_clock_seconds;
         const retry = await runShotSelect((select) =>
           getClient().from("shots").insert(slim).select(select).single()
         );
@@ -268,9 +280,19 @@
     },
 
     async queryShots(filters) {
+      const extraCore = `,
+          game:games!shots_game_id_fkey (
+            id, date, game_type, season_id, home_team_id, away_team_id, our_team_id,
+            season:seasons (*),
+            home_team:teams!games_home_team_id_fkey (*),
+            away_team:teams!games_away_team_id_fkey (*)
+          ),
+          team:teams!shots_team_id_fkey (*)
+        `;
       const extra = `,
           game:games!shots_game_id_fkey (
             id, date, game_type, season_id, home_team_id, away_team_id, our_team_id,
+            clock_direction, clock_half_length_sec, clock_et_length_sec,
             season:seasons (*),
             home_team:teams!games_home_team_id_fkey (*),
             away_team:teams!games_away_team_id_fkey (*)
@@ -294,9 +316,16 @@
         }
         return q.order("created_at", { ascending: false }).limit(5000);
       };
-      const { data, error } = await runShotSelect((select) =>
+      let { data, error } = await runShotSelect((select) =>
         applyFilters(getClient().from("shots").select(`${select}${extra}`))
       );
+      if (error && /clock_direction|clock_half_length|clock_et_length|schema cache/i.test(error.message || "")) {
+        const retry = await runShotSelect((select) =>
+          applyFilters(getClient().from("shots").select(`${select}${extraCore}`))
+        );
+        data = retry.data;
+        error = retry.error;
+      }
       throwIfError(error, "Could not query shots");
       let rows = data || [];
 

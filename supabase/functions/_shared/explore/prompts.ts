@@ -22,7 +22,8 @@ VIEWS (prefer these for all shot / game / season-stat questions)
 v_brighton_shots / v_brighton_shots_official columns:
   shot_id, game_id, team_id, player_id, player_name, position, zone_id, zone_label, x, y, result, period,
   assist_player_id, assist_type, is_brighton_shot, is_shot_against, game_date, season_id, opponent_name,
-  is_home, game_type, stat_scope, is_tracked, is_on_frame, is_goal, second_assist_player_id, second_assist_type
+  is_home, game_type, stat_scope, is_tracked, is_on_frame, is_goal, second_assist_player_id, second_assist_type,
+  game_clock_seconds
 
 v_brighton_games columns:
   game_id, season_id, game_date, game_type, stat_scope, is_tracked, opponent_name, is_home,

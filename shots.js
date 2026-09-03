@@ -189,6 +189,12 @@
   const LS_UI_V2 = "brighton-varsity-shot-tracker-ui-v2";
   const LS_LINEUP = "brighton-varsity-shot-tracker-lineup";
   const LS_DEFAULT_LINEUP = "brighton-varsity-shot-tracker-default-lineup";
+  const LS_CLOCK = "brighton-varsity-shot-tracker-clock";
+  const LS_STAMP_OFFSET = "brighton-shot-stamp-offset";
+  const LS_SCOREBOARD_POLL = "brighton-scoreboard-poll-sec";
+  const SCOREBOARD_POLL_OPTS = [15, 30, 60, 300];
+  const DEFAULT_HALF_SEC = 40 * 60;
+  const DEFAULT_ET_SEC = 10 * 60;
   const NICK = { Madeline: "Maddie", Abigail: "Abby", Jaqueline: "Jackie", Ariana: "Ari", Charlotte: "Sharky" };
 
   const $ = (sel, root = document) => root.querySelector(sel);
@@ -219,6 +225,26 @@
     } catch {
       return {};
     }
+  }
+
+  function loadStampOffset() {
+    const raw = localStorage.getItem(LS_STAMP_OFFSET);
+    if (raw == null || raw === "") return 30;
+    const n = Number(raw);
+    if (!Number.isFinite(n) || n < 0) return 30;
+    return Math.min(120, Math.round(n));
+  }
+
+  function saveStampOffset(n) {
+    if (n === "" || n == null) {
+      st.stampOffset = 30;
+      localStorage.setItem(LS_STAMP_OFFSET, "30");
+      return;
+    }
+    const parsed = Number(n);
+    const v = Number.isFinite(parsed) ? Math.min(120, Math.max(0, Math.round(parsed))) : 30;
+    st.stampOffset = v;
+    localStorage.setItem(LS_STAMP_OFFSET, String(v));
   }
 
   function saveUi() {
@@ -309,6 +335,9 @@
     defaultLineup: loadDefaultLineup(),
     csvPending: null,
     importOpen: false,
+    stampOffset: loadStampOffset(),
+    editingClockId: null,
+    pendingOpenGameId: "",
     history: { seasonId: "", playerId: "", opponentId: "", depth: "", rows: null, loading: false },
     explore: {
       messages: [],
@@ -380,6 +409,491 @@
     return normalizePeriod(ev && ev.period);
   }
 
+  function isGoalResult(result) {
+    return result === "goal" || result === "pk-goal";
+  }
+
+  function gameScore(events) {
+    let us = 0;
+    let opp = 0;
+    (events || []).forEach((ev) => {
+      if (!isGoalResult(ev.result)) return;
+      if (eventTeam(ev) === "opp") opp += 1;
+      else us += 1;
+    });
+    return { us, opp };
+  }
+
+  function clockGame(game) {
+    return game || st.game || null;
+  }
+
+  function clockDirection(game) {
+    return clockGame(game)?.clock_direction === "up" ? "up" : "down";
+  }
+
+  function clockEnabled() {
+    return true;
+  }
+
+  function periodLengthSec(period, game) {
+    const g = clockGame(game);
+    const p = normalizePeriod(period || st.period);
+    if (p === "ET1" || p === "ET2") {
+      const n = Number(g?.clock_et_length_sec);
+      return Number.isFinite(n) && n > 0 ? n : DEFAULT_ET_SEC;
+    }
+    const n = Number(g?.clock_half_length_sec);
+    return Number.isFinite(n) && n > 0 ? n : DEFAULT_HALF_SEC;
+  }
+
+  function formatClockSecs(total) {
+    const s = Math.max(0, Math.floor(Number(total) || 0));
+    const m = Math.floor(s / 60);
+    const r = s % 60;
+    return `${m}:${String(r).padStart(2, "0")}`;
+  }
+
+  function parseClockInput(text) {
+    const t = String(text || "").trim();
+    if (!t) return null;
+    const split = t.match(/^(\d*)\D+(\d*)$/);
+    if (split) {
+      const minutes = split[1] === "" ? 0 : Number(split[1]);
+      let secDigits = split[2];
+      if (!secDigits) secDigits = "00";
+      else if (secDigits.length === 1) secDigits += "0";
+      else secDigits = secDigits.slice(0, 2);
+      const sec = Number(secDigits);
+      if (!Number.isFinite(minutes) || minutes < 0 || !Number.isFinite(sec) || sec > 59) return null;
+      return minutes * 60 + sec;
+    }
+    if (/^\d+$/.test(t)) return Number(t) * 60;
+    return null;
+  }
+
+  function elapsedToDisplay(elapsed, period, game) {
+    const n = Math.max(0, Math.floor(Number(elapsed) || 0));
+    if (clockDirection(game) === "down") return Math.max(0, periodLengthSec(period, game) - n);
+    return n;
+  }
+
+  function displayToElapsed(displaySec, period, game) {
+    const n = Math.max(0, Math.floor(Number(displaySec) || 0));
+    if (clockDirection(game) === "down") return Math.max(0, periodLengthSec(period, game) - n);
+    return n;
+  }
+
+  function formatEventClock(ev, game) {
+    const raw = ev?.gameClockSeconds ?? ev?.game_clock_seconds;
+    if (raw == null || raw === "") return "—";
+    return formatClockSecs(elapsedToDisplay(Number(raw), eventPeriod(ev), game || ev.game || st.game));
+  }
+
+  let clockMem = { gameId: "", periods: {} };
+  let clockTickId = null;
+
+  function loadClockStore() {
+    try {
+      return JSON.parse(localStorage.getItem(LS_CLOCK) || "{}") || {};
+    } catch {
+      return {};
+    }
+  }
+
+  function persistClockMem() {
+    if (!clockMem.gameId) return;
+    const store = loadClockStore();
+    store[clockMem.gameId] = clockMem.periods;
+    localStorage.setItem(LS_CLOCK, JSON.stringify(store));
+  }
+
+  function ensureClockMem() {
+    if (!st.gameId) return;
+    if (clockMem.gameId === st.gameId) return;
+    const store = loadClockStore();
+    clockMem = { gameId: st.gameId, periods: store[st.gameId] && typeof store[st.gameId] === "object" ? store[st.gameId] : {} };
+  }
+
+  function clockPeriodState(period) {
+    ensureClockMem();
+    const p = normalizePeriod(period || st.period);
+    if (!clockMem.periods[p]) clockMem.periods[p] = { elapsed: 0, running: false, startedAt: null };
+    return clockMem.periods[p];
+  }
+
+  function currentElapsed(period) {
+    const s = clockPeriodState(period);
+    let n = Number(s.elapsed) || 0;
+    if (s.running && s.startedAt) n += Math.floor((Date.now() - s.startedAt) / 1000);
+    n = Math.max(0, n);
+    if (clockDirection() === "down") n = Math.min(n, periodLengthSec(period));
+    return n;
+  }
+
+  function displayClockSeconds(period) {
+    return elapsedToDisplay(currentElapsed(period), period, st.game);
+  }
+
+  function clockIsRunning() {
+    return !!clockPeriodState().running;
+  }
+
+  function stampClockSeconds() {
+    if (!clockEnabled()) return null;
+    const offset = Math.max(0, Number(st.stampOffset) || 0);
+    return Math.max(0, currentElapsed() - offset);
+  }
+
+  function autoPauseIfExpired() {
+    if (clockDirection() !== "down" || !clockIsRunning()) return false;
+    if (currentElapsed() < periodLengthSec()) return false;
+    const s = clockPeriodState();
+    s.elapsed = periodLengthSec();
+    s.running = false;
+    s.startedAt = null;
+    persistClockMem();
+    persistLiveClock();
+    return true;
+  }
+
+  function startClockTick() {
+    if (clockTickId) return;
+    clockTickId = setInterval(() => {
+      const stopped = autoPauseIfExpired();
+      paintClockFaces();
+      if (stopped) stopClockTick();
+    }, 250);
+  }
+
+  function stopClockTick() {
+    if (!clockTickId) return;
+    clearInterval(clockTickId);
+    clockTickId = null;
+  }
+
+  function paintClockFaces() {
+    const text = formatClockSecs(displayClockSeconds());
+    $$("[data-clock-face]").forEach((el) => {
+      el.textContent = text;
+    });
+    $$("[data-clock-toggle]").forEach((btn) => {
+      btn.textContent = clockIsRunning() ? "Stop" : "Start";
+    });
+    if (clockIsRunning()) startClockTick();
+    else stopClockTick();
+  }
+
+  function startClock() {
+    if (!clockEnabled()) return;
+    autoPauseIfExpired();
+    const s = clockPeriodState();
+    if (s.running) return;
+    if (clockDirection() === "down" && currentElapsed() >= periodLengthSec()) return;
+    s.elapsed = currentElapsed();
+    s.running = true;
+    s.startedAt = Date.now();
+    persistClockMem();
+    persistLiveClock();
+    startClockTick();
+    paintClockFaces();
+  }
+
+  function pauseClock() {
+    const s = clockPeriodState();
+    s.elapsed = currentElapsed();
+    s.running = false;
+    s.startedAt = null;
+    persistClockMem();
+    persistLiveClock();
+    stopClockTick();
+    paintClockFaces();
+  }
+
+  function toggleClock() {
+    if (clockIsRunning()) pauseClock();
+    else startClock();
+  }
+
+  function resetClock(period) {
+    const s = clockPeriodState(period);
+    s.elapsed = 0;
+    s.running = false;
+    s.startedAt = null;
+    persistClockMem();
+    persistLiveClock();
+    stopClockTick();
+    paintClockFaces();
+  }
+
+  function setLiveClockDisplay(displaySec) {
+    const s = clockPeriodState();
+    s.elapsed = displayToElapsed(displaySec, st.period, st.game);
+    if (s.running) s.startedAt = Date.now();
+    if (clockDirection() === "down" && s.elapsed >= periodLengthSec()) {
+      s.elapsed = periodLengthSec();
+      s.running = false;
+      s.startedAt = null;
+    }
+    persistClockMem();
+    persistLiveClock();
+    if (s.running) startClockTick();
+    else stopClockTick();
+    paintClockFaces();
+  }
+
+  function persistLiveClock() {
+    const s = clockPeriodState();
+    persistGameClockPatch(
+      {
+        clock_period: normalizePeriod(st.period),
+        clock_elapsed_sec: Math.max(0, Math.floor(Number(s.elapsed) || 0)),
+        clock_running: !!s.running,
+        clock_started_at: s.running && s.startedAt ? new Date(s.startedAt).toISOString() : null,
+      },
+      { silent: true }
+    );
+  }
+
+  function hasRemoteClock(game) {
+    return game != null && (game.clock_elapsed_sec != null || game.clock_started_at);
+  }
+
+  function applyRemoteClock(game) {
+    if (!hasRemoteClock(game) || !st.gameId) return;
+    const period = normalizePeriod(game.clock_period || st.period);
+    if (game.clock_period) st.period = period;
+    ensureClockMem();
+    const elapsed = Number(game.clock_elapsed_sec);
+    const startedAt = game.clock_started_at ? Date.parse(game.clock_started_at) : NaN;
+    clockMem.periods[period] = {
+      elapsed: Number.isFinite(elapsed) ? Math.max(0, elapsed) : 0,
+      running: !!game.clock_running,
+      startedAt: game.clock_running && Number.isFinite(startedAt) ? startedAt : null,
+    };
+    persistClockMem();
+    if (clockIsRunning()) startClockTick();
+    else stopClockTick();
+  }
+
+  async function persistGameClockPatch(patch, opts = {}) {
+    if (!st.gameId) return;
+    st.game = Object.assign({}, st.game, patch);
+    try {
+      const saved = await API.updateGame(st.gameId, patch);
+      if (saved) st.game = saved;
+    } catch (err) {
+      if (opts.silent) return;
+      const msg = err && err.message ? String(err.message) : "";
+      if (/clock_direction|clock_half_length|clock_et_length|clock_period|clock_elapsed|clock_running|clock_started|schema cache|column/i.test(msg)) {
+        showToast("Clock saved on this device — push the database migration to share it");
+      } else {
+        showToast(msg || "Could not save clock setting");
+      }
+    }
+  }
+
+  async function ensureGameClockDefaults() {
+    if (!st.game) return;
+    const patch = {};
+    if (st.game.clock_direction !== "up" && st.game.clock_direction !== "down") patch.clock_direction = "down";
+    const half = Number(st.game.clock_half_length_sec);
+    const et = Number(st.game.clock_et_length_sec);
+    if (!Number.isFinite(half) || half <= 0) patch.clock_half_length_sec = DEFAULT_HALF_SEC;
+    if (!Number.isFinite(et) || et <= 0) patch.clock_et_length_sec = DEFAULT_ET_SEC;
+    if (!Object.keys(patch).length) return;
+    await persistGameClockPatch(patch);
+  }
+
+  function miniScoreboardIconMarkup(score, face) {
+    return `
+      <svg class="scoreboard-mini-svg" viewBox="0 0 52 32" aria-hidden="true">
+        <rect x="0.75" y="0.75" width="50.5" height="30.5" rx="5" fill="#0b1f33" stroke="rgba(255,255,255,0.5)" stroke-width="1.5"/>
+        <text x="8" y="21" fill="#f15a24" font-size="13" font-weight="800" font-family="system-ui,sans-serif">${score.us}</text>
+        <text x="26" y="14" fill="#f4f7fb" font-size="6.5" font-weight="700" text-anchor="middle" font-family="system-ui,sans-serif">${escapeHtml(face)}</text>
+        <text x="44" y="21" fill="#f4f7fb" font-size="13" font-weight="800" text-anchor="end" font-family="system-ui,sans-serif">${score.opp}</text>
+      </svg>`;
+  }
+
+  function scoreboardBoardMarkup(size) {
+    const large = size === "large";
+    const score = gameScore(st.shots);
+    const opp = opponentOf(st.game)?.name || "Opponent";
+    const face = formatClockSecs(displayClockSeconds());
+    const running = clockIsRunning();
+    const clockBlock = large
+      ? `<button type="button" class="scoreboard-clock-face" data-clock-face data-scoreboard-sync aria-label="Refresh scoreboard">${escapeHtml(face)}</button>`
+      : `<button type="button" class="score-clock-face" data-clock-face data-open-clock-setup aria-label="Set game clock">${escapeHtml(face)}</button>`;
+    const periodBlock = large
+      ? `<p class="scoreboard-period">${escapeHtml(periodLabel(st.period))}</p>`
+      : "";
+    const pollLine = large
+      ? `<div class="scoreboard-poll-line" data-scoreboard-poll-line aria-hidden="true"><span class="scoreboard-poll-line-fill"></span></div>`
+      : "";
+    const board = `
+      <div class="${large ? "scoreboard-board" : "score-strip"}">
+        <div class="${large ? "scoreboard-team is-us" : "score-strip-team is-us"}">
+          <span class="score-name">${escapeHtml(ourTeamName())}</span>
+          <span class="score-num">${score.us}</span>
+        </div>
+        <div class="${large ? "scoreboard-mid" : "score-strip-mid"}">
+          ${
+            large
+              ? `<div class="scoreboard-clock-stack">
+          ${pollLine}
+          ${clockBlock}
+        </div>`
+              : clockBlock
+          }
+          ${periodBlock}
+        </div>
+        <div class="${large ? "scoreboard-team is-opp" : "score-strip-team is-opp"}">
+          <span class="score-num">${score.opp}</span>
+          <span class="score-name">${escapeHtml(opp)}</span>
+        </div>
+        ${
+          large
+            ? ""
+            : `<div class="score-strip-controls">
+          <button type="button" class="btn score-strip-btn" data-clock-toggle>${running ? "Stop" : "Start"}</button>
+          <button type="button" class="btn score-strip-btn" data-open-clock-setup>${escapeHtml(periodLabel(st.period))}</button>
+          <a class="score-strip-goto" href="#shots-scoreboard" aria-label="Open scoreboard">${miniScoreboardIconMarkup(score, face)}</a>
+        </div>`
+        }
+      </div>`;
+    return large ? board : `<div class="score-strip-block">${board}</div>`;
+  }
+
+  function stampOffsetMarkup() {
+    return `
+      <section class="stamp-offset-card">
+        <h2>Game clock</h2>
+        <p class="muted">New plays are stamped this many seconds before the current clock, so you can catch up after you see the play.</p>
+        <label class="shots-field">Stamp offset (seconds)
+          <input type="number" id="stamp-offset" min="0" max="120" step="1" value="${st.stampOffset}" />
+        </label>
+      </section>`;
+  }
+
+  function clockSetupDraftPeriod() {
+    return normalizePeriod($("#clock-setup-modal [data-clock-setup-period].is-on")?.getAttribute("data-clock-setup-period") || st.period);
+  }
+
+  function clockSetupDraftDir() {
+    return $("#clock-setup-modal [data-clock-setup-dir].is-on")?.getAttribute("data-clock-setup-dir") === "up" ? "up" : "down";
+  }
+
+  function refreshClockSetupTime() {
+    const input = $("#clock-setup-time");
+    if (!input) return;
+    const period = clockSetupDraftPeriod();
+    const dir = clockSetupDraftDir();
+    const elapsed = currentElapsed(period);
+    const display = dir === "down" ? Math.max(0, periodLengthSec(period) - elapsed) : elapsed;
+    input.value = formatClockSecs(display);
+  }
+
+  function openClockSetup() {
+    const modal = $("#clock-setup-modal");
+    if (!modal) return;
+    $$("#clock-setup-modal [data-clock-setup-period]").forEach((btn) => {
+      btn.classList.toggle("is-on", normalizePeriod(btn.getAttribute("data-clock-setup-period")) === st.period);
+    });
+    $$("#clock-setup-modal [data-clock-setup-dir]").forEach((btn) => {
+      btn.classList.toggle("is-on", btn.getAttribute("data-clock-setup-dir") === clockDirection());
+    });
+    refreshClockSetupTime();
+    modal.hidden = false;
+    requestAnimationFrame(() => $("#clock-setup-time")?.select());
+  }
+
+  function closeClockSetup() {
+    const modal = $("#clock-setup-modal");
+    if (modal) modal.hidden = true;
+  }
+
+  async function applyClockSetup() {
+    const period = clockSetupDraftPeriod();
+    const dir = clockSetupDraftDir();
+    const sec = parseClockInput($("#clock-setup-time")?.value);
+    if (sec == null) {
+      showToast("Try 40, 38.5, or 38:50");
+      return;
+    }
+    if (period !== st.period) {
+      st.period = period;
+      saveUi();
+      resetTrackerDraft();
+      closeShotModal();
+    }
+    if (dir !== clockDirection()) {
+      await persistGameClockPatch({ clock_direction: dir });
+    }
+    setLiveClockDisplay(sec);
+    closeClockSetup();
+    draw({ keepScroll: true });
+  }
+
+  let clockSetupBound = false;
+  function bindClockSetupModal() {
+    if (clockSetupBound) return;
+    const modal = $("#clock-setup-modal");
+    if (!modal) return;
+    clockSetupBound = true;
+    modal.addEventListener("click", (e) => {
+      if (e.target.closest("[data-close-clock-setup]")) {
+        closeClockSetup();
+        return;
+      }
+      const periodBtn = e.target.closest("[data-clock-setup-period]");
+      if (periodBtn) {
+        $$("#clock-setup-modal [data-clock-setup-period]").forEach((b) => b.classList.remove("is-on"));
+        periodBtn.classList.add("is-on");
+        refreshClockSetupTime();
+        return;
+      }
+      const dirBtn = e.target.closest("[data-clock-setup-dir]");
+      if (dirBtn) {
+        $$("#clock-setup-modal [data-clock-setup-dir]").forEach((b) => b.classList.remove("is-on"));
+        dirBtn.classList.add("is-on");
+        refreshClockSetupTime();
+        return;
+      }
+      if (e.target.closest("[data-clock-setup-reset]")) {
+        resetClock(clockSetupDraftPeriod());
+        refreshClockSetupTime();
+      }
+    });
+    $("#clock-setup-save")?.addEventListener("click", () => applyClockSetup());
+    $("#clock-setup-time")?.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        applyClockSetup();
+      }
+    });
+  }
+
+  function bindClockUi() {
+    bindClockSetupModal();
+    $$("[data-clock-toggle]").forEach((btn) => {
+      btn.addEventListener("click", () => toggleClock());
+    });
+    $$("[data-open-clock-setup]").forEach((btn) => {
+      btn.addEventListener("click", () => openClockSetup());
+    });
+    $("#stamp-offset")?.addEventListener("input", (e) => {
+      if (e.target.value === "") return;
+      const n = Number(e.target.value);
+      if (!Number.isFinite(n) || n < 0) e.target.value = "0";
+    });
+    $("#stamp-offset")?.addEventListener("change", (e) => {
+      saveStampOffset(e.target.value);
+      e.target.value = String(st.stampOffset);
+    });
+    if (clockIsRunning()) startClockTick();
+    else paintClockFaces();
+  }
+
   function brighton() {
     return st.teams.find((t) => t.is_brighton) || null;
   }
@@ -388,12 +902,25 @@
     return st.teams.find((t) => t.id === id) || null;
   }
 
+  function ourTeamOf(game) {
+    const g = game || st.game;
+    if (!g) return brighton();
+    return g.our_team || teamById(g.our_team_id) || brighton();
+  }
+
+  function ourTeamName(game) {
+    return ourTeamOf(game)?.name || "Us";
+  }
+
   function opponentOf(game) {
     if (!game) return null;
+    const usId = game.our_team_id || ourTeamOf(game)?.id;
+    if (usId && game.home_team_id === usId) return game.away_team || teamById(game.away_team_id);
+    if (usId && game.away_team_id === usId) return game.home_team || teamById(game.home_team_id);
     const b = brighton();
-    if (!b) return game.away_team || teamById(game.away_team_id);
-    if (game.home_team_id === b.id) return game.away_team || teamById(game.away_team_id);
-    return game.home_team || teamById(game.home_team_id);
+    if (b && game.home_team_id === b.id) return game.away_team || teamById(game.away_team_id);
+    if (b && game.away_team_id === b.id) return game.home_team || teamById(game.home_team_id);
+    return game.away_team || teamById(game.away_team_id);
   }
 
   function recordingTeam() {
@@ -429,7 +956,7 @@
       const opp = opponentOf(st.game);
       return opp ? opp.name : "Opponent";
     }
-    return "Brighton";
+    return ourTeamName(ev?.game || st.game);
   }
 
   function eventTeam(ev) {
@@ -882,6 +1409,10 @@
       },
       assist: mapLinkedPlay(row, "assist", row.assist_player, roster),
       secondAssist: mapLinkedPlay(row, "second_assist", row.second_assist_player, roster),
+      gameClockSeconds:
+        row.game_clock_seconds == null && row.gameClockSeconds == null
+          ? null
+          : Number(row.gameClockSeconds ?? row.game_clock_seconds),
     };
   }
 
@@ -932,6 +1463,7 @@
     const rows = await API.shotsForGame(st.gameId);
     st.shots = rows.map(mapShot);
     saveUi();
+    await ensureGameClockDefaults();
   }
 
   async function boot() {
@@ -964,6 +1496,97 @@
 
   function trackerNav() {
     return "";
+  }
+
+  function closeGameOpenModal() {
+    const modal = $("#game-open-modal");
+    if (modal) modal.hidden = true;
+    st.pendingOpenGameId = "";
+  }
+
+  function openGameChooser(id) {
+    st.pendingOpenGameId = id;
+    const game = st.games.find((g) => g.id === id);
+    const modal = $("#game-open-modal");
+    const sub = $("#game-open-sub");
+    if (sub) sub.textContent = gameTitle(game);
+    if (modal) modal.hidden = false;
+    bindGameOpenModal();
+  }
+
+  let gameOpenModalBound = false;
+  function bindGameOpenModal() {
+    if (gameOpenModalBound) return;
+    const modal = $("#game-open-modal");
+    if (!modal) return;
+    gameOpenModalBound = true;
+    modal.addEventListener("click", (e) => {
+      if (e.target.closest("[data-close-game-open]")) {
+        closeGameOpenModal();
+        return;
+      }
+      const modeBtn = e.target.closest("[data-open-mode]");
+      if (!modeBtn) return;
+      const id = st.pendingOpenGameId;
+      const mode = modeBtn.getAttribute("data-open-mode");
+      if (!id) return;
+      selectGame(id, mode === "scoreboard" ? "scoreboard" : "track");
+    });
+  }
+
+  function bindDrawerActionsOnce() {
+    const host = $("#nav-drawer-actions");
+    if (!host || host.dataset.bound === "1") return;
+    host.dataset.bound = "1";
+    host.addEventListener("click", (e) => {
+      const btn = e.target.closest("[data-tracker-action]");
+      if (!btn || btn.disabled) return;
+      const action = btn.getAttribute("data-tracker-action");
+      if (action === "sync") syncGameShots();
+      else if (action === "swap") {
+        st.swapSides = !st.swapSides;
+        saveUi();
+        draw({ keepScroll: true });
+      } else if (action === "zones") {
+        st.showGrid = !st.showGrid;
+        saveUi();
+        draw({ keepScroll: true });
+      } else if (action === "csv") {
+        exportShotsCsv(st.shots || []);
+      } else if (action === "scoreboard") {
+        $("#nav-drawer [data-close-drawer]")?.click();
+        location.hash = "shots-scoreboard";
+      }
+    });
+  }
+
+  function syncDrawerActions() {
+    const host = $("#nav-drawer-actions");
+    if (!host) return;
+    bindDrawerActionsOnce();
+    const show =
+      API &&
+      API.isConfigured() &&
+      st.booted &&
+      st.session &&
+      !st.loading &&
+      st.view === "shots" &&
+      st.gameId &&
+      st.game;
+    if (!show) {
+      host.hidden = true;
+      host.innerHTML = "";
+      return;
+    }
+    const events = st.shots || [];
+    host.hidden = false;
+    host.innerHTML = `
+      <p class="nav-drawer-heading">Pitch</p>
+      <button type="button" class="nav-drawer-action" data-tracker-action="sync" ${st.syncing ? "disabled" : ""}>${st.syncing ? "Syncing…" : "Sync"}</button>
+      <button type="button" class="nav-drawer-action" data-tracker-action="swap">${st.swapSides ? "Goal left" : "Swap sides"}</button>
+      <button type="button" class="nav-drawer-action" data-tracker-action="csv" data-close-drawer ${events.length ? "" : "disabled"}>CSV</button>
+      <button type="button" class="nav-drawer-action" data-tracker-action="zones">${st.showGrid ? "Hide zones" : "Zones"}</button>
+      <button type="button" class="nav-drawer-action" data-tracker-action="scoreboard">Scoreboard</button>`;
   }
 
   function gameTitle(game) {
@@ -1032,7 +1655,8 @@
     draw();
   }
 
-  async function selectGame(id) {
+  async function selectGame(id, mode) {
+    closeGameOpenModal();
     st.gameId = id;
     st.loading = true;
     draw();
@@ -1043,7 +1667,8 @@
       st.error = err.message || "Could not open game";
     }
     st.loading = false;
-    if (location.hash.replace(/^#/, "") !== "shots") location.hash = "shots";
+    const hash = mode === "scoreboard" ? "shots-scoreboard" : "shots";
+    if (location.hash.replace(/^#/, "") !== hash) location.hash = hash;
     else draw();
   }
 
@@ -1349,7 +1974,7 @@
       <div class="shots-admin">
         ${trackerNav("games")}
         <h1>Games</h1>
-        <p class="muted">Pick a season, then a game — or add one if it wasn't pre-loaded.</p>
+        <p class="muted">Pick a season, then a game — Track Shots or Scoreboard.</p>
         ${st.error ? `<p class="shots-error">${escapeHtml(st.error)}</p>` : ""}
         <label class="shots-field">Season
           <select id="season-pick">${seasonOptions(st.seasonId, false)}</select>
@@ -1404,7 +2029,7 @@
 
     $("#season-pick")?.addEventListener("change", (e) => selectSeason(e.target.value));
     $$("[data-open-game]").forEach((btn) => {
-      btn.addEventListener("click", () => selectGame(btn.getAttribute("data-open-game")));
+      btn.addEventListener("click", () => openGameChooser(btn.getAttribute("data-open-game")));
     });
     const bindNewToggle = (sel, extra) => {
       $(sel)?.addEventListener("change", () => {
@@ -1551,6 +2176,8 @@
       periodCsv(eventPeriod(ev)),
       team === "opp" ? "opponent" : "us",
       ev.createdAt || ev.created_at || "",
+      formatEventClock(ev, ev.game || st.game),
+      ev.gameClockSeconds ?? ev.game_clock_seconds ?? "",
       ev.shooterNumber ?? ev.jersey_number_at_time ?? "",
       csvEscape(ev.shooterName || ev.player?.name || ""),
       ev.position || "",
@@ -1588,6 +2215,8 @@
     "half",
     "team",
     "time",
+    "game_clock",
+    "game_clock_seconds",
     "player_number",
     "player_name",
     "position",
@@ -2556,6 +3185,7 @@
         : null,
       ...linkedPlayFields(assist, "assist"),
       ...linkedPlayFields(secondAssist, "second_assist"),
+      game_clock_seconds: stampClockSeconds(),
     };
   }
 
@@ -3239,6 +3869,18 @@
           ? `<button type="button" class="btn btn-ghost shots-retry" data-retry-shot="${escapeHtml(ev.id)}">Retry save</button>`
           : "";
         const extra = opts.showGame && ev.gameDate ? `<td>${escapeHtml(ev.gameDate)}</td>` : "";
+        const clockLabel = formatEventClock(ev, ev.game || st.game);
+        const clockDisplay = formatClockSecs(
+          elapsedToDisplay(Number(ev.gameClockSeconds ?? ev.game_clock_seconds ?? 0), eventPeriod(ev), ev.game || st.game)
+        );
+        let clockCell;
+        if (opts.editClock && st.editingClockId === ev.id) {
+          clockCell = `<td class="clock-cell"><input class="clock-input" data-clock-input="${escapeHtml(ev.id)}" value="${escapeHtml(ev.gameClockSeconds == null ? "" : clockDisplay)}" inputmode="decimal" aria-label="Game clock" />${failed}</td>`;
+        } else if (opts.editClock) {
+          clockCell = `<td class="clock-cell"><button type="button" class="clock-edit-btn" data-edit-clock="${escapeHtml(ev.id)}">${escapeHtml(clockLabel)}</button>${failed}</td>`;
+        } else {
+          clockCell = `<td>${escapeHtml(clockLabel)}${failed}</td>`;
+        }
         return `
           <tr class="${ev.saveFailed ? "is-unsaved" : ""}">
             <td class="tracker-edit-cell">
@@ -3249,7 +3891,7 @@
                 </svg>
               </button>
             </td>
-            <td>${escapeHtml(formatShotTime(ev.createdAt))}${failed}</td>
+            ${clockCell}
             ${extra}
             <td><span class="team-chip ${team === "opp" ? "is-opp" : "is-us"}">${escapeHtml(teamLabel(team, ev))}</span></td>
             <td><button type="button" class="linkish" data-edit-shot="${escapeHtml(ev.id)}"><span class="shot-result-pill ${escapeHtml(ev.result)}">${escapeHtml(resultLabel)}</span></button></td>
@@ -3348,7 +3990,7 @@
               <th class="tracker-delete-cell"><span class="sr-only">Delete</span></th>
             </tr>
           </thead>
-          <tbody>${shotTableRows(events, { emptyLabel: opts.emptyLabel })}</tbody>
+          <tbody>${shotTableRows(events, { emptyLabel: opts.emptyLabel, editClock: opts.editClock !== false })}</tbody>
         </table>
       </div>`;
   }
@@ -3382,6 +4024,70 @@
     $$("[data-edit-shot]").forEach((btn) => {
       btn.addEventListener("click", () => openEditShot(btn.getAttribute("data-edit-shot")));
     });
+    $$("[data-edit-clock]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        st.editingClockId = btn.getAttribute("data-edit-clock");
+        draw({ keepScroll: true });
+      });
+    });
+    const clockInput = $("[data-clock-input]");
+    if (clockInput) {
+      const commit = async () => {
+        const id = clockInput.getAttribute("data-clock-input");
+        if (!st.editingClockId) return;
+        const text = clockInput.value;
+        st.editingClockId = null;
+        const sec = parseClockInput(text);
+        if (text.trim() && sec == null) {
+          showToast("Try 40, 38.5, or 38:50");
+          draw({ keepScroll: true });
+          return;
+        }
+        const ev = (st.shots || []).find((e) => e.id === id) || (st.history.rows || []).find((e) => e.id === id);
+        if (!ev) {
+          draw({ keepScroll: true });
+          return;
+        }
+        const elapsed = text.trim() === "" ? null : Math.max(0, displayToElapsed(sec, eventPeriod(ev), ev.game || st.game));
+        if (ev.saveFailed && ev.pendingPayload) {
+          ev.pendingPayload.game_clock_seconds = elapsed;
+          ev.gameClockSeconds = elapsed;
+          draw({ keepScroll: true });
+          return;
+        }
+        const saved = await API.updateShot(id, { game_clock_seconds: elapsed });
+        if (!saved.ok) {
+          showToast(saved.error || "Not saved — check connection");
+          draw({ keepScroll: true });
+          return;
+        }
+        const mapped = mapShot(saved.data);
+        const idx = st.shots.findIndex((s) => s.id === id);
+        if (idx >= 0) st.shots[idx] = mapped;
+        if (st.history.rows) {
+          const hIdx = st.history.rows.findIndex((s) => s.id === id);
+          if (hIdx >= 0) st.history.rows[hIdx] = Object.assign({}, st.history.rows[hIdx], mapped);
+        }
+        draw({ keepScroll: true });
+      };
+      clockInput.addEventListener("blur", () => {
+        commit();
+      });
+      clockInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          clockInput.blur();
+        }
+        if (e.key === "Escape") {
+          st.editingClockId = null;
+          draw({ keepScroll: true });
+        }
+      });
+      requestAnimationFrame(() => {
+        clockInput.focus();
+        clockInput.select();
+      });
+    }
   }
 
   function fillFoulerEditOptions(ev, teamOverride) {
@@ -3618,6 +4324,14 @@
     editLocDraft.second = locFromPlay(ev.secondAssist);
     $("#shot-edit-name").value = ev.shooterName || "";
     $("#shot-edit-short").value = ev.shooterShort || "";
+    const clockInput = $("#shot-edit-clock");
+    if (clockInput) {
+      const raw = ev.gameClockSeconds ?? ev.game_clock_seconds;
+      clockInput.value =
+        raw == null || raw === ""
+          ? ""
+          : formatClockSecs(elapsedToDisplay(Number(raw), eventPeriod(ev), ev.game || st.game));
+    }
     refreshEditModalRosters(ev);
     fillEditPlayerOptions(ev, team, ev.player_id);
     fillEditAssistOptions(ev, team, ev.assist?.player_id || null);
@@ -3731,6 +4445,16 @@
         showToast("Tap the pitch to set 2nd assist location");
         return;
       }
+      const clockText = ($("#shot-edit-clock")?.value || "").trim();
+      let clockElapsed = null;
+      if (clockText) {
+        const clockSec = parseClockInput(clockText);
+        if (clockSec == null) {
+          showToast("Try 40, 38.5, or 38:50");
+          return;
+        }
+        clockElapsed = Math.max(0, displayToElapsed(clockSec, eventPeriod(ev), ev.game || st.game));
+      }
       const assistId = assistType ? assistIdRaw : null;
       const secondId = secondType ? secondIdRaw : null;
       const patch = {
@@ -3742,6 +4466,7 @@
         jersey_number_at_time: player ? String(player.number) : null,
         fouler_player_id: foulerId,
         fouler_jersey_number_at_time: fouler ? String(fouler.number) : null,
+        game_clock_seconds: clockElapsed,
         ...locPatch(
           "assist",
           assistType,
@@ -4154,24 +4879,8 @@
       <div class="tracker-page${awaitingShot ? " is-recording-play" : ""}">
         ${trackerNav("shots")}
         <p class="shots-game-label">${escapeHtml(gameTitle(st.game))}</p>
+        ${scoreboardBoardMarkup("compact")}
         <section class="tracker-stage">
-          <div class="half-toggle" role="tablist" aria-label="Match period">
-            ${
-              etMode
-                ? `<button type="button" class="half-toggle-btn ${period === "ET1" ? "is-on" : ""}" data-set-period="ET1">ET 1</button>
-            <button type="button" class="half-toggle-btn ${period === "ET2" ? "is-on" : ""}" data-set-period="ET2">ET 2</button>
-            <button type="button" class="half-toggle-btn is-et" data-et-toggle aria-label="Back to regular time">90</button>`
-                : `<button type="button" class="half-toggle-btn ${period === "1" ? "is-on" : ""}" data-set-period="1">1st Half</button>
-            <button type="button" class="half-toggle-btn ${period === "2" ? "is-on" : ""}" data-set-period="2">2nd Half</button>
-            <button type="button" class="half-toggle-btn is-et" data-et-toggle aria-label="Extra time">ET</button>`
-            }
-          </div>
-          <div class="tracker-toolbar">
-            <button type="button" class="btn btn-secondary" id="tracker-sync" ${st.syncing ? "disabled" : ""}>${st.syncing ? "Syncing…" : "Sync"}</button>
-            <button type="button" class="btn btn-ghost" id="tracker-swap">${st.swapSides ? "Goal left" : "Swap sides"}</button>
-            <button type="button" class="btn btn-ghost" id="tracker-export" ${events.length ? "" : "disabled"}>CSV</button>
-            <button type="button" class="btn btn-ghost" id="tracker-toggle-grid">${st.showGrid ? "Hide zones" : "Zones"}</button>
-          </div>
           ${
             awaitingShot
               ? `<div class="tracker-recording-banner" role="status">
@@ -4207,6 +4916,7 @@
           ${shotTableMarkup("2nd Half", secondHalf, { emptyLabel: logEmpty })}
           ${showEtLog ? shotTableMarkup("ET 1", etOne, { emptyLabel: logEmpty }) + shotTableMarkup("ET 2", etTwo, { emptyLabel: logEmpty }) : ""}
         </section>
+        ${stampOffsetMarkup()}
       </div>`;
 
     $("#tracker-cancel-record")?.addEventListener("click", () => {
@@ -4214,36 +4924,7 @@
       resetTrackerDraft();
       draw();
     });
-    $$("[data-set-period]").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        const next = normalizePeriod(btn.getAttribute("data-set-period"));
-        if (next === st.period) return;
-        st.period = next;
-        saveUi();
-        resetTrackerDraft();
-        closeShotModal();
-        draw({ keepScroll: true });
-      });
-    });
-    $("[data-et-toggle]")?.addEventListener("click", () => {
-      st.period = period === "ET1" || period === "ET2" ? "2" : "ET1";
-      saveUi();
-      resetTrackerDraft();
-      closeShotModal();
-      draw({ keepScroll: true });
-    });
-    $("#tracker-swap")?.addEventListener("click", () => {
-      st.swapSides = !st.swapSides;
-      saveUi();
-      draw({ keepScroll: true });
-    });
-    $("#tracker-toggle-grid")?.addEventListener("click", () => {
-      st.showGrid = !st.showGrid;
-      saveUi();
-      draw({ keepScroll: true });
-    });
-    $("#tracker-export")?.addEventListener("click", () => exportShotsCsv(events));
-    $("#tracker-sync")?.addEventListener("click", () => syncGameShots());
+    bindClockUi();
     bindTrackerPitches();
     bindLineupEditor();
     bindPlaysFilters();
@@ -4261,7 +4942,7 @@
   }
 
   function resultFill(result) {
-    if (result === "goal" || result === "pk-goal") return "#f0c14b";
+    if (result === "goal" || result === "pk-goal") return "#f15a24";
     if (result === "on-target") return "#ffffff";
     if (result === "blocked") return "#e07a3d";
     if (result === "foul") return "#9b59b6";
@@ -4854,48 +5535,494 @@
     if (transcriptEl) transcriptEl.scrollTop = transcriptEl.scrollHeight;
   }
 
+  function matchElapsedSeconds(ev) {
+    if (ev.gameClockSeconds == null || ev.gameClockSeconds === "") return null;
+    const elapsed = Number(ev.gameClockSeconds);
+    if (!Number.isFinite(elapsed)) return null;
+    const p = eventPeriod(ev);
+    let off = 0;
+    if (p === "2") off = periodLengthSec("1", ev.game);
+    else if (p === "ET1") off = periodLengthSec("1", ev.game) + periodLengthSec("2", ev.game);
+    else if (p === "ET2") {
+      off = periodLengthSec("1", ev.game) + periodLengthSec("2", ev.game) + periodLengthSec("ET1", ev.game);
+    }
+    return off + elapsed;
+  }
+
+  function goalMinuteLabel(ev) {
+    const total = matchElapsedSeconds(ev);
+    if (total == null) return "";
+    return `${Math.max(1, Math.floor(total / 60))}'`;
+  }
+
+  function scorerShortName(ev) {
+    const team = eventTeam(ev);
+    const short = ev.shooterShort;
+    const nick = firstName(ev.shooterName);
+    const num = ev.shooterNumber;
+    const hasNum = num !== undefined && num !== null && String(num) !== "";
+    if (team === "opp") {
+      if (short || nick) return short || nick;
+      return hasNum ? `#${num}` : "Opp";
+    }
+    return short || nick || (hasNum ? `#${num}` : ourTeamName());
+  }
+
+  function teamBoxLine(events) {
+    const goals = events.filter((e) => isGoalResult(e.result));
+    const shots = events.filter((e) => SHOT_RESULTS.has(e.result));
+    const onFrame = events.filter((e) => e.result === "goal" || e.result === "on-target" || e.result === "pk-goal");
+    const corners = events.filter((e) => e.result === "corner").length;
+    const fouls = events.filter((e) => e.result === "foul").length;
+    return {
+      goals: goals.length,
+      shots: shots.length,
+      onFrame: onFrame.length,
+      corners,
+      fouls,
+      scorers: goals.slice().sort((a, b) => {
+        const ae = matchElapsedSeconds(a);
+        const be = matchElapsedSeconds(b);
+        if (ae != null && be != null && ae !== be) return ae - be;
+        if (ae != null && be == null) return -1;
+        if (ae == null && be != null) return 1;
+        return String(a.createdAt || "").localeCompare(String(b.createdAt || ""));
+      }),
+    };
+  }
+
+  function scorerPhrase(goals) {
+    if (!goals.length) return "";
+    return goals
+      .map((ev) => {
+        const who = scorerShortName(ev);
+        const min = goalMinuteLabel(ev);
+        const pk = ev.result === "pk-goal" ? " PK" : "";
+        return min ? `${who} ${min}${pk}` : `${who}${pk}`;
+      })
+      .join(", ");
+  }
+
+  function scoreboardFieldLabel(name) {
+    const raw = String(name || "").trim().toUpperCase();
+    if (raw.length <= 18) return raw;
+    return `${raw.slice(0, 17)}…`;
+  }
+
+  function scoreboardBoxMarkup() {
+    const events = st.shots || [];
+    const usName = ourTeamName();
+    const oppName = opponentOf(st.game)?.name || "Opponent";
+    const us = teamBoxLine(events.filter((e) => eventTeam(e) === "us"));
+    const opp = teamBoxLine(events.filter((e) => eventTeam(e) === "opp"));
+    const usPhrase = scorerPhrase(us.scorers);
+    const oppPhrase = scorerPhrase(opp.scorers);
+    const recap =
+      us.goals || opp.goals
+        ? `${escapeHtml(usName)} ${us.goals}${usPhrase ? ` (${escapeHtml(usPhrase)})` : ""} : ${escapeHtml(oppName)} ${opp.goals}${
+            oppPhrase ? ` (${escapeHtml(oppPhrase)})` : ""
+          }`
+        : "No goals yet.";
+    return `
+      <section class="scoreboard-box">
+        <div class="scoreboard-table-wrap">
+          <table class="scoreboard-stat-table">
+            <thead>
+              <tr>
+                <th></th>
+                <th>Goals</th>
+                <th>Shots (On Frame)</th>
+                <th>Corners</th>
+                <th>Fouls</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <th scope="row">${escapeHtml(usName)}</th>
+                <td>${us.goals}</td>
+                <td>${us.shots} (${us.onFrame})</td>
+                <td>${us.corners}</td>
+                <td>${us.fouls}</td>
+              </tr>
+              <tr>
+                <th scope="row">${escapeHtml(oppName)}</th>
+                <td>${opp.goals}</td>
+                <td>${opp.shots} (${opp.onFrame})</td>
+                <td>${opp.corners}</td>
+                <td>${opp.fouls}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="scoreboard-recap">${recap}</p>
+        <div class="scoreboard-field-wrap">
+          ${scoreboardFieldMarkup(events)}
+        </div>
+        <p class="scoreboard-refresh-foot">
+          <button type="button" class="scoreboard-refresh-link" data-scoreboard-poll-cycle>Refresh Time: ${pollIntervalSec()}s</button>
+        </p>
+      </section>`;
+  }
+
+  function scoreboardFieldPoint(loc, team) {
+    if (!loc || loc.x == null || loc.y == null) return null;
+    const x = Number(loc.x);
+    const y = Number(loc.y);
+    if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
+    if (team === "opp") return { fx: PW - x, fy: PL - y };
+    return { fx: x, fy: y };
+  }
+
+  function scoreboardTrianglePoints(cx, cy, size, up) {
+    if (up) {
+      return `${cx},${cy - size} ${cx - size * 0.92},${cy + size * 0.62} ${cx + size * 0.92},${cy + size * 0.62}`;
+    }
+    return `${cx},${cy + size} ${cx - size * 0.92},${cy - size * 0.62} ${cx + size * 0.92},${cy - size * 0.62}`;
+  }
+
+  function scoreboardFieldMarkup(events) {
+    const line = "rgba(242, 246, 243, 0.88)";
+    const goalW = 7.32;
+    const goalX = (PW - goalW) / 2;
+    const penW = 40.32;
+    const penH = 16.5;
+    const sixW = 18.32;
+    const sixH = 5.5;
+    const penX = (PW - penW) / 2;
+    const sixX = (PW - sixW) / 2;
+    const arcR = 9.15;
+    const spotInset = 11;
+    const dx = Math.sqrt(arcR * arcR - (penH - spotInset) * (penH - spotInset));
+    const band = PL / 6;
+    const stripes = [];
+    for (let i = 0; i < 6; i += 1) {
+      const lower = i >= 3;
+      const fill = lower ? (i % 2 ? "#4b5563" : "#6b7280") : i % 2 ? "#24633c" : "#2d7a4a";
+      stripes.push(`<rect fill="${fill}" x="0" y="${i * band}" width="${PW}" height="${band}" />`);
+    }
+    const shots = (events || []).filter((ev) => SHOT_RESULTS.has(ev.result) && ev.shot);
+    const regular = [];
+    const goals = [];
+    shots.forEach((ev) => {
+      const pt = scoreboardFieldPoint(ev.shot, eventTeam(ev));
+      if (!pt) return;
+      if (isGoalResult(ev.result)) goals.push({ ev, pt });
+      else regular.push({ ev, pt });
+    });
+    const markers = [];
+    regular.forEach(({ ev, pt }) => {
+      const up = eventTeam(ev) === "us";
+      markers.push(
+        `<polygon points="${scoreboardTrianglePoints(pt.fx, pt.fy, 1.45, up)}" fill="rgba(244,247,251,0.28)" />`
+      );
+    });
+    goals.forEach(({ ev, pt }) => {
+      const us = eventTeam(ev) === "us";
+      const fill = us ? "#f15a24" : "#f4f7fb";
+      markers.push(
+        `<polygon points="${scoreboardTrianglePoints(pt.fx, pt.fy, 3.35, us)}" fill="${fill}" stroke="#0b1f33" stroke-width="0.28" stroke-linejoin="round" />`
+      );
+      const num = ev.shooterNumber;
+      if (num !== undefined && num !== null && String(num) !== "") {
+        markers.push(
+          `<text x="${pt.fx}" y="${pt.fy + (us ? 0.35 : -0.15)}" fill="#0b1f33" font-size="2.05" font-weight="800" text-anchor="middle" dominant-baseline="central">${escapeHtml(String(num))}</text>`
+        );
+      }
+    });
+    const usName = scoreboardFieldLabel(ourTeamName());
+    const oppName = scoreboardFieldLabel(opponentOf(st.game)?.name || "Opponent");
+    return `
+      <svg class="scoreboard-field-svg" viewBox="-4 -5.4 76 116.2" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Shot map. ${escapeHtml(ourTeamName())} attacks toward the top.">
+        ${stripes.join("")}
+        <rect x="0" y="0" width="${PW}" height="${PL}" fill="none" stroke="${line}" stroke-width="0.45" />
+        <line x1="0" y1="${HALF_L}" x2="${PW}" y2="${HALF_L}" stroke="${line}" stroke-width="0.4" />
+        <circle cx="${PW / 2}" cy="${HALF_L}" r="9.15" fill="none" stroke="${line}" stroke-width="0.35" />
+        <circle cx="${PW / 2}" cy="${HALF_L}" r="0.45" fill="${line}" />
+        <rect x="${goalX}" y="-1.4" width="${goalW}" height="1.4" fill="none" stroke="${line}" stroke-width="0.45" />
+        <rect x="${goalX}" y="${PL}" width="${goalW}" height="1.4" fill="none" stroke="${line}" stroke-width="0.45" />
+        <rect x="${penX}" y="0" width="${penW}" height="${penH}" fill="none" stroke="${line}" stroke-width="0.35" />
+        <rect x="${penX}" y="${PL - penH}" width="${penW}" height="${penH}" fill="none" stroke="${line}" stroke-width="0.35" />
+        <rect x="${sixX}" y="0" width="${sixW}" height="${sixH}" fill="none" stroke="${line}" stroke-width="0.35" />
+        <rect x="${sixX}" y="${PL - sixH}" width="${sixW}" height="${sixH}" fill="none" stroke="${line}" stroke-width="0.35" />
+        <circle cx="${PW / 2}" cy="${spotInset}" r="0.45" fill="${line}" />
+        <circle cx="${PW / 2}" cy="${PL - spotInset}" r="0.45" fill="${line}" />
+        <path d="M ${PW / 2 - dx} ${penH} A ${arcR} ${arcR} 0 0 0 ${PW / 2 + dx} ${penH}" fill="none" stroke="${line}" stroke-width="0.35" />
+        <path d="M ${PW / 2 - dx} ${PL - penH} A ${arcR} ${arcR} 0 0 1 ${PW / 2 + dx} ${PL - penH}" fill="none" stroke="${line}" stroke-width="0.35" />
+        <text x="${PW / 2}" y="-2.05" fill="rgba(244,247,251,0.78)" font-size="2.35" font-weight="750" text-anchor="middle">${escapeHtml(usName)}</text>
+        <text x="${PW / 2}" y="${PL + 3.55}" fill="rgba(244,247,251,0.78)" font-size="2.35" font-weight="750" text-anchor="middle">${escapeHtml(oppName)}</text>
+        ${markers.join("")}
+      </svg>`;
+  }
+
+  let scoreboardPoll = { deadline: 0, tickId: null, inFlight: false, visBound: false };
+
+  function pollIntervalSec() {
+    const n = Number(localStorage.getItem(LS_SCOREBOARD_POLL));
+    return SCOREBOARD_POLL_OPTS.includes(n) ? n : 60;
+  }
+
+  function stopScoreboardPollTick() {
+    if (!scoreboardPoll.tickId) return;
+    clearInterval(scoreboardPoll.tickId);
+    scoreboardPoll.tickId = null;
+  }
+
+  function paintPollLine() {
+    const line = $("[data-scoreboard-poll-line]");
+    const fill = line?.querySelector(".scoreboard-poll-line-fill");
+    const clock = $("[data-scoreboard-sync]");
+    if (!fill) return;
+    const total = pollIntervalSec();
+    const left = Math.max(0, (scoreboardPoll.deadline - Date.now()) / 1000);
+    const remain = total ? Math.max(0, Math.min(1, left / total)) : 0;
+    fill.style.width = `${remain * 100}%`;
+    fill.style.transform = "none";
+    line.classList.toggle("is-syncing", scoreboardPoll.inFlight);
+    if (clock) {
+      const secs = Math.max(0, Math.ceil(left));
+      clock.setAttribute(
+        "aria-label",
+        scoreboardPoll.inFlight ? "Refreshing scoreboard" : `Refresh now. Next refresh in ${secs} seconds`
+      );
+    }
+  }
+
+  function armScoreboardPoll(resetDeadline) {
+    if (resetDeadline || !scoreboardPoll.deadline) {
+      scoreboardPoll.deadline = Date.now() + pollIntervalSec() * 1000;
+    }
+    if (!scoreboardPoll.tickId) {
+      scoreboardPoll.tickId = setInterval(() => {
+        if (st.view !== "shots-scoreboard") {
+          stopScoreboardPollTick();
+          return;
+        }
+        paintPollLine();
+        if (document.hidden || scoreboardPoll.inFlight) return;
+        if (Date.now() >= scoreboardPoll.deadline) refreshScoreboardLive();
+      }, 250);
+    }
+    paintPollLine();
+  }
+
+  async function refreshScoreboardLive() {
+    if (st.view !== "shots-scoreboard" || !st.gameId || scoreboardPoll.inFlight) return;
+    scoreboardPoll.inFlight = true;
+    paintPollLine();
+    try {
+      const pendingKeep = (st.shots || []).filter((s) => s.saveFailed && s.pendingPayload);
+      const [game, rows] = await Promise.all([API.game(st.gameId), API.shotsForGame(st.gameId)]);
+      if (st.view !== "shots-scoreboard" || !game || game.id !== st.gameId) return;
+      st.game = game;
+      st.shots = (rows || []).map(mapShot);
+      const remoteIds = new Set(st.shots.map((s) => s.id));
+      const orphans = pendingKeep.filter((s) => !remoteIds.has(s.id));
+      if (orphans.length) st.shots = [...orphans, ...st.shots];
+      applyRemoteClock(game);
+      scoreboardPoll.deadline = Date.now() + pollIntervalSec() * 1000;
+      draw({ keepScroll: true });
+    } catch {
+      scoreboardPoll.deadline = Date.now() + pollIntervalSec() * 1000;
+    } finally {
+      scoreboardPoll.inFlight = false;
+      paintPollLine();
+    }
+  }
+
+  function cycleScoreboardPoll() {
+    const cur = pollIntervalSec();
+    const next = SCOREBOARD_POLL_OPTS[(SCOREBOARD_POLL_OPTS.indexOf(cur) + 1) % SCOREBOARD_POLL_OPTS.length];
+    localStorage.setItem(LS_SCOREBOARD_POLL, String(next));
+    scoreboardPoll.deadline = Date.now() + next * 1000;
+    const link = $("[data-scoreboard-poll-cycle]");
+    if (link) link.textContent = `Refresh Time: ${next}s`;
+    paintPollLine();
+  }
+
+  function renderScoreboard() {
+    document.body.classList.remove("is-recording-play");
+    if (st.view === "shots-scoreboard") applyRemoteClock(st.game);
+    root().innerHTML = `
+      <div class="scoreboard-page">
+        <div class="scoreboard-menu">
+          <button type="button" class="scoreboard-menu-btn" data-scoreboard-menu aria-label="Scoreboard menu" aria-expanded="false" aria-haspopup="true">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <circle cx="12" cy="5" r="1.85"/>
+              <circle cx="12" cy="12" r="1.85"/>
+              <circle cx="12" cy="19" r="1.85"/>
+            </svg>
+          </button>
+          <div class="scoreboard-menu-pop" id="scoreboard-menu-pop" hidden role="menu">
+            <a class="scoreboard-menu-item" href="#shots" role="menuitem">Track shots</a>
+          </div>
+        </div>
+        <div class="scoreboard-hero-pin" data-scoreboard-hero-pin>
+          <div class="scoreboard-hero" data-scoreboard-hero>
+            ${scoreboardBoardMarkup("large")}
+          </div>
+        </div>
+        <div class="scoreboard-hero-spacer" data-scoreboard-hero-spacer aria-hidden="true"></div>
+        ${scoreboardBoxMarkup()}
+      </div>`;
+    bindClockUi();
+    bindScoreboardChrome();
+  }
+
+  function bindScoreboardChrome() {
+    const btn = $("[data-scoreboard-menu]");
+    const pop = $("#scoreboard-menu-pop");
+    const setOpen = (open) => {
+      if (!btn || !pop) return;
+      pop.hidden = !open;
+      btn.setAttribute("aria-expanded", open ? "true" : "false");
+    };
+    btn?.addEventListener("click", (e) => {
+      e.stopPropagation();
+      setOpen(pop.hidden);
+    });
+    $(".scoreboard-page")?.addEventListener("click", (e) => {
+      if (e.target.closest(".scoreboard-menu")) return;
+      setOpen(false);
+    });
+    $("[data-scoreboard-sync]")?.addEventListener("click", (e) => {
+      e.stopPropagation();
+      refreshScoreboardLive();
+    });
+    $("[data-scoreboard-poll-cycle]")?.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      cycleScoreboardPoll();
+    });
+    if (!scoreboardPoll.visBound) {
+      scoreboardPoll.visBound = true;
+      document.addEventListener("visibilitychange", () => {
+        if (document.hidden || st.view !== "shots-scoreboard") return;
+        refreshScoreboardLive();
+      });
+    }
+    armScoreboardPoll(false);
+    bindScoreboardPinch();
+  }
+
+  let scoreboardPinch = { bound: false, ticking: false, maxH: 0, minH: 76, minScale: 0.34, boardH: 0, range: 1 };
+
+  function measureScoreboardPinch() {
+    const pin = $("[data-scoreboard-hero-pin]");
+    const board = pin?.querySelector(".scoreboard-board");
+    if (!pin || !board) return;
+    board.style.transform = "none";
+    pin.style.height = "";
+    const maxH = window.innerHeight;
+    const boardH = board.offsetHeight || Math.round(maxH * 0.4);
+    const num = board.querySelector(".score-num");
+    const largePx = num ? parseFloat(getComputedStyle(num).fontSize) : 64;
+    const minScale = Math.max(0.26, Math.min(0.5, 29.6 / Math.max(largePx, 1)));
+    const minH = Math.max(72, Math.round(boardH * minScale + 20));
+    scoreboardPinch.maxH = maxH;
+    scoreboardPinch.minH = minH;
+    scoreboardPinch.minScale = minScale;
+    scoreboardPinch.boardH = boardH;
+    scoreboardPinch.range = Math.max(1, maxH - minH);
+  }
+
+  function applyScoreboardPinch() {
+    const pin = $("[data-scoreboard-hero-pin]");
+    const board = pin?.querySelector(".scoreboard-board");
+    if (!pin || !board || st.view !== "shots-scoreboard") return;
+    if (!scoreboardPinch.maxH) measureScoreboardPinch();
+    const { maxH, minH, minScale, boardH, range } = scoreboardPinch;
+    const p = Math.min(1, Math.max(0, window.scrollY / range));
+    const s = 1 - p * (1 - minScale);
+    const h = maxH - p * (maxH - minH);
+    const yCenter = Math.max(8, (h - boardH * s) / 2);
+    const ty = yCenter * (1 - p) + 10 * p;
+    pin.style.height = `${h}px`;
+    board.style.transform = `translate3d(0, ${ty}px, 0) scale(${s})`;
+    if (p > 0.9) pin.classList.add("is-compact");
+    else if (p < 0.8) pin.classList.remove("is-compact");
+  }
+
+  function bindScoreboardPinch() {
+    measureScoreboardPinch();
+    applyScoreboardPinch();
+    if (scoreboardPinch.bound) return;
+    scoreboardPinch.bound = true;
+    window.addEventListener(
+      "scroll",
+      () => {
+        if (st.view !== "shots-scoreboard") return;
+        if (scoreboardPinch.ticking) return;
+        scoreboardPinch.ticking = true;
+        requestAnimationFrame(() => {
+          scoreboardPinch.ticking = false;
+          applyScoreboardPinch();
+        });
+      },
+      { passive: true }
+    );
+    window.addEventListener("resize", () => {
+      if (st.view !== "shots-scoreboard") return;
+      measureScoreboardPinch();
+      applyScoreboardPinch();
+    });
+  }
+
   function draw(opts = {}) {
     const el = root();
     if (!el) return;
+    const scrollY = window.scrollY;
     document.body.classList.remove("is-recording-play");
-    if (!API || !API.isConfigured()) {
-      renderSetup();
-      return;
+    try {
+      if (!API || !API.isConfigured()) {
+        renderSetup();
+        return;
+      }
+      if (!st.booted) {
+        renderLoading("Connecting…");
+        return;
+      }
+      if (!st.session) {
+        renderPin();
+        return;
+      }
+      if (st.loading) {
+        stopScoreboardPollTick();
+        renderLoading("Loading…");
+        return;
+      }
+      const view = st.view;
+      if (view !== "shots" && view !== "shots-scoreboard") stopClockTick();
+      if (view !== "shots-scoreboard") stopScoreboardPollTick();
+      if (view === "shots-games") {
+        renderGames();
+        return;
+      }
+      if (view === "shots-history") {
+        renderHistory();
+        return;
+      }
+      if (view === "shots-explore") {
+        renderExplore();
+        return;
+      }
+      if (!st.gameId || !st.game) {
+        renderGames();
+        return;
+      }
+      if (view === "shots-map") {
+        renderMap();
+        return;
+      }
+      if (view === "shots-scoreboard") {
+        renderScoreboard();
+        if (opts.keepScroll) window.scrollTo(0, scrollY);
+        applyScoreboardPinch();
+        return;
+      }
+      renderRecorder(opts);
+    } finally {
+      syncDrawerActions();
     }
-    if (!st.booted) {
-      renderLoading("Connecting…");
-      return;
-    }
-    if (!st.session) {
-      renderPin();
-      return;
-    }
-    if (st.loading) {
-      renderLoading("Loading…");
-      return;
-    }
-    const view = st.view;
-    if (view === "shots-games") {
-      renderGames();
-      return;
-    }
-    if (view === "shots-history") {
-      renderHistory();
-      return;
-    }
-    if (view === "shots-explore") {
-      renderExplore();
-      return;
-    }
-    if (!st.gameId || !st.game) {
-      renderGames();
-      return;
-    }
-    if (view === "shots-map") {
-      renderMap();
-      return;
-    }
-    renderRecorder(opts);
   }
 
   global.ShotTracker = {
@@ -4911,6 +6038,10 @@
     onLeave() {
       closeShotModal();
       resetTrackerDraft();
+      closeGameOpenModal();
+      closeClockSetup();
+      stopScoreboardPollTick();
+      st.editingClockId = null;
       const edit = $("#shot-edit-modal");
       if (edit) edit.hidden = true;
     },
@@ -4927,6 +6058,27 @@
       const edit = $("#shot-edit-modal");
       if (edit && !edit.hidden) {
         edit.hidden = true;
+        return true;
+      }
+      const openGame = $("#game-open-modal");
+      if (openGame && !openGame.hidden) {
+        closeGameOpenModal();
+        return true;
+      }
+      const menuPop = $("#scoreboard-menu-pop");
+      if (menuPop && !menuPop.hidden) {
+        menuPop.hidden = true;
+        $("[data-scoreboard-menu]")?.setAttribute("aria-expanded", "false");
+        return true;
+      }
+      const clockSetup = $("#clock-setup-modal");
+      if (clockSetup && !clockSetup.hidden) {
+        closeClockSetup();
+        return true;
+      }
+      if (st.editingClockId) {
+        st.editingClockId = null;
+        draw({ keepScroll: true });
         return true;
       }
       return false;
