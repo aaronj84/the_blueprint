@@ -2913,57 +2913,32 @@
       }).join("");
 
     const opponentPickerBody = () => {
-      const skip = new Set();
-      const optFor = (p, extra = "", selected = false) => {
-        const named = opponentShortName(p);
-        const posHint = opponentPosHint(p);
-        const value = p.id ? String(p.id) : `n-${p.number}`;
-        const label = named
-          ? `${named} (#${p.number})${posHint ? ` · ${posHint}` : ""}${extra}`
-          : `#${p.number}${extra}`;
-        return `<option value="${escapeHtml(value)}" data-number="${escapeHtml(String(p.number))}" data-player-id="${escapeHtml(p.id || "")}" data-player-team="opp"${selected ? " selected" : ""}>${escapeHtml(label)}</option>`;
+      const optFor = (p, prefix) => {
+        const rostered = rosterList.find((x) => String(x.number) === String(p.number)) || p;
+        const named = opponentShortName(rostered);
+        const label = named ? `${named} (#${rostered.number})` : `#${p.number}`;
+        const id = rostered.id || p.id || "";
+        return `<option value="${escapeHtml(`${prefix}-${p.number}`)}" data-number="${escapeHtml(String(p.number))}" data-player-id="${escapeHtml(id)}" data-player-team="opp">${escapeHtml(label)}</option>`;
       };
+      const playerForNum = (num) =>
+        rosterList.find((x) => String(x.number) === String(num)) || { number: num, id: "", team: "opp" };
+      const thisGameOpts = usedThisGameNumbers("opp")
+        .map((num) => optFor(playerForNum(num), "g"))
+        .join("");
+      const rosterOpts = rosterList.map((p) => optFor(p, "r")).join("");
+      const allOpts = jerseyChoices()
+        .map((num) => optFor(playerForNum(num), "n"))
+        .join("");
       const groups = [];
-      if (justAdded) {
-        skip.add(String(justAdded.number));
-        groups.push(`<optgroup label="Just added">${optFor(justAdded, "", true)}</optgroup>`);
-      }
-      const priorNums = usedThisGameNumbers("opp").filter((n) => !skip.has(String(n)));
-      const priorOpts = priorNums
-        .map((num) => {
-          const p = rosterList.find((x) => String(x.number) === String(num)) || { number: num, id: "", team: "opp" };
-          skip.add(String(num));
-          return optFor(p);
-        })
-        .join("");
-      if (priorOpts) groups.push(`<optgroup label="This game">${priorOpts}</optgroup>`);
-      const namedRoster = rosterList.filter(
-        (p) => !skip.has(String(p.number)) && (p.name || p.short || p.short_name)
-      );
-      const grouped = new Set();
-      POSITION_GROUPS.forEach((g) => {
-        const inG = namedRoster.filter((p) => !grouped.has(String(p.number)) && playerInGroup(p, g.id));
-        if (!inG.length) return;
-        inG.forEach((p) => grouped.add(String(p.number)));
-        groups.push(`<optgroup label="${escapeHtml(g.label)}">${inG.map((p) => optFor(p)).join("")}</optgroup>`);
-      });
-      namedRoster.forEach((p) => skip.add(String(p.number)));
-      const ungrouped = namedRoster.filter((p) => !grouped.has(String(p.number)));
-      if (ungrouped.length) {
-        groups.push(
-          `<optgroup label="${grouped.size ? "Other roster" : "Roster"}">${ungrouped.map((p) => optFor(p)).join("")}</optgroup>`
-        );
-      }
-      const rest = jerseyChoices()
-        .filter((num) => !skip.has(String(num)))
-        .map((num) => optFor({ number: num, id: "", team: "opp" }))
-        .join("");
-      if (rest) groups.push(`<optgroup label="Other numbers">${rest}</optgroup>`);
-      const placeholder = justAdded ? "" : `<option value="">Who?</option>`;
+      if (thisGameOpts) groups.push(`<optgroup label="This game">${thisGameOpts}</optgroup>`);
+      if (rosterOpts) groups.push(`<optgroup label="Roster">${rosterOpts}</optgroup>`);
+      groups.push(`<optgroup label="All Numbers">${allOpts}</optgroup>`);
       return `
         <label class="sr-only" for="shot-opp-pick">Opponent player</label>
         <select id="shot-opp-pick" class="shot-opp-select" data-opp-pick="1">
-          ${placeholder}
+          <optgroup label="Pick a player">
+            <option value="" selected disabled>Pick a player</option>
+          </optgroup>
           ${groups.join("")}
         </select>`;
     };
