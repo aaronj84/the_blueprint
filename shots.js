@@ -159,6 +159,29 @@
     { id: "pk-missed", label: "PK Missed", kind: "shot", result: "pk-missed" },
   ];
   const TRACKER_FIRST_ACTIONS = [...TRACKER_ASSIST_ACTIONS, ...TRACKER_SHOT_ACTIONS, ...TRACKER_OTHER_ACTIONS];
+  const SHOT_RESULTS = new Set(["goal", "on-target", "blocked", "missed", "pk-goal", "pk-missed"]);
+  const LOG_RESULT_FILTERS = {
+    all: { label: "All results", match: () => true },
+    shots: { label: "Shots", match: (e) => SHOT_RESULTS.has(e.result) },
+    goal: { label: "Goals", match: (e) => e.result === "goal" || e.result === "pk-goal" },
+    "on-target": { label: "On target", match: (e) => e.result === "on-target" },
+    blocked: { label: "Blocked", match: (e) => e.result === "blocked" },
+    missed: { label: "Missed", match: (e) => e.result === "missed" || e.result === "pk-missed" },
+    foul: { label: "Free kicks", match: (e) => e.result === "foul" },
+    corner: { label: "Corners", match: (e) => e.result === "corner" },
+    pk: { label: "PKs", match: (e) => e.result === "pk-goal" || e.result === "pk-missed" },
+  };
+
+  function normalizeLogResult(value) {
+    return LOG_RESULT_FILTERS[value] ? value : "all";
+  }
+
+  function eventMatchesLogFilter(ev) {
+    const team = st.logTeam === "us" || st.logTeam === "opp" ? st.logTeam : "all";
+    if (team !== "all" && eventTeam(ev) !== team) return false;
+    return LOG_RESULT_FILTERS[normalizeLogResult(st.logResult)].match(ev);
+  }
+
   const RESULTS_NEEDING_MISS_DIR = new Set(["missed", "pk-missed"]);
   const RESULTS_NEEDING_FOULER = new Set(["pk-goal", "pk-missed"]);
   const LS_EVENTS = CONFIG.shotsStorageKey || "brighton-varsity-shot-tracker";
@@ -206,6 +229,8 @@
         team: st.team,
         showGrid: st.showGrid,
         swapSides: st.swapSides,
+        logTeam: st.logTeam,
+        logResult: st.logResult,
         seasonId: st.seasonId,
         gameId: st.gameId,
       })
@@ -278,6 +303,8 @@
     period: normalizePeriod(savedUi.period || "1"),
     team: savedUi.team === "opp" ? "opp" : "us",
     swapSides: !!savedUi.swapSides,
+    logTeam: savedUi.logTeam === "us" || savedUi.logTeam === "opp" ? savedUi.logTeam : "all",
+    logResult: normalizeLogResult(savedUi.logResult),
     lineup: savedLineup,
     defaultLineup: loadDefaultLineup(),
     csvPending: null,
@@ -2997,7 +3024,8 @@
 
   function shotTableRows(events, opts = {}) {
     if (!events.length) {
-      return `<tr><td colspan="12" class="empty-state" style="padding:1.25rem">No plays yet.</td></tr>`;
+      const empty = opts.emptyLabel || "No plays yet.";
+      return `<tr><td colspan="12" class="empty-state" style="padding:1.25rem">${escapeHtml(empty)}</td></tr>`;
     }
     return events
       .map((ev) => {
@@ -3028,14 +3056,19 @@
         return `
           <tr class="${ev.saveFailed ? "is-unsaved" : ""}">
             <td class="tracker-edit-cell">
-              <button type="button" class="icon-btn tracker-edit" data-edit-shot="${escapeHtml(ev.id)}" aria-label="Edit play">Edit</button>
+              <button type="button" class="icon-btn tracker-edit" data-edit-shot="${escapeHtml(ev.id)}" aria-label="Edit play">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M12 20h9"/>
+                  <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/>
+                </svg>
+              </button>
             </td>
             <td>${escapeHtml(formatShotTime(ev.createdAt))}${failed}</td>
             ${extra}
             <td><span class="team-chip ${team === "opp" ? "is-opp" : "is-us"}">${escapeHtml(teamLabel(team, ev))}</span></td>
+            <td><button type="button" class="linkish" data-edit-shot="${escapeHtml(ev.id)}"><span class="shot-result-pill ${escapeHtml(ev.result)}">${escapeHtml(resultLabel)}</span></button></td>
             <td><button type="button" class="linkish" data-edit-shot="${escapeHtml(ev.id)}">${playerCell}</button></td>
             <td><button type="button" class="linkish" data-edit-shot="${escapeHtml(ev.id)}">${escapeHtml(ev.position || "—")}</button></td>
-            <td><button type="button" class="linkish" data-edit-shot="${escapeHtml(ev.id)}"><span class="shot-result-pill ${escapeHtml(ev.result)}">${escapeHtml(resultLabel)}</span></button></td>
             <td>${escapeHtml(missLabel)}</td>
             <td>${escapeHtml(assistBy)}${escapeHtml(assistPos)}</td>
             <td>${escapeHtml(assistType)}</td>
@@ -3049,7 +3082,59 @@
       .join("");
   }
 
-  function shotTableMarkup(title, events) {
+  function logFilterActive() {
+    return (st.logTeam === "us" || st.logTeam === "opp") || normalizeLogResult(st.logResult) !== "all";
+  }
+
+  function playsFilterMarkup() {
+    const teamBtns = [
+      ["all", "All teams"],
+      ["us", "Brighton"],
+      ["opp", "Opponent"],
+    ]
+      .map(
+        ([id, label]) =>
+          `<button type="button" class="plays-filter-btn ${st.logTeam === id ? "is-on" : ""}" data-log-team="${id}">${label}</button>`
+      )
+      .join("");
+    const resultBtns = Object.entries(LOG_RESULT_FILTERS)
+      .map(
+        ([id, spec]) =>
+          `<button type="button" class="plays-filter-btn ${normalizeLogResult(st.logResult) === id ? "is-on" : ""}" data-log-result="${id}">${escapeHtml(spec.label)}</button>`
+      )
+      .join("");
+    return `
+      <div class="plays-filters" role="group" aria-label="Filter recorded plays">
+        <div class="plays-filter-row">
+          <span class="plays-filter-label">Team</span>
+          <div class="plays-filter-btns">${teamBtns}</div>
+        </div>
+        <div class="plays-filter-row">
+          <span class="plays-filter-label">Result</span>
+          <div class="plays-filter-btns">${resultBtns}</div>
+        </div>
+      </div>`;
+  }
+
+  function bindPlaysFilters() {
+    $$("[data-log-team]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const next = btn.getAttribute("data-log-team");
+        st.logTeam = next === "us" || next === "opp" ? next : "all";
+        saveUi();
+        draw({ keepScroll: true });
+      });
+    });
+    $$("[data-log-result]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        st.logResult = normalizeLogResult(btn.getAttribute("data-log-result"));
+        saveUi();
+        draw({ keepScroll: true });
+      });
+    });
+  }
+
+  function shotTableMarkup(title, events, opts = {}) {
     return `
       <h3 class="tracker-half-heading">${escapeHtml(title)}</h3>
       <div class="tracker-summary">${summaryPills(trackerSummary(events))}</div>
@@ -3058,11 +3143,11 @@
           <thead>
             <tr>
               <th class="tracker-edit-cell"><span class="sr-only">Edit</span></th>
-              <th>Time</th>
+              <th>Gameclock</th>
               <th>Team</th>
+              <th>Result</th>
               <th>Player</th>
               <th>Pos</th>
-              <th>Result</th>
               <th>Miss</th>
               <th>Assisted by</th>
               <th>Assist type</th>
@@ -3071,7 +3156,7 @@
               <th class="tracker-delete-cell"><span class="sr-only">Delete</span></th>
             </tr>
           </thead>
-          <tbody>${shotTableRows(events)}</tbody>
+          <tbody>${shotTableRows(events, { emptyLabel: opts.emptyLabel })}</tbody>
         </table>
       </div>`;
   }
@@ -3657,11 +3742,18 @@
     const events = st.shots;
     const period = st.period;
     const etMode = period === "ET1" || period === "ET2";
-    const firstHalf = events.filter((e) => eventPeriod(e) === "1");
-    const secondHalf = events.filter((e) => eventPeriod(e) === "2");
-    const etOne = events.filter((e) => eventPeriod(e) === "ET1");
-    const etTwo = events.filter((e) => eventPeriod(e) === "ET2");
-    const showEtLog = etMode || etOne.length > 0 || etTwo.length > 0;
+    const firstHalf = events.filter((e) => eventPeriod(e) === "1" && eventMatchesLogFilter(e));
+    const secondHalf = events.filter((e) => eventPeriod(e) === "2" && eventMatchesLogFilter(e));
+    const etOne = events.filter((e) => eventPeriod(e) === "ET1" && eventMatchesLogFilter(e));
+    const etTwo = events.filter((e) => eventPeriod(e) === "ET2" && eventMatchesLogFilter(e));
+    const showEtLog =
+      etMode || events.some((e) => eventPeriod(e) === "ET1" || eventPeriod(e) === "ET2");
+    const filteredCount = events.filter(eventMatchesLogFilter).length;
+    const logEmpty = logFilterActive() ? "No plays match this filter." : "No plays yet.";
+    const logCount =
+      logFilterActive() && events.length
+        ? `<p class="plays-filter-count muted">${filteredCount} of ${events.length} plays</p>`
+        : "";
     const awaitingShot = st.mode === "awaiting-shot-location";
     const usActive = recordingTeam() === "us";
     const usSwapped = !!st.swapSides;
@@ -3722,9 +3814,11 @@
         </section>
         <section class="tracker-log" id="tracker-log">
           <h2>Recorded plays</h2>
-          ${shotTableMarkup("1st Half", firstHalf)}
-          ${shotTableMarkup("2nd Half", secondHalf)}
-          ${showEtLog ? shotTableMarkup("ET 1", etOne) + shotTableMarkup("ET 2", etTwo) : ""}
+          ${playsFilterMarkup()}
+          ${logCount}
+          ${shotTableMarkup("1st Half", firstHalf, { emptyLabel: logEmpty })}
+          ${shotTableMarkup("2nd Half", secondHalf, { emptyLabel: logEmpty })}
+          ${showEtLog ? shotTableMarkup("ET 1", etOne, { emptyLabel: logEmpty }) + shotTableMarkup("ET 2", etTwo, { emptyLabel: logEmpty }) : ""}
         </section>
       </div>`;
 
@@ -3765,6 +3859,7 @@
     $("#tracker-sync")?.addEventListener("click", () => syncGameShots());
     bindTrackerPitches();
     bindLineupEditor();
+    bindPlaysFilters();
     bindLogActions();
     if (opts.keepScroll) window.scrollTo(0, scrollY);
   }
@@ -4108,12 +4203,12 @@
               <thead>
                 <tr>
                   <th class="tracker-edit-cell"><span class="sr-only">Edit</span></th>
-                  <th>Time</th>
+                  <th>Gameclock</th>
                   <th>Game</th>
                   <th>Team</th>
+                  <th>Result</th>
                   <th>Player</th>
                   <th>Pos</th>
-                  <th>Result</th>
                   <th>Miss</th>
                   <th>Assisted by</th>
                   <th>Assist type</th>

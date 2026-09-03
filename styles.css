@@ -807,6 +807,57 @@ body.tracker-view .brand-sub {
   font-size: 1.15rem;
 }
 
+.plays-filters {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  margin: 0 0 0.55rem;
+}
+
+.plays-filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.5rem;
+}
+
+.plays-filter-label {
+  flex: 0 0 3.4rem;
+  font-size: 0.72rem;
+  font-weight: 750;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.plays-filter-btns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  min-width: 0;
+}
+
+.plays-filter-btn {
+  min-height: 34px;
+  padding: 0.2rem 0.55rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--bg-soft);
+  font-weight: 700;
+  font-size: 0.78rem;
+}
+
+.plays-filter-btn.is-on {
+  background: var(--brand);
+  border-color: var(--brand);
+  color: #fff;
+}
+
+.plays-filter-count {
+  margin: 0 0 0.35rem;
+  font-size: 0.82rem;
+}
+
 .team-chip {
   display: inline-block;
   font-size: 0.68rem;
@@ -1403,7 +1454,7 @@ button.formation-card.is-empty {
   position: sticky;
   left: 0;
   z-index: 1;
-  width: 3.5rem;
+  width: 2.75rem;
   padding-left: 0.35rem;
   padding-right: 0.25rem;
   background: var(--bg-panel);
@@ -1422,11 +1473,8 @@ button.formation-card.is-empty {
 .tracker-edit {
   min-width: 44px;
   min-height: 44px;
-  width: auto;
-  padding: 0 0.45rem;
-  font-size: 0.75rem;
-  font-weight: 700;
-  letter-spacing: 0.02em;
+  width: 44px;
+  padding: 0;
   color: var(--brand);
 }
 
