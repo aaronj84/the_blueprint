@@ -1,75 +1,101 @@
 # Shot tracker — Supabase pickup
 
-Use this file when switching machines. Fill in the URL and anon key from the dashboard if they are still blank, then copy them into `shots-config.js` on the other computer.
+Use this file when switching machines. Prefer **DEV** for local work; see [`docs/dev-environment.md`](../docs/dev-environment.md).
 
 ## Credentials
 
-Paste these into `/shots-config.js` at the repo root:
+Copy `shots-config.example.js` → `shots-config.js` (gitignored) and fill DEV values:
 
 ```js
 window.SHOTS_CONFIG = {
-  supabaseUrl: "",
-  supabaseAnonKey: "",
+  pitch: { width: 68, length: 105 },
+  storageKey: "brighton-varsity-shot-tracker",
+  supabaseUrl: "https://YOUR_DEV_REF.supabase.co",
+  supabaseAnonKey: "YOUR_DEV_ANON_KEY",
   pin: "KEPPA"
 };
 ```
 
 | Setting | Value |
 | --- | --- |
-| PIN (shared staff gate, not per-coach auth) | `KEPPA` |
-| Project URL | Project Settings → API → **Project URL** (`https://<ref>.supabase.co`) |
-| Anon / public key | Project Settings → API → **anon** `public` |
-| Service role key | Do **not** put this in the app or this file |
+| PIN (shared staff gate) | `KEPPA` (or your chosen PIN) |
+| Project URL | Settings → API → Project URL |
+| Anon / public key | Settings → API → anon `public` |
+| Service role key | Do **not** put this in the app or git |
 
-`shots-config.js` in this repo currently has empty URL/key strings. After you create (or open) the project, paste those two values into the table above **and** into `shots-config.js` before you leave this machine.
+## Environments
 
-## Dashboard (must already be true)
+| Env | Project | Used for |
+| --- | --- | --- |
+| **PROD** | `sczdnalqmymhdornhkbn` | Live site + real data |
+| **DEV** | (you create) | Local + CI |
 
-1. SQL editor: run `schema.sql` (this folder) — safe to re-run; additive and non-destructive. Optional: `sample_data.sql`. Older one-off scripts (`migrate_shot_tracker_v3.sql`, `migrate_fouler.sql`) are already covered by `schema.sql`.
-2. SQL editor: run `migrate_semantic_layer.sql` (adds `games.stat_scope` + `v_brighton_*` views). Rollback: `migrate_semantic_layer_down.sql`.
-3. Authentication → Providers → **Anonymous** → Enable.
-4. RLS is in `schema.sql`: `authenticated` can read/write; the PIN only gates sign-in on the client.
+## Schema & migrations (current process)
+
+Schema lives in timestamped files under [`migrations/`](migrations/). Apply with the CLI:
+
+```bash
+supabase link --project-ref <DEV_OR_PROD_REF>
+supabase db push
+```
+
+- Push to `dev` → GitHub Actions pushes migrations to **DEV**
+- Merge to `main` → Actions pushes migrations to **PROD**
+
+New change:
+
+```bash
+supabase migration new describe_change
+# edit supabase/migrations/<timestamp>_describe_change.sql
+supabase db push
+git add supabase/migrations && git commit
+```
+
+### Dashboard (still required once per project)
+
+1. Authentication → Providers → **Anonymous** → Enable.
+2. RLS policies ship in the baseline migration (`authenticated` read/write; PIN is client-only).
+
+### Historical SQL (do not use for new work)
+
+These were one-off / hand-run scripts. The baseline migrations already cover their durable schema pieces. Keep them for reference only — **do not** re-run on prod:
+
+- `schema.sql` → superseded by `migrations/20260831100000_baseline_schema.sql`
+- `migrate_semantic_layer.sql` → `…00001_semantic_layer.sql`
+- `migrate_explore.sql` → `…00002_explore.sql`
+- `migrate_shot_tracker_v3.sql`, `migrate_fouler.sql`, `migrate_charlotte_sharky.sql`, `migrate_position_groups_jv.sql`, `migrate_2026_varsity_schedule.sql`, `migrate_import_recorded_shots.sql`, etc.
+
+Optional DEV seed: `sample_data.sql` in the SQL editor.
 
 ## Explore tab (optional AI)
 
-Natural-language questions over shot data (`#shots-explore`). Uses a Supabase Edge Function + OpenAI — **not** your ChatGPT desktop subscription.
+Natural-language questions over shot data (`#shots-explore`). Uses a Supabase Edge Function + OpenAI.
 
-1. SQL editor: run `migrate_semantic_layer.sql` then `migrate_explore.sql` (creates `explore_readonly` RPC + explore wrappers for `v_brighton_*`). Season stats default to `v_brighton_shots_official` (excludes friendlies / untracked).
-2. Create an [OpenAI API](https://platform.openai.com) key. Set a low monthly spend limit (e.g. $5–10).
-3. Store the key as a project secret (CLI or Dashboard → Edge Functions → Secrets):
+1. Migrations must include semantic + explore (already in `migrations/`).
+2. Create an [OpenAI API](https://platform.openai.com) key. Set a low monthly spend limit.
+3. Store as a project secret:
 
 ```bash
 supabase secrets set OPENAI_API_KEY=sk-...
 ```
 
-4. Deploy the function:
+4. Deploy:
 
 ```bash
 supabase functions deploy explore-shots
 ```
 
-Or paste `functions/explore-shots/index.ts` via the Dashboard → Edge Functions → Create.
+Confirm JWT verification stays on (default).
 
-5. Confirm the function allows JWT verification (default). The browser sends the anonymous staff session; the function rejects unauthenticated callers.
+Optional: `EXPLORE_OPENAI_MODEL` secret to override default `gpt-4.1`.
 
-Cost note: `gpt-4.1` is the default Explore model (roughly similar per-question cost to Claude Sonnet). Edge Function invocations stay within the free quota at this volume.
+Golden scope tests (no LLM): `python -m benchmark.golden --verify` — see [`../benchmark/README.md`](../benchmark/README.md).
 
-Optional: set `EXPLORE_OPENAI_MODEL` as a secret to override the default `gpt-4.1` (e.g. back to `gpt-4o-mini` for cheaper runs).
-
-### Compare models (benchmark harness)
-
-To A/B OpenAI vs Anthropic on the **same** Explore pipeline (prompts → SQL → `explore_readonly` → narrate), see [`../benchmark/README.md`](../benchmark/README.md). Core prompt/SQL logic is shared under `functions/_shared/explore/`.
-
-Golden scope tests (no LLM):
-
-```bash
-python -m benchmark.golden --verify
-```
 ## Other machine checklist
 
 1. Pull this repo.
-2. Confirm `shots-config.js` has the URL, anon key, and PIN above.
-3. Serve the site (`python3 -m http.server 8080`) and open `#shots`.
-4. Log in with `KEPPA`.
+2. Copy example → `shots-config.js` with **DEV** URL/anon/PIN.
+3. `python3 -m http.server 8080` → open `#shots`.
+4. Log in with PIN.
 
 Hashes: `#shots` record · `#shots-games` schedule · `#shots-history` queries · `#shots-explore` AI explore · `#shots-map` game map.

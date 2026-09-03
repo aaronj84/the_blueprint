@@ -15,11 +15,31 @@ Staff PIN gates write access (default documented in `shots-config.example.js`).
 ## Run locally
 
 ```bash
+cp shots-config.example.js shots-config.js
+# fill DEV Supabase URL + anon key + PIN
 python3 -m http.server 8080
 # then visit http://localhost:8080
 ```
 
-Copy `shots-config.example.js` → `shots-config.js` and fill in Supabase URL, anon key, and PIN.
+`shots-config.js` is gitignored — use **DEV** for day-to-day work (see below).
+
+## Safeguards (dev / CI / prod)
+
+| Doc | What it covers |
+| --- | --- |
+| [docs/dev-environment.md](docs/dev-environment.md) | Create DEV Supabase, CLI migrations, GitHub secrets, Pages |
+| [docs/git-workflow.md](docs/git-workflow.md) | `dev` branch → PR to `main` (prod); branch is not deleted |
+| [supabase/README.md](supabase/README.md) | Schema, migrations folder, Explore |
+
+```bash
+npm ci
+export SHOTS_SUPABASE_URL=... SHOTS_SUPABASE_ANON_KEY=... SHOTS_PIN=KEPPA
+node scripts/write-shots-config.js   # for Playwright
+npm run test:api                     # Vitest vs DEV
+npm run test:e2e                     # Playwright smokes
+```
+
+GitHub Actions runs those on push/PR to `dev` and `main`, and applies `supabase/migrations/` via `db push` (DEV on `dev`, PROD on `main`).
 
 ## Deep links
 
@@ -40,18 +60,16 @@ Copy `shots-config.example.js` → `shots-config.js` and fill in Supabase URL, a
   app.js                  # Thin hash router / chrome
   shots.js                # Tracker UI
   shots-api.js            # Supabase access
-  shots-config.js         # Local secrets (gitignored if desired)
+  shots-config.js         # Local / generated (gitignored)
   shots-config.example.js
-  supabase/               # Schema, migrations, Explore Edge Function
+  docs/                   # Dev env + git workflow
+  tests/                  # API + Playwright
+  supabase/migrations/    # Canonical schema migrations
+  supabase/functions/     # Explore Edge Function
   benchmark/              # Explore LLM harness
-  scripts/                # CSV → SQL helpers
-  recorded data/          # Import sources
+  scripts/                # Config writer, CSV helpers
 ```
-
-## Supabase & Explore
-
-See `supabase/README.md` and `benchmark/README.md`.
 
 ## Deploy
 
-GitHub Pages from the repo root (`main`, `/`). `.nojekyll` is included.
+GitHub Pages via **GitHub Actions** on `main` (writes PROD `shots-config.js` from secrets). Switch Pages source to Actions if it still says “Deploy from a branch” — details in [docs/dev-environment.md](docs/dev-environment.md).

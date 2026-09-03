@@ -39,12 +39,26 @@
     if (error) throw new Error(error.message || fallback || "Request failed");
   }
 
-  const SHOT_SELECT = `
+  const SHOT_SELECT_CORE = `
     *,
     player:players!shots_player_id_fkey (id, name, short_name),
     fouler:players!shots_fouler_player_id_fkey (id, name, short_name),
     assist_player:players!shots_assist_player_id_fkey (id, name, short_name)
   `;
+  const SHOT_SELECT = `${SHOT_SELECT_CORE.trim()},
+    second_assist_player:players!second_assist_player_id (id, name, short_name)
+  `;
+
+  function isMissingRelationship(error) {
+    const msg = String(error?.message || "");
+    return /could not find a relationship/i.test(msg) || /schema cache/i.test(msg);
+  }
+
+  async function runShotSelect(build) {
+    const first = await build(SHOT_SELECT);
+    if (!first.error || !isMissingRelationship(first.error)) return first;
+    return build(SHOT_SELECT_CORE);
+  }
 
   const GAME_SELECT = `
     *,
@@ -148,6 +162,17 @@
       return data;
     },
 
+    async updateGame(id, patch) {
+      const { data, error } = await getClient()
+        .from("games")
+        .update(patch)
+        .eq("id", id)
+        .select(GAME_SELECT)
+        .single();
+      throwIfError(error, "Could not update game");
+      return data;
+    },
+
     async roster(teamId, seasonId) {
       const { data, error } = await getClient()
         .from("rosters")
@@ -213,28 +238,37 @@
     },
 
     async shotsForGame(gameId) {
-      const { data, error } = await getClient()
-        .from("shots")
-        .select(SHOT_SELECT)
-        .eq("game_id", gameId)
-        .order("created_at", { ascending: false });
+      const { data, error } = await runShotSelect((select) =>
+        getClient().from("shots").select(select).eq("game_id", gameId).order("created_at", { ascending: false })
+      );
       throwIfError(error, "Could not load shots");
       return data || [];
     },
 
     async insertShot(row) {
-      const { data, error } = await getClient().from("shots").insert(row).select(SHOT_SELECT).single();
-      if (error) return { ok: false, error: error.message || "Not saved — check connection" };
-      return { ok: true, data };
+      const { data, error } = await runShotSelect((select) =>
+        getClient().from("shots").insert(row).select(select).single()
+      );
+      if (!error) return { ok: true, data };
+      if (/second_assist_|game_clock_seconds|schema cache|Could not find/i.test(error.message || "")) {
+        const slim = { ...row };
+        Object.keys(slim).forEach((k) => {
+          if (k.startsWith("second_assist_")) delete slim[k];
+        });
+        delete slim.game_clock_seconds;
+        const retry = await runShotSelect((select) =>
+          getClient().from("shots").insert(slim).select(select).single()
+        );
+        if (!retry.error) return { ok: true, data: retry.data };
+        return { ok: false, error: retry.error.message || "Not saved — check connection" };
+      }
+      return { ok: false, error: error.message || "Not saved — check connection" };
     },
 
     async updateShot(id, patch) {
-      const { data, error } = await getClient()
-        .from("shots")
-        .update(patch)
-        .eq("id", id)
-        .select(SHOT_SELECT)
-        .single();
+      const { data, error } = await runShotSelect((select) =>
+        getClient().from("shots").update(patch).eq("id", id).select(select).single()
+      );
       if (error) return { ok: false, error: error.message || "Not saved — check connection" };
       return { ok: true, data };
     },
@@ -246,37 +280,52 @@
     },
 
     async queryShots(filters) {
-      let q = getClient()
-        .from("shots")
-        .select(
-          `${SHOT_SELECT},
+      const extraCore = `,
           game:games!shots_game_id_fkey (
             id, date, game_type, season_id, home_team_id, away_team_id, our_team_id,
             season:seasons (*),
             home_team:teams!games_home_team_id_fkey (*),
             away_team:teams!games_away_team_id_fkey (*)
           ),
-          team:teams!shots_team_id_fkey (*)`
-        )
-        .order("created_at", { ascending: false })
-        .limit(5000);
-
-      if (filters.playerId) q = q.eq("player_id", filters.playerId);
-      if (filters.teamId) q = q.eq("team_id", filters.teamId);
-      if (filters.gameId) q = q.eq("game_id", filters.gameId);
-      if (filters.result) q = q.eq("result", filters.result);
-      if (filters.period) q = q.eq("period", filters.period);
-      if (filters.zoneId) q = q.eq("zone_id", filters.zoneId);
-      if (filters.zonePrefix) q = q.like("zone_id", `${filters.zonePrefix}%`);
-      if (filters.zoneIds && filters.zoneIds.length) q = q.in("zone_id", filters.zoneIds);
-      if (filters.depthIds && filters.depthIds.length) {
-        const ors = filters.depthIds
-          .map((d) => (d === "DEF" ? "zone_id.eq.DEF" : `zone_id.like.%-${d}`))
-          .join(",");
-        q = q.or(ors);
+          team:teams!shots_team_id_fkey (*)
+        `;
+      const extra = `,
+          game:games!shots_game_id_fkey (
+            id, date, game_type, season_id, home_team_id, away_team_id, our_team_id,
+            clock_direction, clock_half_length_sec, clock_et_length_sec,
+            season:seasons (*),
+            home_team:teams!games_home_team_id_fkey (*),
+            away_team:teams!games_away_team_id_fkey (*)
+          ),
+          team:teams!shots_team_id_fkey (*)
+        `;
+      const applyFilters = (q) => {
+        if (filters.playerId) q = q.eq("player_id", filters.playerId);
+        if (filters.teamId) q = q.eq("team_id", filters.teamId);
+        if (filters.gameId) q = q.eq("game_id", filters.gameId);
+        if (filters.result) q = q.eq("result", filters.result);
+        if (filters.period) q = q.eq("period", filters.period);
+        if (filters.zoneId) q = q.eq("zone_id", filters.zoneId);
+        if (filters.zonePrefix) q = q.like("zone_id", `${filters.zonePrefix}%`);
+        if (filters.zoneIds && filters.zoneIds.length) q = q.in("zone_id", filters.zoneIds);
+        if (filters.depthIds && filters.depthIds.length) {
+          const ors = filters.depthIds
+            .map((d) => (d === "DEF" ? "zone_id.eq.DEF" : `zone_id.like.%-${d}`))
+            .join(",");
+          q = q.or(ors);
+        }
+        return q.order("created_at", { ascending: false }).limit(5000);
+      };
+      let { data, error } = await runShotSelect((select) =>
+        applyFilters(getClient().from("shots").select(`${select}${extra}`))
+      );
+      if (error && /clock_direction|clock_half_length|clock_et_length|schema cache/i.test(error.message || "")) {
+        const retry = await runShotSelect((select) =>
+          applyFilters(getClient().from("shots").select(`${select}${extraCore}`))
+        );
+        data = retry.data;
+        error = retry.error;
       }
-
-      const { data, error } = await q;
       throwIfError(error, "Could not query shots");
       let rows = data || [];
 

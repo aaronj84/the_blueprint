@@ -1,4 +1,4 @@
-/* Brighton Varsity Shot Tracker — shell / router */
+/* Brighton Bengals Shot Tracker — shell / router */
 (function () {
   "use strict";
 
@@ -11,6 +11,7 @@
     if (raw === "shots-games") return "shots-games";
     if (raw === "shots-history") return "shots-history";
     if (raw === "shots-explore") return "shots-explore";
+    if (raw === "shots-scoreboard") return "shots-scoreboard";
     if (raw === "shots" || !raw || raw === "home") return "shots";
     // Unknown hashes (old Blueprint links) land on the tracker home.
     return "shots";
@@ -19,13 +20,23 @@
   function updateChrome(view) {
     document.body.classList.add("shots-mode", "tracker-view");
     document.body.classList.toggle("shot-map-view", view === "shots-map");
+    document.body.classList.toggle("scoreboard-view", view === "shots-scoreboard");
     document.body.classList.toggle(
       "shots-admin-view",
       view === "shots-games" || view === "shots-history" || view === "shots-explore"
     );
+    const theme = document.querySelector('meta[name="theme-color"]');
+    if (theme) theme.setAttribute("content", view === "shots-scoreboard" ? "#0b1f33" : "#f4f7fb");
 
+    const cfg = window.SHOTS_CONFIG || {};
+    const brandName = $("#brand-name");
     const brandSub = $("#brand-sub");
-    if (brandSub) brandSub.textContent = "Shot Tracker";
+    if (brandName) brandName.textContent = cfg.brandName || "Brighton Bengals";
+    if (brandSub) {
+      const sub = cfg.brandSub != null ? String(cfg.brandSub) : "Shot Tracker";
+      brandSub.textContent = sub;
+      brandSub.hidden = !sub;
+    }
 
     $$("[data-nav]").forEach((el) => {
       const key = el.getAttribute("data-nav");
@@ -68,8 +79,9 @@
     if (!open) drawer.hidden = true;
     btn?.setAttribute("aria-expanded", open ? "true" : "false");
   });
-  $$("[data-close-drawer]").forEach((el) => el.addEventListener("click", closeDrawer));
-  $$("#nav-drawer [data-nav]").forEach((el) => el.addEventListener("click", closeDrawer));
+  $("#nav-drawer")?.addEventListener("click", (e) => {
+    if (e.target.closest("[data-close-drawer], [data-nav]")) closeDrawer();
+  });
 
   window.addEventListener("hashchange", () => {
     if (window.ShotTracker) {

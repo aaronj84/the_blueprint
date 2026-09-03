@@ -1,0 +1,50 @@
+# CI: API integration + Playwright smokes against DEV Supabase
+
+on:
+  push:
+    branches: [dev, main]
+  pull_request:
+    branches: [dev, main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    env:
+      SHOTS_SUPABASE_URL: ${{ secrets.SHOTS_SUPABASE_URL_DEV }}
+      SHOTS_SUPABASE_ANON_KEY: ${{ secrets.SHOTS_SUPABASE_ANON_KEY_DEV }}
+      SHOTS_PIN: ${{ secrets.SHOTS_PIN }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Require DEV secrets
+        run: |
+          test -n "$SHOTS_SUPABASE_URL" || (echo "Missing SHOTS_SUPABASE_URL_DEV" && exit 1)
+          test -n "$SHOTS_SUPABASE_ANON_KEY" || (echo "Missing SHOTS_SUPABASE_ANON_KEY_DEV" && exit 1)
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Write shots-config.js for e2e
+        run: node scripts/write-shots-config.js
+
+      - name: API integration tests
+        run: npm run test:api
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Playwright smoke tests
+        run: npm run test:e2e
+
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7

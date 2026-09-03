@@ -5,6 +5,8 @@
 window.SHOTS_CONFIG = {
   pitch: { width: 68, length: 105 },
   storageKey: "brighton-varsity-shot-tracker",
+  brandName: "Brighton Bengals",
+  brandSub: "Shot Tracker",
   supabaseUrl: "https://YOUR_PROJECT.supabase.co",
   supabaseAnonKey: "YOUR_ANON_PUBLIC_KEY",
   pin: "KEPPA"
