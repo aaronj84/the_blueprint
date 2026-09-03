@@ -2138,8 +2138,71 @@ button.formation-card.is-empty {
 .shots-field select,
 .shots-field input[type="date"],
 .shots-field input[type="number"],
-.shots-field input[type="text"],
-#shot-edit-modal select {
+.shots-field input[type="text"] {
+  min-height: 44px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  font: inherit;
+  font-size: 1rem;
+  padding: 0 0.55rem;
+}
+
+#shot-edit-modal .modal-panel {
+  display: flex;
+  flex-direction: column;
+  max-height: min(92vh, 820px);
+  overflow: hidden;
+  padding-bottom: 0;
+}
+
+#shot-edit-modal .shot-edit-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  padding-right: 0.15rem;
+}
+
+#shot-edit-modal .modal-actions {
+  flex: 0 0 auto;
+  margin: 0 -1.25rem 0;
+  padding: 0.75rem 1.25rem calc(0.85rem + var(--safe-bottom));
+  background: var(--bg-elevated);
+  border-top: 1px solid var(--border);
+  position: sticky;
+  bottom: 0;
+}
+
+#shot-edit-modal .modal-actions .btn {
+  flex: 1 1 0;
+  min-height: 44px;
+}
+
+.edit-loc-block {
+  margin: 0.15rem 0 0.85rem;
+}
+
+.edit-loc-label {
+  margin: 0 0 0.2rem;
+  font-size: 0.82rem;
+  font-weight: 750;
+}
+
+.edit-loc-hint {
+  margin: 0 0 0.4rem;
+  font-size: 0.78rem;
+}
+
+.edit-loc-pitch {
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  background: #24633c;
+}
+
+.edit-loc-pitch .tracker-pitch-svg {
+  max-height: min(28vh, 14rem);
+  cursor: crosshair;
+}
   min-height: 44px;
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);

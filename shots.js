@@ -335,6 +335,28 @@
     justAddedNumber: "",
   };
 
+  const editLocDraft = {
+    assist: null,
+    second: null,
+  };
+
+  function locFromPlay(play) {
+    if (!play || play.x == null || play.x === "" || Number.isNaN(Number(play.x))) return null;
+    return {
+      x: Number(play.x),
+      y: Number(play.y),
+      zoneId: play.zoneId || play.zone_id || null,
+      zoneLabel: play.zoneLabel || play.zone_label || null,
+    };
+  }
+
+  function positionSelectOptions(selected) {
+    const cur = selected || "";
+    return `<option value="">—</option>${POSITION_CODES.map(
+      (code) => `<option value="${escapeHtml(code)}" ${code === cur ? "selected" : ""}>${escapeHtml(code)}</option>`
+    ).join("")}`;
+  }
+
   function normalizePeriod(p) {
     if (p === 3 || p === "3" || p === "ET1") return "ET1";
     if (p === 4 || p === "4" || p === "ET2") return "ET2";
@@ -1665,16 +1687,18 @@
     const pending = st.pending;
     const modalLoc = shotModalDraft.location;
     const active = recordingTeam() === team;
-    if (active && pending?.secondAssist?.location) {
-      const s = pending.secondAssist.location;
-      pendingDots.push(`<circle class="tracker-pending second-assist" cx="${s.x}" cy="${s.y}" r="1.05" />`);
-    }
-    if (active && pending?.assist?.location) {
-      const a = pending.assist.location;
-      pendingDots.push(`<circle class="tracker-pending assist" cx="${a.x}" cy="${a.y}" r="1.15" />`);
-    }
-    if (active && modalLoc && shotModal && !shotModal.hidden) {
-      pendingDots.push(`<circle class="tracker-pending" cx="${modalLoc.x}" cy="${modalLoc.y}" r="1.25" />`);
+    if (!opts.noPending) {
+      if (active && pending?.secondAssist?.location) {
+        const s = pending.secondAssist.location;
+        pendingDots.push(`<circle class="tracker-pending second-assist" cx="${s.x}" cy="${s.y}" r="1.05" />`);
+      }
+      if (active && pending?.assist?.location) {
+        const a = pending.assist.location;
+        pendingDots.push(`<circle class="tracker-pending assist" cx="${a.x}" cy="${a.y}" r="1.15" />`);
+      }
+      if (active && modalLoc && shotModal && !shotModal.hidden) {
+        pendingDots.push(`<circle class="tracker-pending" cx="${modalLoc.x}" cy="${modalLoc.y}" r="1.25" />`);
+      }
     }
     const numRot = swapped ? 90 : -90;
     const markers = events
@@ -3014,7 +3038,7 @@
 
   function bindTrackerPitches() {
     const awaitingShot = awaitingFollowUp();
-    $$("[data-pitch-team]").forEach((svg) => {
+    $$("#tracker-pitch-us [data-pitch-team], #tracker-pitch-opp [data-pitch-team]").forEach((svg) => {
       const team = svg.getAttribute("data-pitch-team");
       const wrap = svg.closest(".tracker-pitch-wrap");
       const block = svg.closest(".tracker-pitch-block");
@@ -3442,6 +3466,77 @@
         .join("");
   }
 
+  function currentEditShot() {
+    const id = $("#shot-edit-modal")?.dataset.shotId;
+    if (!id) return null;
+    return st.shots.find((s) => s.id === id) || st.history.rows?.find((s) => s.id === id) || null;
+  }
+
+  function editPitchSwapped(team) {
+    return team === "opp" ? !st.swapSides : !!st.swapSides;
+  }
+
+  function locPatch(prefix, type, playerId, position, loc) {
+    if (!type) {
+      return {
+        [`${prefix}_player_id`]: null,
+        [`${prefix}_type`]: null,
+        [`${prefix}_position`]: null,
+        [`${prefix}_x`]: null,
+        [`${prefix}_y`]: null,
+        [`${prefix}_zone_id`]: null,
+        [`${prefix}_zone_label`]: null,
+      };
+    }
+    return {
+      [`${prefix}_player_id`]: playerId || null,
+      [`${prefix}_type`]: type,
+      [`${prefix}_position`]: position || null,
+      [`${prefix}_x`]: loc ? loc.x : null,
+      [`${prefix}_y`]: loc ? loc.y : null,
+      [`${prefix}_zone_id`]: loc ? loc.zoneId : null,
+      [`${prefix}_zone_label`]: loc ? loc.zoneLabel : null,
+    };
+  }
+
+  function renderEditLocPitches(ev) {
+    if (!ev) return;
+    const team = editModalTeam();
+    const assistType = $("#shot-edit-assist-type")?.value || "";
+    const secondType = $("#shot-edit-second-assist-type")?.value || "";
+    const assistWrap = $("#shot-edit-assist-loc-wrap");
+    const secondWrap = $("#shot-edit-second-loc-wrap");
+    if (assistWrap) assistWrap.hidden = !assistType;
+    if (secondWrap) secondWrap.hidden = !(assistType && secondType);
+    const locLabel = (loc) => (loc ? `${formatLoc(loc)} · (${formatXY(loc)})` : "Tap the pitch");
+    const assistText = $("#shot-edit-assist-loc-text");
+    const secondText = $("#shot-edit-second-loc-text");
+    if (assistText) assistText.textContent = locLabel(editLocDraft.assist);
+    if (secondText) secondText.textContent = locLabel(editLocDraft.second);
+    const preview = {
+      id: ev.id,
+      team,
+      period: eventPeriod(ev),
+      result: ev.result,
+      shooterNumber: ev.shooterNumber,
+      shot: ev.shot,
+      assist: editLocDraft.assist,
+      secondAssist: editLocDraft.second,
+      saveFailed: false,
+    };
+    const opts = {
+      team,
+      swapped: editPitchSwapped(team),
+      showGrid: true,
+      period: eventPeriod(ev),
+      noPending: true,
+    };
+    const assistPitch = $("#shot-edit-assist-pitch");
+    const secondPitch = $("#shot-edit-second-pitch");
+    if (assistPitch && assistType) assistPitch.innerHTML = halfPitchMarkup([preview], opts);
+    if (secondPitch && assistType && secondType) secondPitch.innerHTML = halfPitchMarkup([preview], opts);
+  }
+
   function fillEditSecondAssistOptions(ev, team, selectedId) {
     const sel = $("#shot-edit-second-assist");
     if (!sel) return;
@@ -3515,6 +3610,12 @@
     if (assistTypeSel) assistTypeSel.value = ev.assist?.type || "";
     const secondTypeSel = $("#shot-edit-second-assist-type");
     if (secondTypeSel) secondTypeSel.value = ev.secondAssist?.type || "";
+    const assistPosSel = $("#shot-edit-assist-position");
+    if (assistPosSel) assistPosSel.innerHTML = positionSelectOptions(ev.assist?.position || "");
+    const secondPosSel = $("#shot-edit-second-assist-position");
+    if (secondPosSel) secondPosSel.innerHTML = positionSelectOptions(ev.secondAssist?.position || "");
+    editLocDraft.assist = locFromPlay(ev.assist);
+    editLocDraft.second = locFromPlay(ev.secondAssist);
     $("#shot-edit-name").value = ev.shooterName || "";
     $("#shot-edit-short").value = ev.shooterShort || "";
     refreshEditModalRosters(ev);
@@ -3522,6 +3623,7 @@
     fillEditAssistOptions(ev, team, ev.assist?.player_id || null);
     fillEditSecondAssistOptions(ev, team, ev.secondAssist?.player_id || null);
     fillFoulerEditOptions(ev, team);
+    renderEditLocPitches(ev);
     modal.hidden = false;
   }
 
@@ -3535,12 +3637,12 @@
       });
     });
     $("#shot-edit-team")?.addEventListener("change", () => {
-      const id = modal.dataset.shotId;
-      const ev = st.shots.find((s) => s.id === id) || st.history.rows?.find((s) => s.id === id);
+      const ev = currentEditShot();
       if (!ev) return;
       refreshEditModalRosters(ev, { clearPlayers: true });
       $("#shot-edit-name").value = "";
       $("#shot-edit-short").value = "";
+      renderEditLocPitches(ev);
     });
     $("#shot-edit-result")?.addEventListener("change", () => {
       const missSel = $("#shot-edit-miss");
@@ -3555,11 +3657,39 @@
     });
     $("#shot-edit-assist-type")?.addEventListener("change", () => {
       const type = $("#shot-edit-assist-type").value;
-      if (!type && $("#shot-edit-assist")) $("#shot-edit-assist").value = "";
+      if (!type) {
+        if ($("#shot-edit-assist")) $("#shot-edit-assist").value = "";
+        if ($("#shot-edit-second-assist")) $("#shot-edit-second-assist").value = "";
+        if ($("#shot-edit-second-assist-type")) $("#shot-edit-second-assist-type").value = "";
+        if ($("#shot-edit-assist-position")) $("#shot-edit-assist-position").value = "";
+        if ($("#shot-edit-second-assist-position")) $("#shot-edit-second-assist-position").value = "";
+        editLocDraft.assist = null;
+        editLocDraft.second = null;
+      }
+      renderEditLocPitches(currentEditShot());
     });
     $("#shot-edit-second-assist-type")?.addEventListener("change", () => {
       const type = $("#shot-edit-second-assist-type").value;
-      if (!type && $("#shot-edit-second-assist")) $("#shot-edit-second-assist").value = "";
+      if (!type) {
+        if ($("#shot-edit-second-assist")) $("#shot-edit-second-assist").value = "";
+        if ($("#shot-edit-second-assist-position")) $("#shot-edit-second-assist-position").value = "";
+        editLocDraft.second = null;
+      }
+      renderEditLocPitches(currentEditShot());
+    });
+    modal.addEventListener("pointerup", (e) => {
+      const host = e.target.closest("[data-edit-loc]");
+      const svg = e.target.closest("svg");
+      if (!host || !svg || modal.hidden || !host.contains(svg)) return;
+      const ev = currentEditShot();
+      if (!ev) return;
+      const team = editModalTeam();
+      const p = svgEventPoint(svg, e);
+      const pitch = pitchFromSvgPoint(p.x, p.y, editPitchSwapped(team));
+      const loc = locatePitchPoint(pitch.x, pitch.y);
+      if (host.getAttribute("data-edit-loc") === "second") editLocDraft.second = loc;
+      else editLocDraft.assist = loc;
+      renderEditLocPitches(ev);
     });
     $("#shot-edit-save")?.addEventListener("click", async () => {
       const id = modal.dataset.shotId;
@@ -3593,6 +3723,14 @@
         showToast("Pick a 2nd assist type (or clear 2nd assist)");
         return;
       }
+      if (assistType && !editLocDraft.assist) {
+        showToast("Tap the pitch to set assist location");
+        return;
+      }
+      if (secondType && !editLocDraft.second) {
+        showToast("Tap the pitch to set 2nd assist location");
+        return;
+      }
       const assistId = assistType ? assistIdRaw : null;
       const secondId = secondType ? secondIdRaw : null;
       const patch = {
@@ -3604,10 +3742,20 @@
         jersey_number_at_time: player ? String(player.number) : null,
         fouler_player_id: foulerId,
         fouler_jersey_number_at_time: fouler ? String(fouler.number) : null,
-        assist_player_id: assistId,
-        assist_type: assistType || null,
-        second_assist_player_id: assistType ? secondId : null,
-        second_assist_type: assistType ? secondType || null : null,
+        ...locPatch(
+          "assist",
+          assistType,
+          assistId,
+          $("#shot-edit-assist-position")?.value || "",
+          editLocDraft.assist
+        ),
+        ...locPatch(
+          "second_assist",
+          assistType ? secondType : "",
+          assistType ? secondId : null,
+          $("#shot-edit-second-assist-position")?.value || "",
+          assistType ? editLocDraft.second : null
+        ),
       };
       const saved = await API.updateShot(id, patch);
       if (!saved.ok) {

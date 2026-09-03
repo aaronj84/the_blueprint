@@ -7,7 +7,7 @@
   <meta name="theme-color" content="#f4f7fb" />
   <title>Brighton Bengals Shot Tracker</title>
   <link rel="icon" href="assets/logo.svg" type="image/svg+xml" />
-  <link rel="stylesheet" href="styles.css?v=20260903c" />
+  <link rel="stylesheet" href="styles.css?v=20260903e" />
 </head>
 <body class="shots-mode tracker-view">
   <a class="sr-only" href="#main">Skip to content</a>
@@ -95,7 +95,8 @@
     <div class="modal-backdrop" data-close-shot-edit></div>
     <div class="modal-panel">
       <h2 id="shot-edit-title">Edit play</h2>
-      <p class="muted">Fix team, player, position, result, or assist. Location edits come later.</p>
+      <div class="shot-edit-body">
+      <p class="muted">Fix team, player, result, or add an assist from film. Tap the pitch to set pass location and type (Pass / Gap / Cross).</p>
       <label class="shots-field">Team
         <select id="shot-edit-team">
           <option value="us">Brighton</option>
@@ -156,6 +157,14 @@
           <option value="cross">Cross</option>
         </select>
       </label>
+      <label class="shots-field">Assist position
+        <select id="shot-edit-assist-position"></select>
+      </label>
+      <div class="edit-loc-block" id="shot-edit-assist-loc-wrap" hidden>
+        <p class="edit-loc-label">Assist location <span id="shot-edit-assist-loc-text" class="muted"></span></p>
+        <p class="muted edit-loc-hint">Tap where the pass was. The shot is shown for reference.</p>
+        <div class="edit-loc-pitch" id="shot-edit-assist-pitch" data-edit-loc="assist"></div>
+      </div>
       <label class="shots-field">2nd assist by
         <select id="shot-edit-second-assist"></select>
       </label>
@@ -167,12 +176,21 @@
           <option value="cross">Cross</option>
         </select>
       </label>
+      <label class="shots-field">2nd assist position
+        <select id="shot-edit-second-assist-position"></select>
+      </label>
+      <div class="edit-loc-block" id="shot-edit-second-loc-wrap" hidden>
+        <p class="edit-loc-label">2nd assist location <span id="shot-edit-second-loc-text" class="muted"></span></p>
+        <p class="muted edit-loc-hint">Tap where the pass before the assist was.</p>
+        <div class="edit-loc-pitch" id="shot-edit-second-pitch" data-edit-loc="second"></div>
+      </div>
       <label class="shots-field">Player name
         <input type="text" id="shot-edit-name" class="text-gate-input" autocomplete="off" placeholder="Full name (Veo review)" />
       </label>
       <label class="shots-field">Short name
         <input type="text" id="shot-edit-short" class="text-gate-input" autocomplete="off" placeholder="Kate, Ari…" />
       </label>
+      </div>
       <div class="modal-actions">
         <button type="button" class="btn btn-ghost" data-close-shot-edit>Cancel</button>
         <button type="button" class="btn btn-primary" id="shot-edit-save">Save</button>
@@ -183,7 +201,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="shots-config.js?v=20260831c"></script>
   <script src="shots-api.js?v=20260903b"></script>
-  <script src="shots.js?v=20260903a"></script>
+  <script src="shots.js?v=20260903c"></script>
   <script src="app.js?v=20260831c"></script>
 </body>
 </html>
