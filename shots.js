@@ -725,7 +725,7 @@
       ? `<button type="button" class="scoreboard-clock-face" data-clock-face data-scoreboard-sync aria-label="Refresh scoreboard">${escapeHtml(face)}</button>`
       : `<button type="button" class="score-clock-face" data-clock-face data-open-clock-setup aria-label="Set game clock">${escapeHtml(face)}</button>`;
     const periodBlock = large
-      ? `<p class="scoreboard-period">${escapeHtml(periodLabel(st.period))}</p>`
+      ? `<button type="button" class="scoreboard-period" data-open-clock-setup aria-label="Set period and clock">${escapeHtml(periodLabel(st.period))}</button>`
       : "";
     const pollLine = large
       ? `<div class="scoreboard-poll-line" data-scoreboard-poll-line aria-hidden="true"><span class="scoreboard-poll-line-fill"></span></div>`
@@ -755,6 +755,20 @@
           large
             ? ""
             : `<div class="score-strip-controls">
+          <div class="score-strip-menu">
+            <button type="button" class="score-strip-gear" data-score-strip-menu aria-label="Pitch settings" aria-expanded="false" aria-haspopup="true">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true">
+                <circle cx="12" cy="12" r="3"/>
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+              </svg>
+            </button>
+            <div class="score-strip-menu-pop" id="score-strip-menu-pop" hidden role="menu">
+              <button type="button" class="score-strip-menu-item" role="menuitem" data-tracker-action="sync" ${st.syncing ? "disabled" : ""}>${st.syncing ? "Syncing…" : "Sync"}</button>
+              <button type="button" class="score-strip-menu-item" role="menuitem" data-tracker-action="swap">Switch Sides</button>
+              <button type="button" class="score-strip-menu-item" role="menuitem" data-tracker-action="csv" ${(st.shots || []).length ? "" : "disabled"}>CSV</button>
+              <button type="button" class="score-strip-menu-item" role="menuitem" data-tracker-action="zones">${st.showGrid ? "Hide zones" : "Zones"}</button>
+            </div>
+          </div>
           <button type="button" class="btn score-strip-btn" data-clock-toggle>${running ? "Stop" : "Start"}</button>
           <button type="button" class="btn score-strip-btn" data-open-clock-setup>${escapeHtml(periodLabel(st.period))}</button>
           <a class="score-strip-goto" href="#shots-scoreboard" aria-label="Open scoreboard">${miniScoreboardIconMarkup(score, face)}</a>
@@ -1559,59 +1573,51 @@
     });
   }
 
-  function bindDrawerActionsOnce() {
-    const host = $("#nav-drawer-actions");
-    if (!host || host.dataset.bound === "1") return;
-    host.dataset.bound = "1";
-    host.addEventListener("click", (e) => {
-      const btn = e.target.closest("[data-tracker-action]");
-      if (!btn || btn.disabled) return;
-      const action = btn.getAttribute("data-tracker-action");
-      if (action === "sync") syncGameShots();
-      else if (action === "swap") {
-        st.swapSides = !st.swapSides;
-        saveUi();
-        draw({ keepScroll: true });
-      } else if (action === "zones") {
-        st.showGrid = !st.showGrid;
-        saveUi();
-        draw({ keepScroll: true });
-      } else if (action === "csv") {
-        exportShotsCsv(st.shots || []);
-      } else if (action === "scoreboard") {
-        $("#nav-drawer [data-close-drawer]")?.click();
-        location.hash = "shots-scoreboard";
-      }
-    });
+  function runTrackerAction(action) {
+    if (action === "sync") syncGameShots();
+    else if (action === "swap") {
+      st.swapSides = !st.swapSides;
+      saveUi();
+      draw({ keepScroll: true });
+    } else if (action === "zones") {
+      st.showGrid = !st.showGrid;
+      saveUi();
+      draw({ keepScroll: true });
+    } else if (action === "csv") {
+      exportShotsCsv(st.shots || []);
+    }
   }
 
-  function syncDrawerActions() {
-    const host = $("#nav-drawer-actions");
-    if (!host) return;
-    bindDrawerActionsOnce();
-    const show =
-      API &&
-      API.isConfigured() &&
-      st.booted &&
-      st.session &&
-      !st.loading &&
-      st.view === "shots" &&
-      st.gameId &&
-      st.game;
-    if (!show) {
-      host.hidden = true;
-      host.innerHTML = "";
-      return;
+  let scoreStripMenuDocBound = false;
+  function bindScoreStripMenu() {
+    const btn = $("[data-score-strip-menu]");
+    const pop = $("#score-strip-menu-pop");
+    if (!btn || !pop) return;
+    const setOpen = (open) => {
+      pop.hidden = !open;
+      btn.setAttribute("aria-expanded", open ? "true" : "false");
+    };
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      setOpen(pop.hidden);
+    });
+    pop.addEventListener("click", (e) => {
+      const item = e.target.closest("[data-tracker-action]");
+      if (!item || item.disabled) return;
+      e.stopPropagation();
+      runTrackerAction(item.getAttribute("data-tracker-action"));
+      setOpen(false);
+    });
+    if (!scoreStripMenuDocBound) {
+      scoreStripMenuDocBound = true;
+      document.addEventListener("click", (e) => {
+        if (e.target.closest(".score-strip-menu")) return;
+        const menuBtn = $("[data-score-strip-menu]");
+        const menuPop = $("#score-strip-menu-pop");
+        if (menuPop) menuPop.hidden = true;
+        if (menuBtn) menuBtn.setAttribute("aria-expanded", "false");
+      });
     }
-    const events = st.shots || [];
-    host.hidden = false;
-    host.innerHTML = `
-      <p class="nav-drawer-heading">Pitch</p>
-      <button type="button" class="nav-drawer-action" data-tracker-action="sync" ${st.syncing ? "disabled" : ""}>${st.syncing ? "Syncing…" : "Sync"}</button>
-      <button type="button" class="nav-drawer-action" data-tracker-action="swap">${st.swapSides ? "Goal left" : "Swap sides"}</button>
-      <button type="button" class="nav-drawer-action" data-tracker-action="csv" data-close-drawer ${events.length ? "" : "disabled"}>CSV</button>
-      <button type="button" class="nav-drawer-action" data-tracker-action="zones">${st.showGrid ? "Hide zones" : "Zones"}</button>
-      <button type="button" class="nav-drawer-action" data-tracker-action="scoreboard">Scoreboard</button>`;
   }
 
   function gameTitle(game) {
@@ -4896,6 +4902,7 @@
       draw();
     });
     bindClockUi();
+    bindScoreStripMenu();
     bindTrackerPitches();
     bindLineupEditor();
     bindPlaysFilters();
@@ -4903,10 +4910,15 @@
     if (opts.keepScroll) window.scrollTo(0, scrollY);
   }
 
+  function usAttacksFarEnd(period) {
+    const p = normalizePeriod(period);
+    return p !== "2" && p !== "ET2";
+  }
+
   function toFullFieldPoint(loc, period, team) {
     const x = Number(loc.x);
     const y = Number(loc.y);
-    const usAttacksRight = period !== "2" && period !== "ET2";
+    const usAttacksRight = usAttacksFarEnd(period);
     const attacksRight = team === "opp" ? !usAttacksRight : usAttacksRight;
     if (!attacksRight) return { fx: y, fy: PW - x };
     return { fx: PL - y, fy: x };
@@ -5635,13 +5647,14 @@
       </section>`;
   }
 
-  function scoreboardFieldPoint(loc, team) {
+  function scoreboardFieldPoint(loc, team, usAttacksTop) {
     if (!loc || loc.x == null || loc.y == null) return null;
     const x = Number(loc.x);
     const y = Number(loc.y);
     if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
-    if (team === "opp") return { fx: PW - x, fy: PL - y };
-    return { fx: x, fy: y };
+    const attacksTop = team === "opp" ? !usAttacksTop : usAttacksTop;
+    if (attacksTop) return { fx: x, fy: y };
+    return { fx: PW - x, fy: PL - y };
   }
 
   function scoreboardTrianglePoints(cx, cy, size, up) {
@@ -5665,45 +5678,53 @@
     const spotInset = 11;
     const dx = Math.sqrt(arcR * arcR - (penH - spotInset) * (penH - spotInset));
     const band = PL / 6;
+    const period = normalizePeriod(st.period);
+    const usAttacksTop = usAttacksFarEnd(period);
     const stripes = [];
     for (let i = 0; i < 6; i += 1) {
-      const lower = i >= 3;
-      const fill = lower ? (i % 2 ? "#4b5563" : "#6b7280") : i % 2 ? "#24633c" : "#2d7a4a";
+      const usHalf = usAttacksTop ? i < 3 : i >= 3;
+      const fill = usHalf ? (i % 2 ? "#24633c" : "#2d7a4a") : i % 2 ? "#4b5563" : "#6b7280";
       stripes.push(`<rect fill="${fill}" x="0" y="${i * band}" width="${PW}" height="${band}" />`);
     }
-    const shots = (events || []).filter((ev) => SHOT_RESULTS.has(ev.result) && ev.shot);
+    const shots = (events || []).filter(
+      (ev) => SHOT_RESULTS.has(ev.result) && ev.shot && eventPeriod(ev) === period
+    );
     const regular = [];
     const goals = [];
     shots.forEach((ev) => {
-      const pt = scoreboardFieldPoint(ev.shot, eventTeam(ev));
+      const pt = scoreboardFieldPoint(ev.shot, eventTeam(ev), usAttacksTop);
       if (!pt) return;
       if (isGoalResult(ev.result)) goals.push({ ev, pt });
       else regular.push({ ev, pt });
     });
     const markers = [];
     regular.forEach(({ ev, pt }) => {
-      const up = eventTeam(ev) === "us";
+      const up = eventTeam(ev) === "us" ? usAttacksTop : !usAttacksTop;
       markers.push(
         `<polygon points="${scoreboardTrianglePoints(pt.fx, pt.fy, 1.45, up)}" fill="rgba(244,247,251,0.28)" />`
       );
     });
     goals.forEach(({ ev, pt }) => {
       const us = eventTeam(ev) === "us";
+      const up = us ? usAttacksTop : !usAttacksTop;
       const fill = us ? "#f15a24" : "#f4f7fb";
       markers.push(
-        `<polygon points="${scoreboardTrianglePoints(pt.fx, pt.fy, 3.35, us)}" fill="${fill}" stroke="#0b1f33" stroke-width="0.28" stroke-linejoin="round" />`
+        `<polygon points="${scoreboardTrianglePoints(pt.fx, pt.fy, 3.35, up)}" fill="${fill}" stroke="#0b1f33" stroke-width="0.28" stroke-linejoin="round" />`
       );
       const num = ev.shooterNumber;
       if (num !== undefined && num !== null && String(num) !== "") {
         markers.push(
-          `<text x="${pt.fx}" y="${pt.fy + (us ? 0.35 : -0.15)}" fill="#0b1f33" font-size="2.05" font-weight="800" text-anchor="middle" dominant-baseline="central">${escapeHtml(String(num))}</text>`
+          `<text x="${pt.fx}" y="${pt.fy + (up ? 0.35 : -0.15)}" fill="#0b1f33" font-size="2.05" font-weight="800" text-anchor="middle" dominant-baseline="central">${escapeHtml(String(num))}</text>`
         );
       }
     });
     const usName = scoreboardFieldLabel(ourTeamName());
     const oppName = scoreboardFieldLabel(opponentOf(st.game)?.name || "Opponent");
+    const topName = usAttacksTop ? usName : oppName;
+    const botName = usAttacksTop ? oppName : usName;
+    const attackDir = usAttacksTop ? "top" : "bottom";
     return `
-      <svg class="scoreboard-field-svg" viewBox="-4 -5.4 76 116.2" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Shot map. ${escapeHtml(ourTeamName())} attacks toward the top.">
+      <svg class="scoreboard-field-svg" viewBox="-4 -5.4 76 116.2" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Shot map for ${escapeHtml(periodLabel(period))}. ${escapeHtml(ourTeamName())} attacks toward the ${attackDir}.">
         ${stripes.join("")}
         <rect x="0" y="0" width="${PW}" height="${PL}" fill="none" stroke="${line}" stroke-width="0.45" />
         <line x1="0" y1="${HALF_L}" x2="${PW}" y2="${HALF_L}" stroke="${line}" stroke-width="0.4" />
@@ -5719,8 +5740,8 @@
         <circle cx="${PW / 2}" cy="${PL - spotInset}" r="0.45" fill="${line}" />
         <path d="M ${PW / 2 - dx} ${penH} A ${arcR} ${arcR} 0 0 0 ${PW / 2 + dx} ${penH}" fill="none" stroke="${line}" stroke-width="0.35" />
         <path d="M ${PW / 2 - dx} ${PL - penH} A ${arcR} ${arcR} 0 0 1 ${PW / 2 + dx} ${PL - penH}" fill="none" stroke="${line}" stroke-width="0.35" />
-        <text x="${PW / 2}" y="-2.05" fill="rgba(244,247,251,0.78)" font-size="2.35" font-weight="750" text-anchor="middle">${escapeHtml(usName)}</text>
-        <text x="${PW / 2}" y="${PL + 3.55}" fill="rgba(244,247,251,0.78)" font-size="2.35" font-weight="750" text-anchor="middle">${escapeHtml(oppName)}</text>
+        <text x="${PW / 2}" y="-2.05" fill="rgba(244,247,251,0.78)" font-size="2.35" font-weight="750" text-anchor="middle">${escapeHtml(topName)}</text>
+        <text x="${PW / 2}" y="${PL + 3.55}" fill="rgba(244,247,251,0.78)" font-size="2.35" font-weight="750" text-anchor="middle">${escapeHtml(botName)}</text>
         ${markers.join("")}
       </svg>`;
   }
@@ -5943,57 +5964,53 @@
     if (!el) return;
     const scrollY = window.scrollY;
     document.body.classList.remove("is-recording-play");
-    try {
-      if (!API || !API.isConfigured()) {
-        renderSetup();
-        return;
-      }
-      if (!st.booted) {
-        renderLoading("Connecting…");
-        return;
-      }
-      if (!st.session) {
-        renderPin();
-        return;
-      }
-      if (st.loading) {
-        stopScoreboardPollTick();
-        renderLoading("Loading…");
-        return;
-      }
-      const view = st.view;
-      if (view !== "shots" && view !== "shots-scoreboard") stopClockTick();
-      if (view !== "shots-scoreboard") stopScoreboardPollTick();
-      if (view === "shots-games") {
-        renderGames();
-        return;
-      }
-      if (view === "shots-history") {
-        renderHistory();
-        return;
-      }
-      if (view === "shots-explore") {
-        renderExplore();
-        return;
-      }
-      if (!st.gameId || !st.game) {
-        renderGames();
-        return;
-      }
-      if (view === "shots-map") {
-        renderMap();
-        return;
-      }
-      if (view === "shots-scoreboard") {
-        renderScoreboard();
-        if (opts.keepScroll) window.scrollTo(0, scrollY);
-        applyScoreboardPinch();
-        return;
-      }
-      renderRecorder(opts);
-    } finally {
-      syncDrawerActions();
+    if (!API || !API.isConfigured()) {
+      renderSetup();
+      return;
     }
+    if (!st.booted) {
+      renderLoading("Connecting…");
+      return;
+    }
+    if (!st.session) {
+      renderPin();
+      return;
+    }
+    if (st.loading) {
+      stopScoreboardPollTick();
+      renderLoading("Loading…");
+      return;
+    }
+    const view = st.view;
+    if (view !== "shots" && view !== "shots-scoreboard") stopClockTick();
+    if (view !== "shots-scoreboard") stopScoreboardPollTick();
+    if (view === "shots-games") {
+      renderGames();
+      return;
+    }
+    if (view === "shots-history") {
+      renderHistory();
+      return;
+    }
+    if (view === "shots-explore") {
+      renderExplore();
+      return;
+    }
+    if (!st.gameId || !st.game) {
+      renderGames();
+      return;
+    }
+    if (view === "shots-map") {
+      renderMap();
+      return;
+    }
+    if (view === "shots-scoreboard") {
+      renderScoreboard();
+      if (opts.keepScroll) window.scrollTo(0, scrollY);
+      applyScoreboardPinch();
+      return;
+    }
+    renderRecorder(opts);
   }
 
   global.ShotTracker = {
@@ -6034,6 +6051,12 @@
       const openGame = $("#game-open-modal");
       if (openGame && !openGame.hidden) {
         closeGameOpenModal();
+        return true;
+      }
+      const stripPop = $("#score-strip-menu-pop");
+      if (stripPop && !stripPop.hidden) {
+        stripPop.hidden = true;
+        $("[data-score-strip-menu]")?.setAttribute("aria-expanded", "false");
         return true;
       }
       const menuPop = $("#scoreboard-menu-pop");
